@@ -2,7 +2,7 @@ import math
 import json
 import customtkinter as ctk
 from tkcalendar import DateEntry
-from src.historico.service import HistoricoService
+from src.core.historico import HistoricoService
 
 class HistoricoView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
