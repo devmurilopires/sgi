@@ -10,13 +10,26 @@ from src.core.auth.service import AuthService
 from src.core.historico.view import renderizar as renderizar_historico
 
 # PAINEL GERAL (Visão da Chefia)
-from src.painel_geral.dashboard.view import renderizar as renderizar_dashboard
+from src.painel_geral.dashboard.view import renderizar as renderizar_dashboard_geral
 
-# MÓDULOS: PONTO DE PARADA
+# MÓDULOS: PONTO DE PARADA (PP)
+from src.modulos.ponto_parada.dashboard.view import renderizar as renderizar_dashboard_pp
 from src.modulos.ponto_parada.ordem_servico.view import renderizar as renderizar_os_pp
 from src.modulos.ponto_parada.parecer.view import renderizar as renderizar_parecer_pp
 from src.modulos.ponto_parada.relatorios.view import renderizar as renderizar_relatorios_pp
 from src.modulos.ponto_parada.enderecos.view import renderizar as renderizar_enderecos_pp
+
+# MÓDULOS: ITINERÁRIO (ITI)
+from src.modulos.itinerario.dashboard.view import renderizar as renderizar_dashboard_iti
+from src.modulos.itinerario.ordem_servico.view import renderizar as renderizar_os_iti
+from src.modulos.itinerario.parecer.view import renderizar as renderizar_parecer_iti
+from src.modulos.itinerario.relatorios.view import renderizar as renderizar_relatorios_iti
+
+# MÓDULOS: QUADRO DE HORÁRIO (SPR)
+from src.modulos.quadro_horario.dashboard.view import renderizar as renderizar_dashboard_qh
+from src.modulos.quadro_horario.parecer.view import renderizar as renderizar_parecer_qh
+from src.modulos.quadro_horario.pesquisas.view import renderizar as renderizar_pesquisas_qh
+from src.modulos.quadro_horario.relatorios.view import renderizar as renderizar_relatorios_qh
 
 try:
     from src.core.shared.utils import resource_path
@@ -30,9 +43,11 @@ COLOR_BG = "#F2F2F2"
 def iniciar_sistema(usuario_dados):
     nome_usuario = usuario_dados.get("nome", "Usuário")
     is_admin = usuario_dados.get("is_admin", False)
+    
+    # Pegamos o perfil exato do banco de dados (ex: 'PONTO_PARADA,ITINERARIO')
+    tipo_perfil = str(usuario_dados.get("tipo_perfil", "")).strip().upper()
 
     app = ctk.CTk()
-    # Título do sistema atualizado
     app.title("SGI - DIPLA | Sistema de Gestão Integrado")
     app.configure(fg_color=COLOR_BG)
     
@@ -53,15 +68,13 @@ def iniciar_sistema(usuario_dados):
         img_logo_splash = ctk.CTkImage(Image.open(caminho_logo), size=(350, 350))
         ctk.CTkLabel(tela_carregamento, image=img_logo_splash, text="").pack(expand=True, pady=(150, 10))
     except:
-        # Texto da Splash atualizado
         ctk.CTkLabel(tela_carregamento, text="SGI - DIPLA", font=("Arial Black", 80), text_color=COLOR_PRIMARY).pack(expand=True, pady=(150, 10))
         
-    ctk.CTkLabel(tela_carregamento, text="Carregando módulos e painéis do sistema...\nPor favor, aguarde. ⏳", font=("Arial Bold", 23), text_color="#555", justify="center").pack(expand=True, pady=(0, 150))
-    
+    ctk.CTkLabel(tela_carregamento, text="Carregando módulos de acordo com o seu perfil...\nPor favor, aguarde. ⏳", font=("Arial Bold", 23), text_color="#555", justify="center").pack(expand=True, pady=(0, 150))
     app.update()
 
     # =====================================================================
-    # MONTAGEM DO SISTEMA
+    # MONTAGEM DA INTERFACE PRINCIPAL
     # =====================================================================
     frame_principal = ctk.CTkFrame(app, fg_color="transparent")
     
@@ -76,73 +89,119 @@ def iniciar_sistema(usuario_dados):
     except:
         ctk.CTkLabel(frame_topo, text="SGI", font=("Arial Black", 24), text_color=COLOR_PRIMARY).pack(side="left", padx=(20, 10))
 
-    # Título do cabeçalho atualizado
     ctk.CTkLabel(frame_topo, text="Sistema de Gestão Integrado", font=("Century Gothic bold", 20)).pack(side="left", pady=(12, 0))
 
-    perfil_texto = f"👤 Olá, {nome_usuario} ({'Admin' if is_admin else 'Comum'})"
+    perfil_texto = f"👤 Olá, {nome_usuario} ({'Chefia' if is_admin else tipo_perfil.replace(',', ' & ')})"
     ctk.CTkLabel(frame_topo, text=perfil_texto, font=("Arial", 14), text_color="gray").pack(side="right", padx=20)
 
-    # MENU LATERAL / BOTOES
-    menu_container = ctk.CTkFrame(frame_principal, fg_color="transparent")
+    # MENU LATERAL / BOTÕES (Agora Scrollable para suportar muitos botões)
+    menu_container = ctk.CTkScrollableFrame(frame_principal, fg_color="transparent", height=50, orientation="horizontal")
     menu_container.pack(fill="x", padx=10, pady=(15, 0))
 
-    # Nomes dos botões atualizados para clareza
-    menu_botoes = [
-        ("Visão Geral (Painel)", COLOR_PRIMARY),
-        ("OS (Paradas)", COLOR_PRIMARY),
-        ("Relatórios OS (Paradas)", COLOR_PRIMARY),
-        ("Parecer (Paradas)", COLOR_PRIMARY),
-        ("Relatórios Parecer (Paradas)", COLOR_PRIMARY),
-        ("Histórico Global", COLOR_PRIMARY),
-    ]
-    if is_admin: menu_botoes.append(("Endereços (Paradas)", "#F24822"))
+    # =====================================================================
+    # CONTROLE DE ACESSO (RBAC) - DEFINIÇÃO DINÂMICA DE ABAS
+    # =====================================================================
+    config_abas = []
 
-    # CONTEÚDO
+    # 👑 REGRA 1: CHEFIA (ADMIN) - Acesso total aos relatórios e configurações
+    if is_admin:
+        config_abas.extend([
+            {"nome": "Visão Global DIPLA", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_dashboard_geral(a, u)},
+            # Paradas
+            {"nome": "Relatórios OS (Paradas)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_pp(a, u, "OS")},
+            {"nome": "Relatórios Parecer (Paradas)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_pp(a, u, "PARECER")},
+            {"nome": "Endereços (Paradas)", "cor": "#F24822", "render": lambda a, u: renderizar_enderecos_pp(a, u)},
+            # Itinerário
+            {"nome": "Relatórios OS (Itinerário)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_iti(a, u, "OS")},
+            {"nome": "Relatórios Parecer (Itinerário)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_iti(a, u, "PARECER")},
+            # Quadro de Horários (SPR)
+            {"nome": "Parecer (Horários)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_parecer_qh(a, u)},
+            {"nome": "Pesquisas (Horários)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_pesquisas_qh(a, u)},
+            {"nome": "Relatórios Parecer (Horários)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
+            {"nome": "Relatórios Pesquisas (Horários)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")},
+            # Sistema
+            {"nome": "Histórico Global", "cor": "#F24822", "render": lambda a, u: renderizar_historico(a, u)}
+        ])
+
+    # 👷 REGRAS ACUMULATIVAS (Técnicos da Operação)
+    else:
+        # 🚌 PONTO DE PARADA
+        if "PONTO DE PARADA" in tipo_perfil:
+            config_abas.extend([
+                {"nome": "Meu Painel (Paradas)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_dashboard_pp(a, u)},
+                {"nome": "OS (Paradas)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_os_pp(a, u)},
+                {"nome": "Parecer (Paradas)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_parecer_pp(a, u)},
+                {"nome": "Relatórios OS (Paradas)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_pp(a, u, "OS")},
+                {"nome": "Relatórios Parecer (Paradas)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_pp(a, u, "PARECER")},
+            ])
+
+        # 🗺️ ITINERÁRIO
+        if "ITINERARIO" in tipo_perfil:
+            config_abas.extend([
+                {"nome": "Meu Painel (Itinerário)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_dashboard_iti(a, u)},
+                {"nome": "OS (Itinerário)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_os_iti(a, u)},
+                {"nome": "Parecer (Itinerário)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_parecer_iti(a, u)},
+                {"nome": "Relatórios OS (Itinerário)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_iti(a, u, "OS")},
+                {"nome": "Relatórios Parecer (Itinerário)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_iti(a, u, "PARECER")},
+            ])
+
+        # ⏱️ QUADRO DE HORÁRIO (SPR)
+        if "QUADRO DE HORARIO" in tipo_perfil:
+            config_abas.extend([
+                {"nome": "Meu Painel (Horários)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_dashboard_qh(a, u)},
+                {"nome": "Parecer (Horários)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_parecer_qh(a, u)},
+                {"nome": "Pesquisas (Horários)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_pesquisas_qh(a, u)},
+                {"nome": "Relatórios Parecer (Horários)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
+                {"nome": "Relatórios Pesquisas (Horários)", "cor": COLOR_PRIMARY, "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")},
+            ])
+
+    # =====================================================================
+    # RENDERIZAÇÃO INTELIGENTE
+    # =====================================================================
     frame_conteudo = ctk.CTkFrame(frame_principal, fg_color="#FFFFFF", corner_radius=15)
     frame_conteudo.pack(fill="both", expand=True, padx=20, pady=20)
 
     abas = {}
+    instancias_views = {}
 
-    for nome, _ in menu_botoes:
-        aba = ctk.CTkFrame(frame_conteudo, fg_color="transparent")
-        abas[nome] = aba
-
-    # Renderiza os painéis mapeando para as novas abas
-    view_dash = renderizar_dashboard(abas["Visão Geral (Painel)"], usuario_dados)
-    view_os_pp = renderizar_os_pp(abas["OS (Paradas)"], usuario_dados)
-    view_rel_os_pp = renderizar_relatorios_pp(abas["Relatórios OS (Paradas)"], usuario_dados, tipo="OS")
-    view_par_pp = renderizar_parecer_pp(abas["Parecer (Paradas)"], usuario_dados)
-    view_rel_par_pp = renderizar_relatorios_pp(abas["Relatórios Parecer (Paradas)"], usuario_dados, tipo="PARECER")
-    view_hist = renderizar_historico(abas["Histórico Global"], usuario_dados)
-    if is_admin: 
-        view_end = renderizar_enderecos_pp(abas["Endereços (Paradas)"], usuario_dados)
+    # Só cria as telas que o usuário tem acesso!
+    for conf in config_abas:
+        nome_aba = conf["nome"]
+        aba_frame = ctk.CTkFrame(frame_conteudo, fg_color="transparent")
+        abas[nome_aba] = aba_frame
+        # Chama a função e guarda o objeto da tela
+        view_instancia = conf["render"](aba_frame, usuario_dados)
+        instancias_views[nome_aba] = view_instancia
 
     def selecionar_aba(nome_aba):
-        for aba in abas.values(): aba.pack_forget()
+        for aba in abas.values(): 
+            aba.pack_forget()
         abas[nome_aba].pack(fill="both", expand=True)
 
-        # AUTO-ATUALIZAÇÃO
-        if nome_aba == "Visão Geral (Painel)":
-            view_dash.atualizar_completo()
-        elif nome_aba == "Relatórios OS (Paradas)":
-            view_rel_os_pp.acao_buscar()
-        elif nome_aba == "Relatórios Parecer (Paradas)":
-            view_rel_par_pp.acao_buscar()
+        # MÁGICA DO AUTO-REFRESH
+        view = instancias_views.get(nome_aba)
+        if view:
+            if hasattr(view, 'atualizar_completo'):
+                view.atualizar_completo()
+            elif hasattr(view, 'acao_buscar'):
+                view.acao_buscar()
 
-    for texto, cor in menu_botoes:
-        btn = ctk.CTkButton(menu_container, text=texto, fg_color=cor, font=("Arial Bold", 13), corner_radius=8, height=35, hover_color=COLOR_PRIMARY_HOVER, command=lambda t=texto: selecionar_aba(t))
+    # Desenha os botões dinamicamente no menu scrollável
+    for conf in config_abas:
+        btn = ctk.CTkButton(menu_container, text=conf["nome"], fg_color=conf["cor"], font=("Arial Bold", 13), 
+                            corner_radius=8, height=35, hover_color=COLOR_PRIMARY_HOVER, 
+                            command=lambda t=conf["nome"]: selecionar_aba(t))
         btn.pack(side="left", padx=5)
 
-    # Inicia na aba de OS de Paradas
-    selecionar_aba("OS (Paradas)")
+    # Inicia sempre na primeira aba disponível para o usuário
+    if config_abas:
+        selecionar_aba(config_abas[0]["nome"])
 
     tela_carregamento.destroy()
     frame_principal.pack(fill="both", expand=True)
     
-    try:
-        app.state("zoomed") 
-    except:
-        pass
+    try: app.state("zoomed") 
+    except: pass
 
     app.mainloop()
 
