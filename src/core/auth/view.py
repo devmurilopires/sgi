@@ -181,7 +181,7 @@ class LoginView(ctk.CTk):
     def mostrar_cadastro(self):
         self._resetar_frame_ativo()
 
-        ctk.CTkLabel(self.active_frame, text="NOVA CONTA", font=("Century Gothic bold", 32), text_color=COLOR_PRIMARY).pack(pady=(0, 20))
+        ctk.CTkLabel(self.active_frame, text="NOVA CONTA", font=("Century Gothic bold", 32), text_color=COLOR_PRIMARY).pack(pady=(0, 15))
 
         # Campos de Cadastro
         self.cad_nome = ctk.CTkEntry(self.active_frame, placeholder_text="Nome Completo", width=380, height=45, font=("Arial", 14), corner_radius=8, border_width=2, border_color=COLOR_PRIMARY)
@@ -192,6 +192,20 @@ class LoginView(ctk.CTk):
 
         self.cad_email = ctk.CTkEntry(self.active_frame, placeholder_text="E-mail", width=380, height=45, font=("Arial", 14), corner_radius=8, border_width=2, border_color=COLOR_PRIMARY)
         self.cad_email.pack(pady=6)
+        
+        # --- NOVO: Múltipla Escolha de Setores (Checkboxes) ---
+        frame_setores = ctk.CTkFrame(self.active_frame, fg_color="transparent")
+        frame_setores.pack(pady=6, fill="x", padx=40)
+        ctk.CTkLabel(frame_setores, text="Setores de Acesso:", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
+        
+        self.chk_var_pp = ctk.StringVar(value="")
+        ctk.CTkCheckBox(frame_setores, text="Ponto de Parada", variable=self.chk_var_pp, onvalue="PONTO DE PARADA", offvalue="", fg_color=COLOR_PRIMARY).pack(side="left", padx=(0, 15))
+        
+        self.chk_var_iti = ctk.StringVar(value="")
+        ctk.CTkCheckBox(frame_setores, text="Itinerário", variable=self.chk_var_iti, onvalue="ITINERARIO", offvalue="", fg_color=COLOR_PRIMARY).pack(side="left", padx=15)
+        
+        self.chk_var_qh = ctk.StringVar(value="")
+        ctk.CTkCheckBox(frame_setores, text="Quadro de Horário", variable=self.chk_var_qh, onvalue="QUADRO DE HORARIO", offvalue="", fg_color=COLOR_PRIMARY).pack(side="left", padx=15)
 
         # Campos de Senha
         self.cad_senha = self._criar_campo_senha(self.active_frame, "Senha (mín. 6 caracteres)")
@@ -200,13 +214,27 @@ class LoginView(ctk.CTk):
         ctk.CTkButton(self.active_frame, text="FINALIZAR CADASTRO", width=380, height=50, corner_radius=8, fg_color=COLOR_PRIMARY, hover_color=COLOR_PRIMARY_HOVER, font=("Arial bold", 16), command=self.acao_cadastrar).pack(pady=(20, 10))
         
         btn_voltar = ctk.CTkLabel(self.active_frame, text="← Voltar ao Login", font=("Arial bold", 14), text_color=COLOR_SECONDARY, cursor="hand2")
-        btn_voltar.pack(pady=10)
+        btn_voltar.pack(pady=5)
         btn_voltar.bind("<Button-1>", lambda e: self.mostrar_login())
 
     def acao_cadastrar(self):
+        # 1. Junta todos os setores marcados separados por vírgula
+        setores_marcados = [s for s in [self.chk_var_pp.get(), self.chk_var_iti.get(), self.chk_var_qh.get()] if s]
+        
+        if not setores_marcados:
+            messagebox.showwarning("Atenção", "Selecione pelo menos um setor de acesso.")
+            return
+
+        perfil_final = ",".join(setores_marcados) # Ex: "PONTO_PARADA,ITINERARIO"
+
+        # 2. Envia para o service gravar no banco
         ok, msg = self.auth.cadastrar_usuario(
-            self.cad_nome.get(), self.cad_user.get(), self.cad_email.get(),
-            self.cad_senha.get(), self.cad_conf.get()
+            self.cad_nome.get(), 
+            self.cad_user.get(), 
+            self.cad_email.get(),
+            self.cad_senha.get(), 
+            self.cad_conf.get(),
+            perfil_final # <--- Envia a string combinada
         )
         if ok:
             messagebox.showinfo("Sucesso", msg)

@@ -54,9 +54,9 @@ class AuthService:
         if not username or not senha:
             return False, "Por favor, preencha a Matrícula e a senha.", None
 
-        # Procura pelos dados da Matrícula na NOVA tabela
+        # CORREÇÃO: Adicionado o 'is_admin' nativo da base de dados na query
         query_busca = """
-            SELECT password_hash, tipo_perfil, nome_completo, username
+            SELECT password_hash, tipo_perfil, nome_completo, username, is_admin
             FROM common.usuarios 
             WHERE email = %s OR username = %s
         """
@@ -68,7 +68,8 @@ class AuthService:
         if not resultado: 
             return False, "Matrícula não encontrada.", None
 
-        senha_hash_banco, tipo_perfil, nome_completo, user_real = resultado
+        # CORREÇÃO: Desempacotar as 5 variáveis
+        senha_hash_banco, tipo_perfil, nome_completo, user_real, is_admin = resultado
 
         try:
             # Compara a senha digitada com o Hash seguro da base de dados
@@ -76,7 +77,8 @@ class AuthService:
                 dados_usuario = {
                     "username": user_real,
                     "nome": nome_completo,
-                    "is_admin": tipo_perfil == "admin"
+                    "is_admin": is_admin,       # Pega o verdadeiro valor Booleano do banco
+                    "tipo_perfil": tipo_perfil  # Envia o perfil para o main.py ler
                 }
                 return True, "Bem-vindo!", dados_usuario
             else:
@@ -88,18 +90,20 @@ class AuthService:
                  dados_usuario = {
                     "username": user_real,
                     "nome": nome_completo,
-                    "is_admin": tipo_perfil == "admin"
+                    "is_admin": is_admin,
+                    "tipo_perfil": tipo_perfil
                 }
                  return True, "Bem-vindo (Modo Legado)!", dados_usuario
                  
             return False, "Erro na verificação da senha (formato inválido).", None
 
-    def cadastrar_usuario(self, nome, username, email, senha, conf_senha):
+    # CORREÇÃO: Adicionado o parâmetro 'perfil' na função
+    def cadastrar_usuario(self, nome, username, email, senha, conf_senha, perfil):
         """
         Regista um novo usuario na tabela common.usuarios.
         """
         # Validações iniciais (Fail Fast)
-        if not all([nome, username, email, senha, conf_senha]):
+        if not all([nome, username, email, senha, conf_senha, perfil]):
             return False, "Todos os campos são de preenchimento obrigatório."
         
         if senha != conf_senha:
@@ -115,17 +119,18 @@ class AuthService:
         if erro: 
             return False, erro
         if resultado: 
-            return False, "A Matrícula já se encontra registada."
+            return False, "A Matrícula ou E-mail já se encontra registado."
 
         # Encripta a senha e insere o registo
         try:
             senha_hash = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             
+            # CORREÇÃO: Inserir dinamicamente o 'tipo_perfil' que veio da interface
             query_insercao = """
-                INSERT INTO common.usuarios (nome_completo, username, email, password_hash, tipo_perfil) 
-                VALUES (%s, %s, %s, %s, 'comum')
+                INSERT INTO common.usuarios (nome_completo, username, email, password_hash, tipo_perfil, is_admin) 
+                VALUES (%s, %s, %s, %s, %s, False)
             """
-            parametros = (nome, username, email, senha_hash)
+            parametros = (nome, username, email, senha_hash, perfil)
             
             sucesso, erro_insercao = self._executar_query(query_insercao, parametros, commit=True)
             
@@ -137,7 +142,7 @@ class AuthService:
         except Exception as e:
             print(f"[LOG HASH] Erro ao encriptar a senha: {e}")
             return False, "Erro interno ao processar o registo."
-
+        
     # RECUPERAÇÃO DE SENHA
     def enviar_codigo_recuperacao(self, email):
         """
