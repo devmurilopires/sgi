@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox
-from src.enderecos.service import EnderecoService
+from src.modulos.ponto_parada.enderecos.service import EnderecoService
 
 COLOR_BG = "#F4F6F9"
 COLOR_WHITE = "#FFFFFF"

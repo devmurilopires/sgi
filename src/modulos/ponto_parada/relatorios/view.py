@@ -3,7 +3,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 from tkcalendar import DateEntry
-from src.relatorios.service import RelatorioService
+from src.modulos.ponto_parada.relatorios.service import RelatorioService
 
 class RelatorioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado, tipo_relatorio):

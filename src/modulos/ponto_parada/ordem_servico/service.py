@@ -3,15 +3,15 @@ import unicodedata
 from datetime import datetime
 from docx import Document
 from docx.shared import Inches
-from src.ordem_servico.repository import OSRepository
+from src.modulos.ponto_parada.ordem_servico.repository import OSRepository
 from config.settings import RAIZ_REDE
 
 # Tenta puxar o utils da raiz ou da pasta shared
 try:
-    from src.shared.utils import resource_path
+    from src.core.shared.utils import resource_path
 except ImportError:
     try:
-        from src.shared.utils import resource_path
+        from src.core.shared.utils import resource_path
     except ImportError:
         def resource_path(path): return path
 

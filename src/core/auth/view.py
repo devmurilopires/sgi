@@ -2,10 +2,10 @@ import customtkinter as ctk
 from tkinter import messagebox
 from PIL import Image
 import webbrowser
-from src.auth.service import AuthService
+from src.core.auth.service import AuthService
 
 try:
-    from src.shared.utils import resource_path
+    from src.core.shared.utils import resource_path
 except ImportError:
     def resource_path(path): return path
 

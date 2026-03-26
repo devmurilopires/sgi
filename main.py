@@ -7,7 +7,7 @@ from PIL import Image
 # CORE (Coração do sistema)
 from src.core.auth.view import LoginView
 from src.core.auth.service import AuthService
-from src.core.historico import renderizar as renderizar_historico
+from src.core.historico.view import renderizar as renderizar_historico
 
 # PAINEL GERAL (Visão da Chefia)
 from src.painel_geral.dashboard.view import renderizar as renderizar_dashboard

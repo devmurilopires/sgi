@@ -1,7 +1,7 @@
 import pandas as pd
 import unicodedata
 from datetime import datetime
-from src.dashboard.repository import DashboardRepository
+from src.painel_geral.dashboard.repository import DashboardRepository
 
 class DashboardService:
     def __init__(self):

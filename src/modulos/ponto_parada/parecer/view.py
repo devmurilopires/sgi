@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from src.parecer.service import ParecerService
+from src.modulos.ponto_parada.parecer.service import ParecerService
 
 class ParecerView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):

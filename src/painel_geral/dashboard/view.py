@@ -8,7 +8,7 @@ import textwrap
 import io
 from datetime import datetime
 from tkinter import filedialog, messagebox
-from src.dashboard.service import DashboardService
+from src.painel_geral.dashboard.service import DashboardService
 
 # --- Paleta de Cores Institucional ---
 COLOR_BG = "#F4F6F9"          

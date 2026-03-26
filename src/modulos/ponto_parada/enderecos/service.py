@@ -1,6 +1,6 @@
 import pandas as pd
 from tkinter import filedialog
-from src.enderecos.repository import EnderecoRepository
+from src.modulos.ponto_parada.enderecos.repository import EnderecoRepository
 
 class EnderecoService:
     def __init__(self):

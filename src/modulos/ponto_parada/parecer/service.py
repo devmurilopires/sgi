@@ -1,11 +1,11 @@
 import os
 from datetime import datetime
 from docx import Document
-from src.parecer.repository import ParecerRepository
+from src.modulos.ponto_parada.parecer.repository import ParecerRepository
 from config.settings import RAIZ_REDE
 
 try:
-    from src.shared.utils import resource_path
+    from src.core.shared.utils import resource_path
 except ImportError:
     def resource_path(path): return path
 

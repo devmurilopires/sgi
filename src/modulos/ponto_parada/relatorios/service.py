@@ -3,7 +3,7 @@ import shutil
 import sys
 import subprocess
 from datetime import datetime
-from src.relatorios.repository import RelatorioRepository
+from src.modulos.ponto_parada.relatorios.repository import RelatorioRepository
 from config.settings import RAIZ_REDE
 
 class RelatorioService:

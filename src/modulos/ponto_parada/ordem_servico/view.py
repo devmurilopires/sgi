@@ -1,6 +1,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
-from src.ordem_servico.service import OSService
+from src.modulos.ponto_parada.ordem_servico.service import OSService
 
 class OSView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
