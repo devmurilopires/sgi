@@ -31,8 +31,8 @@ except ImportError:
     def resource_path(path): return path
 
 # --- Definição de Cores Profissionais UI/UX (Clean Admin) ---
-COLOR_BG_CONTENT = "#FFFFFF"      # Fundo da área de trabalho
-COLOR_SIDEBAR = "#F2F2F2"         # A cor Clean para o menu lateral
+COLOR_BG_CONTENT = "#F2F2F2"      # Fundo da área de trabalho
+COLOR_SIDEBAR = "#FFFFFF"         # A cor Clean para o menu lateral
 COLOR_ACCENT = "#0F8C75"          # Verde da Etufor (Assinatura UI)
 COLOR_TEXT_DARK = "#333333"       # Texto escuro principal
 COLOR_TEXT_MUTED = "#888888"      # Texto secundário/títulos (Suave)
@@ -43,8 +43,8 @@ COLOR_HOVER = "#E9ECEF"           # Hover Clean
 ICONS_PATH = "assets"
 
 # Tamanhos padrões para manter a coesão UI/UX
-SIZE_HEADER = (18, 18)
-SIZE_ITEM = (22, 22)
+SIZE_HEADER = (24, 24)
+SIZE_ITEM = (20, 20)
 
 # Mapeamento para caminhos de arquivos PNG
 ICONS_PNG = {
@@ -59,15 +59,17 @@ ICONS_PNG = {
     # 2. Ícones de Itens Funcionais - Tamanho SIZE_ITEM
     # Dica UX: Use ícones claros para quando o item estiver selecionado
     "Dashboard_Item": resource_path(f"{ICONS_PATH}/dashboard-item.png"), 
-    "OS": resource_path(f"{ICONS_PATH}/documento-icon.png"),
-    "Parecer": resource_path(f"{ICONS_PATH}/documento-icon.png"),
-    "Relatorios": resource_path(f"{ICONS_PATH}/relatorios-icon.png"),
+    "OS": resource_path(f"{ICONS_PATH}/os-icon.png"),
+    "Parecer": resource_path(f"{ICONS_PATH}/parecer-icon.png"),
+    "Relatorios_Os": resource_path(f"{ICONS_PATH}/relatorios-os-icon.png"),
+    "Relatorios_Parecer": resource_path(f"{ICONS_PATH}/relatorios-parecer-icon.png"),
+    "Relatorio_Pesquisas": resource_path(f"{ICONS_PATH}/relatorio-pesquisas-icon.png"),
     "Enderecos": resource_path(f"{ICONS_PATH}/enderecos-icon.png"), 
     "Pesquisas": resource_path(f"{ICONS_PATH}/pesquisas-icon.png"), 
     "Historico": resource_path(f"{ICONS_PATH}/historico-icon.png"),
     "Sair": resource_path(f"{ICONS_PATH}/sair-icon.png"),       # Rodapé
     "Menu": resource_path(f"{ICONS_PATH}/menu-icon.png"),
-    "Arrow_Down": "⌄"
+    "Arrow_Down": resource_path(f"{ICONS_PATH}/arrow-down-icon.png")
 }
 
 def iniciar_sistema(usuario_dados):
@@ -132,9 +134,20 @@ def iniciar_sistema(usuario_dados):
         loaded_imgs_headers[key] = load_icon_png(ICONS_PNG[key], SIZE_HEADER)
 
     # Carrega Itens Funcionais
-    item_keys = ["Dashboard_Item", "OS", "Parecer", "Relatorios", "Enderecos", "Pesquisas", "Historico", "Menu", "Sair"]
+    item_keys = ["Dashboard_Item", "OS", "Parecer", "Relatorios_Os", "Relatorios_Parecer", "Relatorio_Pesquisas", "Enderecos", "Pesquisas", "Historico", "Menu", "Sair"]
     for key in item_keys:
         loaded_imgs_items[key] = load_icon_png(ICONS_PNG[key], SIZE_ITEM)
+
+    # Carrega a seta e cria uma versão girada para quando o menu fechar!
+    try:
+        img_seta = Image.open(ICONS_PNG["Arrow_Down"])
+        loaded_imgs_items["Arrow_Down"] = ctk.CTkImage(img_seta, size=(16, 16))
+        # rotate(90) gira a seta para a direita
+        loaded_imgs_items["Arrow_Closed"] = ctk.CTkImage(img_seta.rotate(90), size=(16, 16))
+    except Exception as e:
+        print("Erro ao carregar seta:", e)
+        loaded_imgs_items["Arrow_Down"] = None
+        loaded_imgs_items["Arrow_Closed"] = None
 
     # =====================================================================
     # MONTAGEM DA ESTRUTURA (Layout Vertical)
@@ -248,17 +261,17 @@ def iniciar_sistema(usuario_dados):
         # Usando PNGs carregados em loaded_imgs_items
         categorias_menu["DASHBOARDS"].append({"nome": "Visão Global", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_geral(a, u)})
         categorias_menu["PONTO DE PARADA"].extend([
-            {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "OS")},
-            {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "PARECER")},
+            {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios_Os"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "OS")},
+            {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "PARECER")},
             {"nome": "Gestão Endereços", "img_icon": loaded_imgs_items["Enderecos"], "render": lambda a, u: renderizar_enderecos_pp(a, u)}
         ])
         categorias_menu["ITINERÁRIO"].extend([
-            {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "OS")},
-            {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "PARECER")}
+            {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios_Os"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "OS")},
+            {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "PARECER")}
         ])
         categorias_menu["QUADRO DE HORÁRIO"].extend([
-            {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
-            {"nome": "Relatórios Pesquisas", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")}
+            {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
+            {"nome": "Relatórios Pesquisas", "img_icon": loaded_imgs_items["Relatorio_Pesquisas"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")}
         ])
         categorias_menu["SISTEMA"].append({"nome": "Histórico Global", "img_icon": loaded_imgs_items["Historico"], "render": lambda a, u: renderizar_historico(a, u)})
 
@@ -267,21 +280,21 @@ def iniciar_sistema(usuario_dados):
         if "PONTO DE PARADA" in tipo_perfil:
             # Usando PNGs carregados em loaded_imgs_items
             categorias_menu["PONTO DE PARADA"].extend([
-                {"nome": "Meu Painel", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_pp(a, u)},
+                {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_pp(a, u)},
                 {"nome": "Gerar OS", "img_icon": loaded_imgs_items["OS"], "render": lambda a, u: renderizar_os_pp(a, u)},
                 {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_pp(a, u)},
-                {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "OS")},
-                {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "PARECER")},
+                {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios_Os"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "OS")},
+                {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "PARECER")},
             ])
 
         # ITINERÁRIO (SIGA)
         if "ITINERARIO" in tipo_perfil:
             categorias_menu["ITINERÁRIO"].extend([
-                {"nome": "Meu Painel", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_iti(a, u)},
+                {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_iti(a, u)},
                 {"nome": "Gerar OS", "img_icon": loaded_imgs_items["OS"], "render": lambda a, u: renderizar_os_iti(a, u)},
                 {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_iti(a, u)},
-                {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "OS")},
-                {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "PARECER")},
+                {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios_Os"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "OS")},
+                {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "PARECER")},
             ])
 
         # QUADRO DE HORÁRIO (SPR)
@@ -290,8 +303,8 @@ def iniciar_sistema(usuario_dados):
             categorias_menu["QUADRO DE HORÁRIO"].extend([
                 {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_qh(a, u)},
                 {"nome": "Pesquisas de Campo", "img_icon": loaded_imgs_items["Pesquisas"], "render": lambda a, u: renderizar_pesquisas_qh(a, u)},
-                {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
-                {"nome": "Relatórios Pesquisas", "img_icon": loaded_imgs_items["Relatorios"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")},
+                {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
+                {"nome": "Relatórios Pesquisas", "img_icon": loaded_imgs_items["Relatorio_Pesquisas"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")},
             ])
 
     # =====================================================================
@@ -320,11 +333,11 @@ def iniciar_sistema(usuario_dados):
     def toggle_dropdown(target_frame, arrow_label, expanded_var):
         if expanded_var.get():
             target_frame.pack_forget()
-            arrow_label.configure(text="<") 
+            arrow_label.configure(image=loaded_imgs_items["Arrow_Closed"]) # Seta para o lado
             expanded_var.set(False)
         else:
             target_frame.pack(fill="x", pady=(2, 10))
-            arrow_label.configure(text=ICONS_PNG["Arrow_Down"])
+            arrow_label.configure(image=loaded_imgs_items["Arrow_Down"]) # Seta para baixo
             expanded_var.set(True)
 
     def toggle_sidebar():
@@ -384,15 +397,16 @@ def iniciar_sistema(usuario_dados):
         elif "SISTEMA" in categoria: img_cat_icon = loaded_imgs_headers["Header_Sistema"]
 
         lbl_cat_icon = ctk.CTkLabel(btn_header_frame, image=img_cat_icon, text="")
-        lbl_cat_icon.pack(side="left", padx=10) # Ícone na esquerda p/ centralizar no recolhimento
+        lbl_cat_icon.pack(side="left", padx=10)
 
-        lbl_titulo = ctk.CTkLabel(btn_header_frame, text=categoria, font=("Arial Bold", 12), text_color=COLOR_TEXT_MUTED)
-        lbl_titulo.pack(side="left", padx=5) # padx reduzido p/ colar no ícone
+        lbl_titulo = ctk.CTkLabel(btn_header_frame, text=categoria, font=("Arial Bold", 11), text_color=COLOR_TEXT_MUTED)
+        lbl_titulo.pack(side="left", padx=5) 
         listas_botoes_texto.append(lbl_titulo) 
 
-        lbl_seta = ctk.CTkLabel(btn_header_frame, text=ICONS_PNG["Arrow_Down"], text_color=COLOR_TEXT_MUTED, font=("Arial", 16))
+        # Usa 'image' e deixa 'text' vazio
+        lbl_seta = ctk.CTkLabel(btn_header_frame, image=loaded_imgs_items["Arrow_Down"], text="")
         lbl_seta.pack(side="right", padx=15)
-        labels_dropdown.append(lbl_seta) 
+        labels_dropdown.append(lbl_seta)
 
         sub_itens_frame = ctk.CTkFrame(cat_header_frame, fg_color="transparent")
         sub_itens_frame.pack(fill="x", pady=(2, 10))
