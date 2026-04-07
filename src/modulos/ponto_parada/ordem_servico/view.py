@@ -11,7 +11,7 @@ class OSView(ctk.CTkFrame):
         self.usuario_logado = usuario_logado.get('nome') if isinstance(usuario_logado, dict) else usuario_logado
         self.descricoes_acumuladas = []
 
-        self.itens_urbmidia = ["Abrigo Metálico", "Parada Segura", "Abrigo Concreto"]
+        self.itens_mcmensagem = ["Abrigo Metálico", "Parada Segura", "Abrigo Concreto"]
         self.itens_proximaparada = ["Placa/Barrote", "Placa/Poste"]
 
         self._construir_interface()
@@ -26,11 +26,11 @@ class OSView(ctk.CTkFrame):
 
         ctk.CTkLabel(header_frame, text="Gerador de Ordem de Serviço", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
         
-        self.pasta_escolhida_var = ctk.StringVar(value="URBMIDIA")
+        self.pasta_escolhida_var = ctk.StringVar(value="MC MENSAGEM")
         self.pasta_escolhida_var.trace_add("write", self._atualizar_opcoes_item)
 
         ctk.CTkRadioButton(header_frame, text="PROXIMA PARADA", variable=self.pasta_escolhida_var, value="PROXIMAPARADA", fg_color="#0F8C75").pack(side="right", padx=10)
-        ctk.CTkRadioButton(header_frame, text="URBMÍDIA", variable=self.pasta_escolhida_var, value="URBMIDIA", fg_color="#0F8C75").pack(side="right", padx=10)
+        ctk.CTkRadioButton(header_frame, text="MC MENSAGEM", variable=self.pasta_escolhida_var, value="MC MENSAGEM", fg_color="#0F8C75").pack(side="right", padx=10)
         ctk.CTkLabel(header_frame, text="Modelo:", font=("Arial Bold", 14)).pack(side="right", padx=10)
 
         # --- FORMULÁRIO ---
@@ -42,35 +42,35 @@ class OSView(ctk.CTkFrame):
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
         # ---> NOVO CAMPO: Origem da Demanda
-        self.origem_var = self._criar_combobox(row1, "Origem da Demanda", width=150, values=["SPU", "SISGEP"], side="left")
+        self.origem_var = self._criar_combobox(row1, "Origem da Demanda", width=250, values=["SPU", "SISGEP"], side="left")
         self.origem_var.set("SPU")
 
         self.tipo_os_var = self._criar_combobox(row1, "Ação da OS", width=250, values=["Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], side="left")
         self.tipo_os_var.set("Implantação")
 
-        self.tipo_item_var = self._criar_combobox(row1, "Tipo de Item", width=250, values=self.itens_urbmidia, side="left")
-        self.tipo_item_var.set(self.itens_urbmidia[0])
+        self.tipo_item_var = self._criar_combobox(row1, "Tipo de Item", width=250, values=self.itens_mcmensagem, side="left")
+        self.tipo_item_var.set(self.itens_mcmensagem[0])
 
         # Linha 2: ID do Ponto (Sozinho na linha, abaixo das opções)
-        row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        row2.pack(fill="x", pady=5, padx=15)
+        # row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
+        # row2.pack(fill="x", pady=5, padx=15)
 
-        self.id_entry = self._criar_campo(row2, "ID do Ponto", width=250, side="left")
+        self.id_entry = self._criar_campo(row1, "ID do Ponto", width=250, side="left")
         self.id_entry.bind("<FocusOut>", self.ao_sair_do_id)
 
-        # Linha 3: Endereço, Número
-        row3 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        row3.pack(fill="x", pady=5, padx=15)
+        # Linha 2: Endereço, Número
+        row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
+        row2.pack(fill="x", pady=5, padx=15)
         
-        self.endereco_entry = self._criar_campo(row3, "Logradouro (Endereço)", width=550, side="left")
-        self.numero_entry = self._criar_campo(row3, "Número", width=150, side="left")
+        self.endereco_entry = self._criar_campo(row2, "Endereço", width=250, side="left")
+        self.numero_entry = self._criar_campo(row2, "Número", width=250, side="left")
 
-        # Linha 4: Bairro, Complemento
-        row4 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        row4.pack(fill="x", pady=(5, 15), padx=15)
+        # Linha 3: Bairro, Complemento
+        # row3 = ctk.CTkFrame(form_frame, fg_color="transparent")
+        # row3.pack(fill="x", pady=(5, 15), padx=15)
 
-        self.bairro_entry = self._criar_campo(row4, "Bairro", width=350, side="left")
-        self.complemento_entry = self._criar_campo(row4, "Complemento", width=350, side="left")
+        self.bairro_entry = self._criar_campo(row2, "Bairro", width=250, side="left")
+        self.complemento_entry = self._criar_campo(row2, "Complemento", width=250, side="left")
 
         # Botão Adicionar
         ctk.CTkButton(form_frame, text="➕ Adicionar à Lista", fg_color="#0F8C75", font=("Arial Bold", 14), height=40, command=self.adicionar_descricao).pack(pady=(10, 20))
@@ -111,9 +111,9 @@ class OSView(ctk.CTkFrame):
         return combo
 
     def _atualizar_opcoes_item(self, *args):
-        if self.pasta_escolhida_var.get() == "URBMIDIA":
-            self.tipo_item_var.configure(values=self.itens_urbmidia)
-            self.tipo_item_var.set(self.itens_urbmidia[0])
+        if self.pasta_escolhida_var.get() == "MC MENSAGEM":
+            self.tipo_item_var.configure(values=self.itens_mcmensagem)
+            self.tipo_item_var.set(self.itens_mcmensagem[0])
         else:
             self.tipo_item_var.configure(values=self.itens_proximaparada)
             self.tipo_item_var.set(self.itens_proximaparada[0])
@@ -201,7 +201,7 @@ class OSView(ctk.CTkFrame):
             'complemento': self.complemento_entry.get().upper()
         }
         
-        modelo = "dados/modelo_etufor_urbmidia.docx" if self.pasta_escolhida_var.get() == "URBMIDIA" else "dados/modelo_etufor_prxparada.docx"
+        modelo = "dados/modelo_etufor_mcmensagem.docx" if self.pasta_escolhida_var.get() == "MC MENSAGEM" else "dados/modelo_etufor_prxparada.docx"
 
         # ---> NOVO: Passando a Origem selecionada para o Service
         sucesso, mensagem = self.service.processar_criacao_os(

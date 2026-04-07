@@ -65,8 +65,8 @@ class OSService:
         if not os.path.exists(RAIZ_REDE):
             return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
 
-        if pasta_escolhida == "URBMIDIA":
-            pasta_base = rf"{RAIZ_REDE}\SIGP\{ano_atual}\ORDENS DE SERVICO\URBMIDIA"
+        if pasta_escolhida == "MC MENSAGEM":
+            pasta_base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\MC MENSAGEM - SIGP"
         else:
             pasta_base = rf"{RAIZ_REDE}\SIGP\{ano_atual}\ORDENS DE SERVICO\PROXIMA PARADA"
 
