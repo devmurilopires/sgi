@@ -37,36 +37,41 @@ class RelatorioView(ctk.CTkFrame):
         grid_frame = ctk.CTkFrame(filtros_container, fg_color="transparent")
         grid_frame.pack(padx=10, pady=8, fill="x") 
 
+        # =========================================================================
+        # NOVO LAYOUT DE FILTROS (3 LINHAS)
+        # =========================================================================
         if self.tipo_relatorio == "OS":
-            self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=140)
-            self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 1, width=200)
-            self._add_combo_grid(grid_frame, "Tipo OS", "tipo_os", ["Todos", "Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], 0, 2, width=130)
-            self._add_combo_grid(grid_frame, "Pasta", "pasta", ["Todos", "URBMIDIA", "PROXIMA PARADA"], 0, 3, width=130)
-            self._add_combo_grid(grid_frame, "Status", "concluida", ["Todos", "SIM", "NÃO", "NÃO AUTORIZADA"], 0, 4, width=320)
-            self._add_combo_grid(grid_frame, "Tipo do Item", "tipo_item", ["Todos", "Placa/Poste", "Placa/Barrote", "Abrigo Metálico", "Abrigo Concreto", "Parada Segura"], 0, 5, width=180)
-
-            self._add_filtro_grid(grid_frame, "Bairro", "bairro", 1, 0, width=140)
-            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) 
-            self._add_filtro_grid(grid_frame, "Responsável", "criado_por", 1, 2, width=130)
-            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SPU", "SISGEP"], 1, 3, width=130)
+            # Linha 0
+            self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=130)
+            self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 1, width=130)
+            self._add_filtro_grid(grid_frame, "Bairro", "bairro", 0, 2, width=150)
+            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 0, 3, width=200)
+            self._add_filtro_grid(grid_frame, "Responsável", "criado_por", 0, 4, width=180)
             
-            datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
-            datas_frame.grid(row=1, column=4, columnspan=2, pady=(5,0), sticky="e", padx=5)
-
+            # Linha 1
+            self._add_combo_grid(grid_frame, "Tipo OS", "tipo_os", ["Todos", "Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], 1, 0, width=130)
+            self._add_combo_grid(grid_frame, "Empresa", "pasta", ["Todos", "MC MENSAGEM", "PROXIMA PARADA"], 1, 1, width=130)
+            self._add_combo_grid(grid_frame, "Status", "concluida", ["Todos", "SIM", "NÃO", "NÃO AUTORIZADA", "REENVIADA"], 1, 2, width=150)
+            self._add_combo_grid(grid_frame, "Tipo do Item", "tipo_item", ["Todos", "Placa/Poste", "Placa/Barrote", "Abrigo Metálico", "Abrigo Concreto", "Parada Segura"], 1, 3, width=200)
+            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SPU", "SISGEP"], 1, 4, width=180)
+            
         else:
-            self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=140)
+            # Linha 0
+            self._add_filtro_grid(grid_frame, "ID", "id", 0, 0, width=190)
             self._add_filtro_grid(grid_frame, "Nº Parecer", "numero_parecer", 0, 1, width=200)
-            self._add_combo_grid(grid_frame, "Assunto", "assunto", self._assuntos_padrao, 0, 2, width=190)
-            self._add_combo_grid(grid_frame, "Decisão", "tipo", ["Todos", "DEFERIDO", "INDEFERIDO"], 0, 3, width=220)
-            self._add_combo_grid(grid_frame, "Solicitante", "solicitante", self._solicitantes_padrao, 0, 4, width=330, columnspan=2)
+            self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 0, 2, width=200)
+            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 0, 3, width=200) 
+            self._add_filtro_grid(grid_frame, "Responsável", "criado_por", 0, 4, width=180)
 
-            self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 1, 0, width=140)
-            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 1, width=200) 
-            self._add_filtro_grid(grid_frame, "Criado por", "criado_por", 1, 2, width=190)
-            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SPU", "SISGEP"], 1, 3, width=220)
+            # Linha 1
+            self._add_combo_grid(grid_frame, "Assunto", "assunto", self._assuntos_padrao, 1, 0, width=190)
+            self._add_combo_grid(grid_frame, "Situação", "tipo", ["Todos", "DEFERIDO", "INDEFERIDO"], 1, 1, width=200)
+            self._add_combo_grid(grid_frame, "Solicitante", "solicitante", self._solicitantes_padrao, 1, 2, width=200)
+            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SPU", "SISGEP"], 1, 3, width=200)
 
-            datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
-            datas_frame.grid(row=1, column=4, columnspan=2, pady=(5,0), sticky="e", padx=5)
+        # Linha 2 (Comum para ambos - Datas e Botões)
+        datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
+        datas_frame.grid(row=2, column=0, columnspan=5, pady=(15, 5), sticky="w", padx=5)
 
         self.usar_data_var = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(datas_frame, text="Período", variable=self.usar_data_var, font=("Arial Bold", 11)).pack(side="left", padx=(0, 10))
@@ -80,12 +85,14 @@ class RelatorioView(ctk.CTkFrame):
         ctk.CTkButton(datas_frame, text="🔍 Buscar", fg_color="#0F8C75", font=("Arial Bold", 14), width=90, height=35, command=self.acao_buscar).pack(side="left", padx=(0, 5))
         ctk.CTkButton(datas_frame, text="🧹 Limpar", fg_color="#F24822", hover_color="#FF4319", font=("Arial Bold", 14), width=90, height=35, command=self.acao_limpar).pack(side="left")
 
+        # =========================================================================
+
         info_frame = ctk.CTkFrame(self, fg_color="transparent")
         info_frame.pack(fill="x", padx=20, pady=(15, 5))
         self.lbl_contador = ctk.CTkLabel(info_frame, text="0 resultados", font=("Arial Bold", 14), text_color="#333333")
         self.lbl_contador.pack(side="left")
         
-        #Paginação
+        # Paginação
         pag_frame = ctk.CTkFrame(info_frame, fg_color="transparent")
         pag_frame.pack(side="right")
         self.btn_ant = ctk.CTkButton(pag_frame, text="<", width=35, height=30, fg_color="#0F8C75",hover_color="#0B6B59", font=("Arial Black", 14), command=self._pagina_anterior)
@@ -97,22 +104,34 @@ class RelatorioView(ctk.CTkFrame):
 
         self.tabela_container = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=10)
         self.tabela_container.pack(fill="both", expand=True, padx=20, pady=(0, 15))
-        self.header_frame = ctk.CTkFrame(self.tabela_container, fg_color="#0F8C75", corner_radius=6)
+        
+        # Tabela Responsiva
+        self.header_frame = ctk.CTkFrame(self.tabela_container, fg_color="#0F8C75", corner_radius=6, height=40)
         self.header_frame.pack(fill="x", padx=5, pady=(5, 0))
+        self.header_frame.pack_propagate(False)
+        
         self.scroll_tabela = ctk.CTkScrollableFrame(self.tabela_container, fg_color="transparent")
         self.scroll_tabela.pack(fill="both", expand=True, padx=5, pady=5)
 
         if self.tipo_relatorio == "OS":
             self.headers = ["Nº", "Data", "ID(s)", "Origem", "Ação", "Item", "Endereço", "Status", "Pasta", "Criador", "Ações"]
-            self.col_widths = [40, 75, 80, 60, 100, 110, 160, 120, 110, 90, 190] 
+            self.col_weights = [4, 7, 7, 5, 9, 10, 18, 12, 8, 8, 12]
         else:
             self.headers = ["Nº", "Tipo", "Origem", "Processo", "Assunto", "ID(s)", "Solicitante", "Endereço", "Data", "Criador", "Ações"]
-            self.col_widths = [40, 80, 60, 90, 140, 80, 120, 160, 75, 90, 190]
+            self.col_weights = [4, 9, 6, 9, 15, 6, 12, 17, 7, 5, 10] 
 
+        current_relx = 0.0
         for j, h in enumerate(self.headers):
+            w_pct = self.col_weights[j] / 100.0
+            
+            col_frame = ctk.CTkFrame(self.header_frame, fg_color="transparent")
+            col_frame.place(relx=current_relx, rely=0, relwidth=w_pct, relheight=1)
+            
             ancora = "center" if h == "Ações" else "w"
-            lbl = ctk.CTkLabel(self.header_frame, text=h, width=self.col_widths[j], font=("Arial Bold", 12), text_color="white", anchor=ancora)
-            lbl.pack(side="left", padx=5, pady=6)
+            lbl = ctk.CTkLabel(col_frame, text=h, font=("Arial Bold", 12), text_color="white", anchor=ancora)
+            lbl.pack(fill="both", expand=True, padx=5)
+            
+            current_relx += w_pct
 
     def _add_filtro_grid(self, parent, label, key, row, col, width=120, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -135,15 +154,14 @@ class RelatorioView(ctk.CTkFrame):
         self.filtros_widgets[key] = combo
 
     def acao_limpar(self):
-        """Limpa todos os campos, desmarca a data e busca tudo de novo."""
         for key, widget in self.filtros_widgets.items():
             if hasattr(widget, "set") and isinstance(widget, ctk.CTkComboBox):
-                widget.set(widget.cget("values")[0]) # Volta para "Todos"
+                widget.set(widget.cget("values")[0]) 
             elif hasattr(widget, "delete"):
-                widget.delete(0, "end") # Apaga o texto
+                widget.delete(0, "end") 
                 
-        self.usar_data_var.set(False) # Desmarca a caixinha de data
-        self.acao_buscar() # Faz a busca com tudo limpo
+        self.usar_data_var.set(False) 
+        self.acao_buscar() 
 
     def acao_buscar(self):
         filtros = {key: widget.get().strip() for key, widget in self.filtros_widgets.items() if widget.get().strip()}
@@ -173,12 +191,16 @@ class RelatorioView(ctk.CTkFrame):
 
         for i, linha in enumerate(dados_da_pagina):
             bg_color = "#F9F9F9" if i % 2 == 0 else "#FFFFFF"
-            linha_frame = ctk.CTkFrame(self.scroll_tabela, fg_color=bg_color, corner_radius=6)
+            
+            linha_frame = ctk.CTkFrame(self.scroll_tabela, fg_color=bg_color, corner_radius=6, height=45)
             linha_frame.pack(fill="x", pady=2, padx=2)
+            linha_frame.pack_propagate(False)
 
             id_banco_invisivel = linha[0] 
             caminho_arquivo = linha[-1] 
             valores_exibicao = linha[1:-1]
+
+            current_relx = 0.0
 
             for j, val in enumerate(valores_exibicao):
                 texto = str(val) if val is not None else "-"
@@ -189,15 +211,22 @@ class RelatorioView(ctk.CTkFrame):
                     elif "Não Aut" in texto: cor_txt = "#E67E22"
                     elif "SIM" in texto: cor_txt = "#0F8C75"
 
-                limite = int(self.col_widths[j] / 8)
-                texto_curto = texto[:limite] + ".." if len(texto) > limite else texto
+                w_pct = self.col_weights[j] / 100.0
+                
+                limite_chars = int(self.col_weights[j] * 1.8) 
+                texto_curto = texto[:limite_chars] + ".." if len(texto) > limite_chars else texto
 
-                lbl = ctk.CTkLabel(linha_frame, text=texto_curto, width=self.col_widths[j], text_color=cor_txt, font=("Arial", 12), anchor="w")
-                lbl.pack(side="left", padx=5, pady=6)
+                col_frame = ctk.CTkFrame(linha_frame, fg_color="transparent")
+                col_frame.place(relx=current_relx, rely=0, relwidth=w_pct, relheight=1)
 
-            frame_coluna_acoes = ctk.CTkFrame(linha_frame, width=self.col_widths[-1], height=40, fg_color="transparent")
-            frame_coluna_acoes.pack_propagate(False) 
-            frame_coluna_acoes.pack(side="left", padx=5, pady=2)
+                lbl = ctk.CTkLabel(col_frame, text=texto_curto, text_color=cor_txt, font=("Arial", 12), anchor="w")
+                lbl.pack(side="left", fill="both", expand=True, padx=5)
+                
+                current_relx += w_pct
+
+            w_pct_acoes = self.col_weights[-1] / 100.0
+            frame_coluna_acoes = ctk.CTkFrame(linha_frame, fg_color="transparent")
+            frame_coluna_acoes.place(relx=current_relx, rely=0, relwidth=w_pct_acoes, relheight=1)
 
             frame_botoes = ctk.CTkFrame(frame_coluna_acoes, fg_color="transparent")
             frame_botoes.place(relx=0.5, rely=0.5, anchor="center")
@@ -224,7 +253,7 @@ class RelatorioView(ctk.CTkFrame):
         sucesso, msg = self.service.abrir_arquivo(caminho)
         if not sucesso: messagebox.showerror("Erro de Leitura", msg)
 
-    # POPUP DE DETALHES (E EDIÇÃO PARA ADMIN)
+    # POPUP DE DETALHES 
     def _acao_detalhes(self, id_registro):
         dados = self.service.buscar_detalhes_para_edicao(self.tipo_relatorio, id_registro)
         if not dados:

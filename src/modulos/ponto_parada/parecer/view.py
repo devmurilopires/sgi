@@ -109,10 +109,10 @@ class ParecerView(ctk.CTkFrame):
         row2.pack(fill="x", pady=(5, 15), padx=15)
 
         self.solicitante_var = ctk.StringVar()
-        self._criar_combobox(row2, "Solicitante", self.solicitante_var, self._solicitantes_padrao, width=300)
+        self._criar_combobox(row2, "Solicitante", self.solicitante_var, self._solicitantes_padrao, width=350)
 
         self.assunto_var = ctk.StringVar()
-        self._criar_combobox(row2, "Assunto", self.assunto_var, self._assuntos_padrao, width=500)
+        self._criar_combobox(row2, "Assunto", self.assunto_var, self._assuntos_padrao, width=450)
 
         # DADOS TÉCNICOS E ENDEREÇO
         bloco2 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
