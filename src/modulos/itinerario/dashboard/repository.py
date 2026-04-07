@@ -17,7 +17,7 @@ class DashboardItinerarioRepository:
             with get_db_connection() as conn:
                 return pd.read_sql(query, conn)
         except Exception as e:
-            print(f"Erro OS Dash: {e}")
+            print(f"Erro OS Itinerário: {e}")
             return pd.DataFrame()
 
     def buscar_dados_pareceres(self):
@@ -35,5 +35,5 @@ class DashboardItinerarioRepository:
             with get_db_connection() as conn:
                 return pd.read_sql(query, conn)
         except Exception as e:
-            print(f"Erro Parecer Dash: {e}")
+            print(f"Erro Parecer Itinerário: {e}")
             return pd.DataFrame()
