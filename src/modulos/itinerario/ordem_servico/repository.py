@@ -36,13 +36,14 @@ class OSItinerarioRepository:
         except: return 1
 
     def salvar_os_itinerario(self, dados_db):
+        # AQUI FOI INSERIDA A NOVA COLUNA "origem"
         query = """
             INSERT INTO siga.ordens_servico (
-                numero, ano, tipo_evento, processo_adm, empresas_text, endereco,
+                numero, ano, tipo_evento, processo_adm, origem, empresas_text, endereco,
                 horario_inicio, horario_fim, linhas_text, ruas_ida, ruas_volta, evento,
                 caminho_arquivo, responsavel, nome_corrida, km_impactado, tipo_obra, data_criacao
             ) VALUES (
-                %(num_os)s, %(ano)s, %(tipo)s, %(processo)s, %(empresas_text)s, %(endereco)s,
+                %(num_os)s, %(ano)s, %(tipo)s, %(processo)s, %(origem)s, %(empresas_text)s, %(endereco)s,
                 %(horario_inicio)s, %(horario_final)s, %(linhas_text)s, %(ruas_ida)s, %(ruas_volta)s, %(evento)s,
                 %(docx_path)s, %(criado_por)s, %(nome_corrida)s, NULLIF(%(km)s, '')::NUMERIC, %(tipo_obra)s, NOW()
             ) RETURNING id;

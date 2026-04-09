@@ -11,7 +11,6 @@ class OSItinerarioService:
     def __init__(self):
         self.repo = OSItinerarioRepository()
         self.ano_atual = datetime.now().year
-        # Ajuste a rota raiz conforme a rede da Etufor nas suas settings
         self.output_root = r"\\172.20.0.57\dados\DIPLA\AA Itinerarios - OS\FAX 2026 - SIGA"
         os.makedirs(self.output_root, exist_ok=True)
 
@@ -70,7 +69,6 @@ class OSItinerarioService:
         num_os = self.repo.obter_proximo_numero_os(self.output_root)
         num_os_str = f"{num_os:03d}"
         
-        # Define os templates e legendas de acordo com o tipo
         tmpl_nome = f"modelo_os_{tipo_os.lower()}.docx"
         tmpl_path = resource_path(f"dados/{tmpl_nome}")
         legenda_path = resource_path(f"dados/img_legenda_{'obra' if tipo_os == 'OBRAS' else 'evento'}.png")
@@ -78,11 +76,16 @@ class OSItinerarioService:
         if not os.path.exists(tmpl_path):
             return False, f"O modelo {tmpl_nome} não foi encontrado na pasta 'dados'."
 
-        # Montagem do Mapping Dinâmico para o Word
+        # TRATAMENTO INTELIGENTE DA DATA NO WORD
         data_text = ""
         datas_raw = form_dados.get("datas", [])
+        modo_data = form_dados.get("modo_data", "PERIODO")
+
         if datas_raw:
-            data_text = f"no dia {datas_raw[0]}" if len(datas_raw) == 1 else f"nos dias {datas_raw[0]} até {datas_raw[-1]}"
+            if modo_data == "ISOLADOS":
+                data_text = "nos dias " + self.formatar_lista_com_e(datas_raw) if len(datas_raw) > 1 else f"no dia {datas_raw[0]}"
+            else:
+                data_text = f"no dia {datas_raw[0]}" if len(datas_raw) == 1 else f"no período de {datas_raw[0]} a {datas_raw[1]}"
 
         mapping = {
             "{{NUM_OS}}": num_os_str,
@@ -96,7 +99,6 @@ class OSItinerarioService:
             "{{ANEXO}}": "", "{{IMG_LEGENDA}}": ""
         }
 
-        # Adiciona campos específicos por tipo
         if tipo_os == "EVENTOS":
             mapping.update({"{{ENDERECO}}": form_dados.get("endereco", ""), "{{EVENTO}}": form_dados.get("evento", ""), "{{DATA_EVENTO}}": data_text, "{{LINHA_ESP}}": "", "{{RUAS_IDA}}": "", "{{RUAS_VOLTA}}": "", "{{NUM_PAGINA}}": ""})
         elif tipo_os == "CORRIDA":
@@ -109,7 +111,6 @@ class OSItinerarioService:
             self._replace_tags_in_doc(doc, mapping)
             self._inserir_anexos(doc, "{{ANEXO}}", anexos_raw, legenda_path if tipo_os != 'CORRIDA' else None)
             
-            # Garante nome único de arquivo
             filename = f"OS Nº{num_os_str} de {datetime.now().strftime('%d-%m-%Y')} {tipo_os.upper()}.docx"
             filepath = os.path.join(self.output_root, filename)
             while os.path.exists(filepath):
@@ -120,9 +121,10 @@ class OSItinerarioService:
             
             doc.save(filepath)
 
-            # Prepara dados para o banco
+            # Adicionando a "origem" no pacote de dados pro BD
             dados_db = {
                 "num_os": num_os, "ano": self.ano_atual, "tipo": tipo_os.lower(), "processo": form_dados.get("processo", ""),
+                "origem": form_dados.get("origem", ""), # <-- NOVO CAMPO
                 "empresa_principal": empresas[0] if empresas else None, "empresas_text": "; ".join(empresas), "endereco": form_dados.get("endereco", ""),
                 "data_evento_text": data_text if tipo_os == 'EVENTOS' else "", "horario_inicio": form_dados.get("hr_inicio", ""), "horario_final": form_dados.get("hr_fim", ""),
                 "linhas_text": self.formatar_lista_com_e(linhas), "linhas_adicionadas_text": ", ".join(linhas), "linhas_especificas_text": "",
