@@ -31,33 +31,25 @@ except ImportError:
     def resource_path(path): return path
 
 # --- Definição de Cores Profissionais UI/UX (Clean Admin) ---
-COLOR_BG_CONTENT = "#F2F2F2"      # Fundo da área de trabalho
-COLOR_SIDEBAR = "#FFFFFF"         # A cor Clean para o menu lateral
-COLOR_ACCENT = "#0F8C75"          # Verde da Etufor (Assinatura UI)
-COLOR_TEXT_DARK = "#333333"       # Texto escuro principal
-COLOR_TEXT_MUTED = "#888888"      # Texto secundário/títulos (Suave)
-COLOR_HOVER = "#E9ECEF"           # Hover Clean
+COLOR_BG_CONTENT = "#F2F2F2"      
+COLOR_SIDEBAR = "#FFFFFF"         
+COLOR_ACCENT = "#0F8C75"          
+COLOR_TEXT_DARK = "#333333"       
+COLOR_TEXT_MUTED = "#888888"      
+COLOR_HOVER = "#E9ECEF"           
 
 # --- Definição de ÍCONES PNG UI/UX "Premium" ---
-# Ação Necessária: Certifique-se de que os arquivos PNG estão na pasta assets/
 ICONS_PATH = "assets"
-
-# Tamanhos padrões para manter a coesão UI/UX
 SIZE_HEADER = (24, 24)
 SIZE_ITEM = (20, 20)
 
-# Mapeamento para caminhos de arquivos PNG
 ICONS_PNG = {
-    # 1. Ícones de Cabeçalho (Headers) - TamanhoSIZE_HEADER
-    # Dica UX: Use ícones minimalistas, "flat" ou "line", em tons de cinza (#888888)
     "Header_Dashboards": resource_path(f"{ICONS_PATH}/dashboard-header.png"), 
     "Header_PontoParada": resource_path(f"{ICONS_PATH}/ponto-parada-header.png"), 
     "Header_Itinerario": resource_path(f"{ICONS_PATH}/itinerario-header.png"), 
     "Header_QuadroHorario": resource_path(f"{ICONS_PATH}/quadro-horario-header.png"), 
     "Header_Sistema": resource_path(f"{ICONS_PATH}/sistema-header.png"),
     
-    # 2. Ícones de Itens Funcionais - Tamanho SIZE_ITEM
-    # Dica UX: Use ícones claros para quando o item estiver selecionado
     "Dashboard_Item": resource_path(f"{ICONS_PATH}/dashboard-item.png"), 
     "OS": resource_path(f"{ICONS_PATH}/os-icon.png"),
     "Parecer": resource_path(f"{ICONS_PATH}/parecer-icon.png"),
@@ -67,7 +59,7 @@ ICONS_PNG = {
     "Enderecos": resource_path(f"{ICONS_PATH}/enderecos-icon.png"), 
     "Pesquisas": resource_path(f"{ICONS_PATH}/pesquisas-icon.png"), 
     "Historico": resource_path(f"{ICONS_PATH}/historico-icon.png"),
-    "Sair": resource_path(f"{ICONS_PATH}/sair-icon.png"),       # Rodapé
+    "Sair": resource_path(f"{ICONS_PATH}/sair-icon.png"),       
     "Menu": resource_path(f"{ICONS_PATH}/menu-icon.png"),
     "Arrow_Down": resource_path(f"{ICONS_PATH}/arrow-down-icon.png")
 }
@@ -113,14 +105,13 @@ def iniciar_sistema(usuario_dados):
     listas_botoes_texto = [] 
     listas_botoes_frames = [] 
 
-    # Função Helper para carregar e redimensionar PNGs
     def load_icon_png(path, size):
         try:
             img = Image.open(path)
             return ctk.CTkImage(img, size=size)
         except Exception as e:
             print(f"Erro Crítico UI/UX ao carregar ícone {path}: {e}")
-            return None # Retorna None se der erro (Tkinter trata)
+            return None 
 
     # =====================================================================
     # CARREGAMENTO ÚNICO DE IMAGENS NA MEMÓRIA (Otimização)
@@ -128,21 +119,17 @@ def iniciar_sistema(usuario_dados):
     loaded_imgs_headers = {}
     loaded_imgs_items = {}
 
-    # Carrega Cabeçalhos (Headers)
     header_keys = ["Header_Dashboards", "Header_PontoParada", "Header_Itinerario", "Header_QuadroHorario", "Header_Sistema"]
     for key in header_keys:
         loaded_imgs_headers[key] = load_icon_png(ICONS_PNG[key], SIZE_HEADER)
 
-    # Carrega Itens Funcionais
     item_keys = ["Dashboard_Item", "OS", "Parecer", "Relatorios_Os", "Relatorios_Parecer", "Relatorio_Pesquisas", "Enderecos", "Pesquisas", "Historico", "Menu", "Sair"]
     for key in item_keys:
         loaded_imgs_items[key] = load_icon_png(ICONS_PNG[key], SIZE_ITEM)
 
-    # Carrega a seta e cria uma versão girada para quando o menu fechar!
     try:
         img_seta = Image.open(ICONS_PNG["Arrow_Down"])
         loaded_imgs_items["Arrow_Down"] = ctk.CTkImage(img_seta, size=(16, 16))
-        # rotate(90) gira a seta para a direita
         loaded_imgs_items["Arrow_Closed"] = ctk.CTkImage(img_seta.rotate(90), size=(16, 16))
     except Exception as e:
         print("Erro ao carregar seta:", e)
@@ -154,25 +141,21 @@ def iniciar_sistema(usuario_dados):
     # =====================================================================
     root_frame = ctk.CTkFrame(app, fg_color="transparent")
 
-    # --- 1. SIDEBAR (Barra Lateral Esquerda) (#F2F2F2) ---
-    # Largura reduzida para 230px (Mais Profissional)
+    # --- 1. SIDEBAR (Barra Lateral Esquerda) ---
     sidebar_frame = ctk.CTkFrame(root_frame, width=230, fg_color=COLOR_SIDEBAR, corner_radius=0)
     sidebar_frame.pack(side="left", fill="y", padx=0, pady=0)
     sidebar_frame.pack_propagate(False)
 
-    # --- 2. ÁREA DE CONTEÚDO (Centro/Direita) (#FFFFFF) ---
+    # --- 2. ÁREA DE CONTEÚDO (Centro/Direita) ---
     content_area = ctk.CTkFrame(root_frame, fg_color=COLOR_BG_CONTENT, corner_radius=0)
     content_area.pack(side="left", fill="both", expand=True)
 
     # =====================================================================
-    # COMPONENTES DA SIDEBAR (#F2F2F2)
+    # COMPONENTES DA SIDEBAR
     # =====================================================================
-
-    # A. TOPO DA SIDEBAR (Centralizado, Maior e Sem Texto SGI)
     top_sidebar_frame = ctk.CTkFrame(sidebar_frame, fg_color="transparent")
     top_sidebar_frame.pack(fill="x", pady=(15, 20))
 
-    # --- CORREÇÃO: Usar 'image' em vez de 'text' ---
     btn_toggle = ctk.CTkButton(
         top_sidebar_frame, 
         image=loaded_imgs_items["Menu"], 
@@ -183,14 +166,12 @@ def iniciar_sistema(usuario_dados):
         height=40, 
         command=lambda: toggle_sidebar()
     )
-    btn_toggle.pack(side="left", padx=(10, 0)) # Hambúrguer na esquerda
+    btn_toggle.pack(side="left", padx=(10, 0)) 
 
-    # Contentor centralizado da Logo
     logo_center_container = ctk.CTkFrame(top_sidebar_frame, fg_color="transparent")
-    logo_center_container.pack(fill="x", expand=True, padx=(0, 40)) # Compensa o hambúrguer p/ centralizar
+    logo_center_container.pack(fill="x", expand=True, padx=(0, 40)) 
 
     try:
-        # Logo Maior (70x70) e Centralizada
         caminho_logo = resource_path("assets/sigp_logo.png")
         img_logo = ctk.CTkImage(Image.open(caminho_logo), size=(70, 70))
         lbl_logo = ctk.CTkLabel(logo_center_container, image=img_logo, text="")
@@ -199,22 +180,18 @@ def iniciar_sistema(usuario_dados):
         lbl_logo = ctk.CTkLabel(logo_center_container, text="E", font=("Arial Black", 30), text_color="white", fg_color=COLOR_ACCENT, corner_radius=35, width=70, height=70)
         lbl_logo.pack(anchor="center")
 
-    # B. ZONA DO MENU (Scrollable)
     menu_scroll_frame = ctk.CTkScrollableFrame(sidebar_frame, fg_color="transparent", corner_radius=0)
     menu_scroll_frame.pack(fill="both", expand=True, pady=(0, 10))
 
-    # C. RODAPÉ DO UTILIZADOR (Estilizado Clean - Sem Bola Verde, Quebra de Texto)
-    footer_sidebar_frame = ctk.CTkFrame(sidebar_frame, fg_color="transparent", corner_radius=0, height=90) # Height maior pWraplength
-    footer_sidebar_frame.pack(side="bottom", fill="x", pady=(20, 10)) # Padding top p/ separar mais
+    footer_sidebar_frame = ctk.CTkFrame(sidebar_frame, fg_color="transparent", corner_radius=0, height=90) 
+    footer_sidebar_frame.pack(side="bottom", fill="x", pady=(20, 10)) 
     footer_sidebar_frame.pack_propagate(False)
 
-    ctk.CTkFrame(footer_sidebar_frame, fg_color="#E0E0E0", height=1).pack(fill="x", side="top", pady=(0, 10)) # Linha separadora ultra suave
+    ctk.CTkFrame(footer_sidebar_frame, fg_color="#E0E0E0", height=1).pack(fill="x", side="top", pady=(0, 10)) 
     
-    # Contentor flexível do rodapé
     user_root_container = ctk.CTkFrame(footer_sidebar_frame, fg_color="transparent")
     user_root_container.pack(fill="both", expand=True, padx=12)
 
-    # Contentor de textos (Ajustado p/ quebra automática - 170px)
     user_text_hide_container = ctk.CTkFrame(user_root_container, fg_color="transparent")
     user_text_hide_container.pack(side="left", fill="both", expand=True)
     
@@ -222,7 +199,6 @@ def iniciar_sistema(usuario_dados):
     lbl_ol_nome.pack(fill="x", pady=(2,0))
     
     perfil_formatado = 'Chefia' if is_admin else tipo_perfil.replace(',', ' & ')
-    # Wraplength 170 previne corte de texto dinâmico
     lbl_perfil_setor = ctk.CTkLabel(user_text_hide_container, text=perfil_formatado.capitalize(), font=("Arial", 11), text_color=COLOR_TEXT_MUTED, anchor="w", wraplength=170, justify="left")
     lbl_perfil_setor.pack(fill="x")
 
@@ -232,7 +208,6 @@ def iniciar_sistema(usuario_dados):
             from main import bootstrap
             bootstrap()
 
-    # Usando o PNG sair-icon.png carregado em loaded_imgs_items
     btn_logout = ctk.CTkButton(user_root_container, image=loaded_imgs_items["Sair"], text="", font=("Arial Bold", 18), text_color="#D32F2F", fg_color="transparent", hover_color=COLOR_HOVER, width=40, height=40, command=fazer_logout)
     btn_logout.pack(side="right")
 
@@ -242,9 +217,6 @@ def iniciar_sistema(usuario_dados):
     frame_conteudo_interno = ctk.CTkFrame(content_area, fg_color="transparent", corner_radius=10)
     frame_conteudo_interno.pack(fill="both", expand=True, padx=20, pady=20)
 
-    # =====================================================================
-    # CONTROLE DE ACESSO (RBAC) E GERAÇÃO DE MENU DINÂMICO
-    # =====================================================================
     abas = {}
     instancias_views = {}
     botoes_ui = [] 
@@ -258,7 +230,6 @@ def iniciar_sistema(usuario_dados):
     }
 
     if is_admin:
-        # Usando PNGs carregados em loaded_imgs_items
         categorias_menu["DASHBOARDS"].append({"nome": "Visão Global", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_geral(a, u)})
         categorias_menu["PONTO DE PARADA"].extend([
             {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios_Os"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "OS")},
@@ -276,9 +247,7 @@ def iniciar_sistema(usuario_dados):
         categorias_menu["SISTEMA"].append({"nome": "Histórico Global", "img_icon": loaded_imgs_items["Historico"], "render": lambda a, u: renderizar_historico(a, u)})
 
     else:
-        # PONTO DE PARADA (SIGP)
         if "PONTO DE PARADA" in tipo_perfil:
-            # Usando PNGs carregados em loaded_imgs_items
             categorias_menu["PONTO DE PARADA"].extend([
                 {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_pp(a, u)},
                 {"nome": "Gerar OS", "img_icon": loaded_imgs_items["OS"], "render": lambda a, u: renderizar_os_pp(a, u)},
@@ -287,7 +256,6 @@ def iniciar_sistema(usuario_dados):
                 {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "PARECER")},
             ])
 
-        # ITINERÁRIO (SIGA)
         if "ITINERARIO" in tipo_perfil:
             categorias_menu["ITINERÁRIO"].extend([
                 {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_iti(a, u)},
@@ -297,19 +265,13 @@ def iniciar_sistema(usuario_dados):
                 {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "PARECER")},
             ])
 
-        # QUADRO DE HORÁRIO (SPR)
         if "QUADRO DE HORARIO" in tipo_perfil:
-            # Usando PNGs os-icon.png e parecer-icon.png
             categorias_menu["QUADRO DE HORÁRIO"].extend([
                 {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_qh(a, u)},
                 {"nome": "Pesquisas de Campo", "img_icon": loaded_imgs_items["Pesquisas"], "render": lambda a, u: renderizar_pesquisas_qh(a, u)},
                 {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
                 {"nome": "Relatórios Pesquisas", "img_icon": loaded_imgs_items["Relatorio_Pesquisas"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")},
             ])
-
-    # =====================================================================
-    # FUNÇÕES DE GESTÃO DA INTERFACE E MENU
-    # =====================================================================
 
     def selecionar_aba(chave_unica, master_frame):
         for aba in abas.values(): aba.pack_forget()
@@ -333,48 +295,49 @@ def iniciar_sistema(usuario_dados):
     def toggle_dropdown(target_frame, arrow_label, expanded_var):
         if expanded_var.get():
             target_frame.pack_forget()
-            arrow_label.configure(image=loaded_imgs_items["Arrow_Closed"]) # Seta para o lado
+            arrow_label.configure(image=loaded_imgs_items["Arrow_Closed"]) 
             expanded_var.set(False)
         else:
             target_frame.pack(fill="x", pady=(2, 10))
-            arrow_label.configure(image=loaded_imgs_items["Arrow_Down"]) # Seta para baixo
+            arrow_label.configure(image=loaded_imgs_items["Arrow_Down"]) 
             expanded_var.set(True)
 
     def toggle_sidebar():
         if is_sidebar_expanded.get():
-            sidebar_frame.configure(width=75) # Encolhe p/ 75px (Professional Compact)
+            sidebar_frame.configure(width=75) 
             
             user_text_hide_container.pack_forget()
             btn_logout.pack_forget()
             
-            # Ajustar alinhamento dos ícones para o centro removendo padx lateral
             for btn_fr in listas_botoes_frames: btn_fr.pack_configure(padx=5)
             for txt_lbl in listas_botoes_texto: txt_lbl.pack_forget()
             for arr_lbl in labels_dropdown: arr_lbl.pack_forget()
             
             user_root_container.pack_configure(padx=5)
-            
             is_sidebar_expanded.set(False)
         else:
-            sidebar_frame.configure(width=230) # Expande p/ 230px (Professional Wide)
+            sidebar_frame.configure(width=230) 
 
             user_text_hide_container.pack(side="left", fill="both", expand=True)
             btn_logout.pack(side="right")
             
-            # Restaura o layout expandido (padx lateral volta)
             for btn_fr in listas_botoes_frames: btn_fr.pack_configure(padx=10)
             for txt_lbl in listas_botoes_texto: txt_lbl.pack(side="left", padx=(10, 0))
             for arr_lbl in labels_dropdown: arr_lbl.pack(side="right", padx=15)
             
             user_root_container.pack_configure(padx=12)
-            
             is_sidebar_expanded.set(True)
 
     # =====================================================================
-    # RENDERIZAÇÃO DO MENU (Estilo Accordion)
+    # RENDERIZAÇÃO DO MENU (Estilo Accordion) E DEFINIÇÃO DA ABA INICIAL
     # =====================================================================
+    
+    # Variáveis para a inteligência da aba inicial
     aba_inicial_chave = None
     primeiro_master_frame = None
+    
+    aba_preferida_chave = None
+    master_frame_preferido = None
 
     for categoria, itens in categorias_menu.items():
         if not itens: continue 
@@ -388,7 +351,6 @@ def iniciar_sistema(usuario_dados):
         btn_header_frame.pack(fill="x")
         btn_header_frame.pack_propagate(False) 
 
-        # Adicionados Ícones PNG nos Subsetores (Headers)
         img_cat_icon = None
         if "DASHBOARDS" in categoria: img_cat_icon = loaded_imgs_headers["Header_Dashboards"]
         elif "PONTO DE PARADA" in categoria: img_cat_icon = loaded_imgs_headers["Header_PontoParada"]
@@ -403,7 +365,6 @@ def iniciar_sistema(usuario_dados):
         lbl_titulo.pack(side="left", padx=5) 
         listas_botoes_texto.append(lbl_titulo) 
 
-        # Usa 'image' e deixa 'text' vazio
         lbl_seta = ctk.CTkLabel(btn_header_frame, image=loaded_imgs_items["Arrow_Down"], text="")
         lbl_seta.pack(side="right", padx=15)
         labels_dropdown.append(lbl_seta)
@@ -427,42 +388,43 @@ def iniciar_sistema(usuario_dados):
             abas[chave_unica] = aba_frame
             instancias_views[chave_unica] = item["render"](aba_frame, usuario_dados)
 
-            # --- Criação do Botão Customizado (Ícone PNG Centralizado no recolhimento) ---
             master_btn_frame = ctk.CTkFrame(sub_itens_frame, fg_color="transparent", height=45, corner_radius=8, cursor="hand2")
             master_btn_frame.pack(fill="x", padx=10, pady=2) 
             master_btn_frame.chave = chave_unica 
             listas_botoes_frames.append(master_btn_frame)
 
-            # Ícone PNG (Sempre visível e centralizado no recolhimento)
-            # Tamanho SIZE_ITEM já carregado
             lbl_icon = ctk.CTkLabel(master_btn_frame, image=item["img_icon"], text="", width=35)
             lbl_icon.pack(side="left", padx=(5, 0), pady=6) 
 
-            # Texto (Ocultar ao recolher)
             lbl_text = ctk.CTkLabel(master_btn_frame, text=item["nome"], font=("Arial", 13), text_color=COLOR_TEXT_DARK, anchor="w")
             lbl_text.pack(side="left", padx=(10, 0))
             listas_botoes_texto.append(lbl_text) 
 
-            # Vincular cliques (customtkinter frames não suportam 'command' direto)
             master_btn_frame.bind("<Button-1>", lambda e, c=chave_unica, m=master_btn_frame: selecionar_aba(c, m))
             lbl_icon.bind("<Button-1>", lambda e, c=chave_unica, m=master_btn_frame: selecionar_aba(c, m))
             lbl_text.bind("<Button-1>", lambda e, c=chave_unica, m=master_btn_frame: selecionar_aba(c, m))
             
-            # Efeito Hover
             master_btn_frame.bind("<Enter>", lambda e, f=master_btn_frame: f.configure(fg_color=COLOR_HOVER) if f.cget("fg_color") == "transparent" else None)
             master_btn_frame.bind("<Leave>", lambda e, f=master_btn_frame: f.configure(fg_color="transparent") if f.cget("fg_color") == COLOR_HOVER else None)
 
             botoes_ui.append((master_btn_frame, lbl_icon, lbl_text))
 
+            # Guarda o primeiro item do menu como "Plano B" (Caso o usuário seja Admin e não tenha 'Gerar OS')
             if not aba_inicial_chave:
                 aba_inicial_chave = chave_unica
                 primeiro_master_frame = master_btn_frame
 
-    # Inicia na primeira aba disponível
-    if aba_inicial_chave and primeiro_master_frame:
+            # A MÁGICA: Se encontrar "Gerar OS", esta passa a ser a aba prioritária de inicialização!
+            if item["nome"] == "Gerar OS" and not aba_preferida_chave:
+                aba_preferida_chave = chave_unica
+                master_frame_preferido = master_btn_frame
+
+    # Inicialização inteligente: Tenta a aba preferida (Gerar OS). Se não existir (ex: perfil Admin), abre a primeira do menu.
+    if aba_preferida_chave and master_frame_preferido:
+        selecionar_aba(aba_preferida_chave, master_frame_preferido)
+    elif aba_inicial_chave and primeiro_master_frame:
         selecionar_aba(aba_inicial_chave, primeiro_master_frame)
 
-    # Destrói a tela de carregamento e mostra a interface real
     tela_carregamento.destroy()
     root_frame.pack(fill="both", expand=True)
     
