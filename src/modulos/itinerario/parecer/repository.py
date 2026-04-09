@@ -25,12 +25,14 @@ class ParecerItinerarioRepository:
             VALUES (%(numero_parecer)s, %(tipo)s, 'siga', EXTRACT(YEAR FROM CURRENT_DATE), (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1))
             RETURNING id;
         """
+        
+        # AQUI FOI INSERIDA A NOVA COLUNA "origem"
         query_especifica = """
             INSERT INTO siga.pareceres (
-                id, processo, tipo_parecer, assunto, evento, data_evento, periodo, 
+                id, processo, tipo_parecer, origem, assunto, evento, data_evento, periodo, 
                 endereco, solicitante, linhas_afetadas, motivo_indeferimento, caminho_arquivo
             ) VALUES (
-                %(id_base)s, %(processo)s, %(tipo)s, %(assunto)s, %(evento)s, %(data_evento)s, %(periodo)s,
+                %(id_base)s, %(processo)s, %(tipo)s, %(origem)s, %(assunto)s, %(evento)s, %(data_evento)s, %(periodo)s,
                 %(endereco)s, %(solicitante)s, %(linhas)s, %(motivo)s, %(caminho_arquivo)s
             );
         """

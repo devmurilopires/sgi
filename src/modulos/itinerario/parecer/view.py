@@ -1,5 +1,6 @@
 import customtkinter as ctk
 from tkinter import messagebox
+from tkcalendar import DateEntry
 import re
 from src.modulos.itinerario.parecer.service import ParecerItinerarioService
 
@@ -12,6 +13,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
         self.usuario_logado = usuario_logado.get('nome') if isinstance(usuario_logado, dict) else usuario_logado
         
         self.linhas_add = []
+        self.datas_isoladas_add = []
         self._construir_listas_padrao()
         self._construir_interface()
 
@@ -25,101 +27,121 @@ class ParecerItinerarioView(ctk.CTkFrame):
         self.lista_eventos = ["07 de Setembro", "Carnaval Domingos Olimpio", "Pré Carnaval", "Obras", "Corrida", "Esportivo", "Religioso", "Outros"]
 
     def _construir_interface(self):
-        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#FFFFFF")
+        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#F8F9FA")
         self.scroll_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
         header_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 20))
+        header_frame.pack(fill="x", pady=(0, 15))
         ctk.CTkLabel(header_frame, text="Gerador de Parecer Técnico (Itinerário)", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
 
-        # --- FORMULÁRIO PRINCIPAL ---
-        form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
+        # =====================================================================
+        # FORMULÁRIO PRINCIPAL (Layout Grid Alinhado: Base 250px)
+        # =====================================================================
+        form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E0E0E0")
         form_frame.pack(fill="x", pady=10, padx=10)
 
-        # Linha 1
-        row1 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        row1.pack(fill="x", pady=(15, 5), padx=15)
-        
+        grid_master = ctk.CTkFrame(form_frame, fg_color="transparent")
+        grid_master.pack(fill="x", pady=15, padx=15)
+
+        # --- LINHA 0 ---
         self.tipo_var = ctk.StringVar(value="DEFERIDO")
-        cb_tipo = self._criar_combobox(row1, "Decisão do Parecer", 200, ["DEFERIDO", "INDEFERIDO"], side="left")
+        cb_tipo = self._criar_combo_grid(grid_master, "Decisão do Parecer", 250, ["DEFERIDO", "INDEFERIDO"], 0, 0)
         cb_tipo.configure(variable=self.tipo_var, command=self._on_tipo_change)
         
-        self.processo_entry = self._criar_campo(row1, "Nº Processo", 250, side="left")
+        self.processo_entry = self._criar_campo_grid(grid_master, "Nº Processo", 250, 0, 1)
         self.processo_entry.bind("<KeyRelease>", lambda e: self.processo_entry.delete(0, "end") or self.processo_entry.insert(0, self.processo_entry.get().upper()))
         
-        self.solicitante_combo = self._criar_combobox(row1, "Solicitante", 350, self.lista_solicitantes, side="left")
+        self.solicitante_combo = self._criar_autocomplete_grid(grid_master, "Solicitante", 250, self.lista_solicitantes, 0, 2)
 
-        # Linha 2
-        row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        row2.pack(fill="x", pady=5, padx=15)
-        self.assunto_combo = self._criar_combobox(row2, "Assunto", 350, self.lista_assuntos, side="left")
-        self.endereco_entry = self._criar_campo(row2, "Endereço / Logradouro", 450, side="left")
+        # --- LINHA 1 ---
+        self.assunto_combo = self._criar_autocomplete_grid(grid_master, "Assunto", 250, self.lista_assuntos, 1, 0)
+        self.endereco_entry = self._criar_campo_grid(grid_master, "Endereço / Logradouro", 520, 1, 1, columnspan=2)
 
-        # Linha 3 (Eventos e Datas)
-        row3 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        row3.pack(fill="x", pady=5, padx=15)
+        # --- LINHA 2 (Eventos e Novos Checkboxes) ---
+        self.evento_combo = self._criar_autocomplete_grid(grid_master, "Evento", 250, self.lista_eventos, 2, 0)
         
-        # Bloco Evento
-        evento_container = ctk.CTkFrame(row3, fg_color="transparent")
-        evento_container.pack(side="left", padx=10)
-        ctk.CTkLabel(evento_container, text="Evento", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        cb_evento_frame = ctk.CTkFrame(evento_container, fg_color="transparent")
-        cb_evento_frame.pack(anchor="w", pady=(2,0))
-        self.evento_combo = ctk.CTkComboBox(cb_evento_frame, width=250, height=35, values=self.lista_eventos)
-        self.evento_combo.pack(side="left")
-        
+        cb_evento_frame = ctk.CTkFrame(grid_master, fg_color="transparent")
+        cb_evento_frame.grid(row=2, column=1, sticky="w", padx=10, pady=10)
         self.no_evento_var = ctk.BooleanVar(value=False)
-        ctk.CTkCheckBox(cb_evento_frame, text="Sem evento", variable=self.no_evento_var, command=self._toggle_evento).pack(side="left", padx=10)
+        ctk.CTkCheckBox(cb_evento_frame, text="Sem Evento", variable=self.no_evento_var, command=self._toggle_evento, font=("Arial Bold", 12)).pack(pady=(24,0))
 
-        # Bloco Datas
-        self.datas_entry = self._criar_campo(row3, "Data (Ex: 10032026)", 150, side="left")
-        self._aplicar_mascara_data(self.datas_entry)
-        
-        self.hr_inicio = self._criar_campo(row3, "Hora Início", 100, side="left")
-        self.hr_fim = self._criar_campo(row3, "Hora Fim", 100, side="left")
+        cb_data_hora_frame = ctk.CTkFrame(grid_master, fg_color="transparent")
+        cb_data_hora_frame.grid(row=2, column=2, sticky="w", padx=10, pady=10)
         
         self.no_data_var = ctk.BooleanVar(value=False)
-        ctk.CTkCheckBox(row3, text="Sem data/hora", variable=self.no_data_var, command=self._toggle_data).pack(side="left", padx=10, pady=(20,0))
+        ctk.CTkCheckBox(cb_data_hora_frame, text="Sem Data", variable=self.no_data_var, command=self._toggle_data, font=("Arial Bold", 12)).pack(side="left", padx=(0, 15), pady=(24,0))
+        
+        self.no_hora_var = ctk.BooleanVar(value=False)
+        ctk.CTkCheckBox(cb_data_hora_frame, text="Sem Horário", variable=self.no_hora_var, command=self._toggle_hora, font=("Arial Bold", 12)).pack(side="left", pady=(24,0))
 
-        # --- CONTAINER DINÂMICO (DEFERIDO vs INDEFERIDO) ---
+        # --- LINHA 3 (Seleção de Modo e Horários) ---
+        HORARIOS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
+        self.modo_data_var = ctk.StringVar(value="Período (Início-Fim)")
+        self.modo_combo = self._criar_combo_grid(grid_master, "Seleção de Datas", 250, ["Período (Início-Fim)", "Dias Isolados"], 3, 0)
+        self.modo_combo.configure(variable=self.modo_data_var, command=self._on_modo_data_change)
+        
+        self.hr_inicio = self._criar_combo_grid(grid_master, "Hora Início", 250, HORARIOS, 3, 1)
+        self.hr_fim = self._criar_combo_grid(grid_master, "Hora Fim", 250, HORARIOS, 3, 2)
+
+        # --- LINHA 4 (Container do Calendário + ORIGEM) ---
+        # Container do calendário reduzido para caber perfeitamente nas colunas 0 e 1
+        self.container_datas = ctk.CTkFrame(grid_master, fg_color="transparent")
+        self.container_datas.grid(row=4, column=0, columnspan=2, sticky="w", padx=0, pady=5)
+        self._on_modo_data_change()
+
+        # O Novo Campo de Origem inserido EXATAMENTE abaixo do "Hora Fim" (Coluna 2)
+        self.origem_combo = self._criar_combo_grid(grid_master, "Origem", 250, ["SISGEP", "SPU"], 4, 2)
+
+        # =====================================================================
+        # CONTAINER DINÂMICO (DEFERIDO vs INDEFERIDO)
+        # =====================================================================
         self.container_dinamico = ctk.CTkFrame(form_frame, fg_color="transparent")
-        self.container_dinamico.pack(fill="x", pady=(15, 10), padx=15)
+        self.container_dinamico.pack(fill="x", pady=(0, 15), padx=15)
         self._on_tipo_change()
 
         # --- RODAPÉ ---
         footer_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         footer_frame.pack(fill="x", pady=20)
-        ctk.CTkLabel(footer_frame, text=f"Responsável: {self.usuario_logado}", font=("Arial", 12), text_color="gray").pack(side="left", padx=10)
-        ctk.CTkButton(footer_frame, text="✅ GERAR PARECER", fg_color="#0F8C75", font=("Arial Bold", 16), height=50, width=300, command=self.acao_gerar).pack(side="right", padx=10)
+        ctk.CTkLabel(footer_frame, text=f"Responsável pelo Documento: {self.usuario_logado}", font=("Arial Bold", 12), text_color="#777").pack(side="left", padx=10)
+        ctk.CTkButton(footer_frame, text="✅ GERAR PARECER TÉCNICO", fg_color="#0F8C75", hover_color="#0B6B59", font=("Arial Black", 16), height=50, width=320, command=self.acao_gerar).pack(side="right", padx=10)
 
-    # --- UTILITÁRIOS ---
-    def _criar_campo(self, parent, label, width, side="top"):
-        container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(side=side, padx=10, fill="x")
-        ctk.CTkLabel(container, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        entry = ctk.CTkEntry(container, width=width, height=35)
+    # --- HELPERS DE GRID UI/UX ---
+    def _criar_campo_grid(self, parent, label, width, row, col, columnspan=1):
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        entry = ctk.CTkEntry(frame, width=width, height=35, font=("Arial", 12))
         entry.pack(anchor="w", pady=(2,0))
         return entry
         
-    def _criar_combobox(self, parent, label, width, values, side="top"):
-        container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(side=side, padx=10, fill="x")
-        ctk.CTkLabel(container, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = ctk.CTkComboBox(container, width=width, height=35, values=values)
+    def _criar_combo_grid(self, parent, label, width, values, row, col, columnspan=1, state="readonly"):
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), state=state)
         combo.pack(anchor="w", pady=(2,0))
         return combo
 
-    def _aplicar_mascara_data(self, entry):
-        def _formatar(*args):
-            nums = re.sub(r"\D", "", entry.get())
-            if len(nums) > 8: nums = nums[:8]
-            res = nums
-            if len(nums) > 2: res = f"{nums[:2]}/{nums[2:]}"
-            if len(nums) > 4: res = f"{nums[:2]}/{nums[2:4]}/{nums[4:]}"
-            if entry.get() != res:
-                entry.delete(0, "end"); entry.insert(0, res)
-        entry.bind("<KeyRelease>", _formatar)
+    def _criar_autocomplete_grid(self, parent, label, width, values, row, col, columnspan=1):
+        combo = self._criar_combo_grid(parent, label, width, values, row, col, columnspan, state="normal")
+        combo._valores_originais = values
+        def on_key(event):
+            valor_digitado = combo.get().lower()
+            if not valor_digitado: combo.configure(values=combo._valores_originais)
+            else:
+                filtrados = [v for v in combo._valores_originais if valor_digitado in v.lower()]
+                combo.configure(values=filtrados if filtrados else ["- Sem resultados -"])
+        combo.bind("<KeyRelease>", on_key)
+        return combo
 
+    def _criar_date_wrapper(self, parent, width):
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container.pack_propagate(False) 
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry.pack(fill="both", expand=True, padx=2, pady=2)
+        return container, date_entry
+
+    # --- CONTROLO DE ESTADO INDEPENDENTE ---
     def _toggle_evento(self):
         estado = "disabled" if self.no_evento_var.get() else "normal"
         self.evento_combo.configure(state=estado)
@@ -127,11 +149,91 @@ class ParecerItinerarioView(ctk.CTkFrame):
 
     def _toggle_data(self):
         estado = "disabled" if self.no_data_var.get() else "normal"
-        self.datas_entry.configure(state=estado)
+        self.modo_combo.configure(state=estado)
+        
+        if hasattr(self, 'data_inicio') and self.data_inicio.winfo_exists():
+            self.data_inicio.configure(state=estado)
+        if hasattr(self, 'data_fim') and self.data_fim.winfo_exists():
+            self.data_fim.configure(state=estado)
+        if hasattr(self, 'data_isolada') and self.data_isolada.winfo_exists():
+            self.data_isolada.configure(state=estado)
+        if hasattr(self, 'btn_add_data') and self.btn_add_data.winfo_exists():
+            self.btn_add_data.configure(state=estado)
+
+        if self.no_data_var.get():
+            self.datas_isoladas_add.clear()
+            self._render_datas_chips()
+
+    def _toggle_hora(self):
+        estado = "disabled" if self.no_hora_var.get() else "normal"
         self.hr_inicio.configure(state=estado)
         self.hr_fim.configure(state=estado)
-        if self.no_data_var.get():
-            self.datas_entry.delete(0, "end"); self.hr_inicio.delete(0, "end"); self.hr_fim.delete(0, "end")
+        if self.no_hora_var.get():
+            self.hr_inicio.set("")
+            self.hr_fim.set("")
+
+    # --- MÓDULO DE DATAS ---
+    def _on_modo_data_change(self, *args):
+        for w in self.container_datas.winfo_children(): w.destroy()
+        modo = self.modo_data_var.get()
+
+        if "Período" in modo:
+            f_ini = ctk.CTkFrame(self.container_datas, fg_color="transparent")
+            f_ini.grid(row=0, column=0, padx=10, pady=10, sticky="w")
+            ctk.CTkLabel(f_ini, text="Data Inicial:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+            wrapper_ini, self.data_inicio = self._criar_date_wrapper(f_ini, 250)
+            wrapper_ini.pack(anchor="w", pady=(2,0))
+
+            f_fim = ctk.CTkFrame(self.container_datas, fg_color="transparent")
+            f_fim.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+            ctk.CTkLabel(f_fim, text="Data Final:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+            wrapper_fim, self.data_fim = self._criar_date_wrapper(f_fim, 250)
+            wrapper_fim.pack(anchor="w", pady=(2,0))
+        else:
+            f_iso = ctk.CTkFrame(self.container_datas, fg_color="transparent")
+            f_iso.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
+            
+            input_row = ctk.CTkFrame(f_iso, fg_color="transparent")
+            input_row.pack(side="top", fill="x")
+
+            col1 = ctk.CTkFrame(input_row, fg_color="transparent")
+            col1.pack(side="left", padx=(0, 15))
+            ctk.CTkLabel(col1, text="Selecionar Dia:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+            wrapper_iso, self.data_isolada = self._criar_date_wrapper(col1, 250)
+            wrapper_iso.pack(anchor="w", pady=(2,0))
+
+            self.btn_add_data = ctk.CTkButton(input_row, text="➕ Add Data", width=80, height=35, fg_color="#0F8C75", font=("Arial Bold", 12), command=self._add_data_isolada)
+            self.btn_add_data.pack(side="left", anchor="s", pady=(0,2))
+
+            self.frame_chips_datas = ctk.CTkFrame(f_iso, fg_color="transparent")
+            self.frame_chips_datas.pack(side="top", fill="both", expand=True, pady=(15,0))
+            self._render_datas_chips()
+            
+        self._toggle_data() 
+
+    def _add_data_isolada(self):
+        d = self.data_isolada.get()
+        if d and d not in self.datas_isoladas_add:
+            self.datas_isoladas_add.append(d)
+            self._render_datas_chips()
+
+    def _remove_data_isolada(self, dt):
+        if dt in self.datas_isoladas_add:
+            self.datas_isoladas_add.remove(dt)
+            self._render_datas_chips()
+
+    def _render_datas_chips(self):
+        for w in self.frame_chips_datas.winfo_children(): w.destroy()
+        if not self.datas_isoladas_add:
+            ctk.CTkLabel(self.frame_chips_datas, text="Nenhuma data isolada adicionada.", text_color="gray", font=("Arial", 11)).pack(anchor="w", padx=10)
+            return
+            
+        for d in self.datas_isoladas_add:
+            chip = ctk.CTkFrame(self.frame_chips_datas, fg_color="#F1F3F5", corner_radius=6, height=32)
+            chip.pack(side="top", fill="x", pady=3)
+            chip.pack_propagate(False)
+            ctk.CTkLabel(chip, text=d, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
+            ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda date=d: self._remove_data_isolada(date)).pack(side="right", padx=5)
 
     # --- DINAMISMO (DEFERIDO vs INDEFERIDO) ---
     def _on_tipo_change(self, *args):
@@ -139,32 +241,76 @@ class ParecerItinerarioView(ctk.CTkFrame):
         tipo = self.tipo_var.get()
         
         if tipo == "DEFERIDO":
-            self.linha_combo = self._criar_combobox(self.container_dinamico, "Linha a ser desviada", 350, self.service.buscar_sugestoes_linhas(), side="left")
-            ctk.CTkButton(self.container_dinamico, text="➕ Add Linha", width=120, fg_color="#0F8C75", command=self._add_linha).pack(side="left", padx=10, pady=(20,0))
-            self.lbl_linhas = ctk.CTkLabel(self.container_dinamico, text="Nenhuma linha.", font=("Arial", 11), text_color="gray", wraplength=400)
-            self.lbl_linhas.pack(side="left", padx=15, pady=(20,0))
+            self.lista_linhas = self.service.buscar_sugestoes_linhas()
+            
+            add_lin_row = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
+            add_lin_row.pack(fill="x", anchor="w")
+            
+            self.linha_combo = self._criar_autocomplete_grid(add_lin_row, "Pesquise a Linha Afetada", 250, self.lista_linhas, 0, 0)
+            ctk.CTkButton(add_lin_row, text="➕ Add Linha", width=100, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_linha).grid(row=0, column=1, sticky="s", pady=(0,10), padx=10)
+            
+            self.frame_chips_linhas = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
+            self.frame_chips_linhas.pack(fill="both", expand=True, padx=10, pady=(0,10))
+            self._render_linhas_chips()
         else:
-            ctk.CTkLabel(self.container_dinamico, text="Motivo do Indeferimento:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w", padx=10)
-            self.motivo_text = ctk.CTkTextbox(self.container_dinamico, height=80, border_width=2)
-            self.motivo_text.pack(fill="x", padx=10, pady=(2,0))
+            frame_motivo = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
+            frame_motivo.pack(fill="x", padx=10, pady=5)
+            ctk.CTkLabel(frame_motivo, text="Motivo do Indeferimento:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+            self.motivo_text = ctk.CTkTextbox(frame_motivo, height=80, border_width=2)
+            self.motivo_text.pack(fill="x", pady=(2,0))
 
     def _add_linha(self):
         lin = self.linha_combo.get().strip()
-        if lin and lin not in self.linhas_add:
+        if lin and lin != "- Sem resultados -" and lin not in self.linhas_add:
             self.linhas_add.append(lin)
-            self.lbl_linhas.configure(text=" | ".join(self.linhas_add))
+            self._render_linhas_chips()
+
+    def _remove_linha(self, lin):
+        self.linhas_add.remove(lin)
+        self._render_linhas_chips()
+
+    def _render_linhas_chips(self):
+        for w in self.frame_chips_linhas.winfo_children(): w.destroy()
+        if not self.linhas_add:
+            ctk.CTkLabel(self.frame_chips_linhas, text="Nenhuma linha vinculada ao desvio.", text_color="gray", font=("Arial", 11)).pack(anchor="w", padx=10)
+            return
+        for lin in self.linhas_add:
+            chip = ctk.CTkFrame(self.frame_chips_linhas, fg_color="#F1F3F5", corner_radius=6, height=32)
+            chip.pack(side="top", fill="x", pady=3)
+            chip.pack_propagate(False)
+            ctk.CTkLabel(chip, text=lin, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
+            ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda l=lin: self._remove_linha(l)).pack(side="right", padx=5)
 
     # --- AÇÃO PRINCIPAL ---
     def acao_gerar(self):
         tipo = self.tipo_var.get()
+        
+        datas_selecionadas = []
+        if not self.no_data_var.get():
+            if "Período" in self.modo_data_var.get():
+                d_ini = self.data_inicio.get()
+                d_fim = self.data_fim.get()
+                datas_selecionadas = [d_ini] if d_ini == d_fim else [d_ini, d_fim]
+            else:
+                if not self.datas_isoladas_add:
+                    messagebox.showwarning("Aviso", "Por favor, adicione pelo menos uma data isolada, ou marque 'Sem Data'.")
+                    return
+                datas_selecionadas = sorted(self.datas_isoladas_add.copy())
+        
+        periodo_hora = ""
+        if not self.no_hora_var.get() and self.hr_inicio.get() and self.hr_fim.get():
+            periodo_hora = f"{self.hr_inicio.get()} às {self.hr_fim.get()}"
+            
         dados_form = {
             "processo": self.processo_entry.get().strip(),
-            "solicitante": self.solicitante_combo.get(),
-            "assunto": self.assunto_combo.get(),
+            "origem": self.origem_combo.get().strip(), # <-- NOVA CHAVE EXTRAÍDA AQUI
+            "solicitante": self.solicitante_combo.get().strip(),
+            "assunto": self.assunto_combo.get().strip(),
             "evento": self.evento_combo.get() if not self.no_evento_var.get() else "",
-            "data_evento": self.datas_entry.get(),
-            "periodo": f"{self.hr_inicio.get()} às {self.hr_fim.get()}" if self.hr_inicio.get() and self.hr_fim.get() else "",
-            "endereco": self.endereco_entry.get(),
+            "datas": datas_selecionadas,
+            "modo_data": "PERIODO" if "Período" in self.modo_data_var.get() else "ISOLADOS",
+            "periodo": periodo_hora,
+            "endereco": self.endereco_entry.get().strip(),
             "motivo": self.motivo_text.get("1.0", "end").strip() if tipo == "INDEFERIDO" else ""
         }
 
@@ -181,8 +327,9 @@ class ParecerItinerarioView(ctk.CTkFrame):
         if sucesso:
             messagebox.showinfo("Sucesso", msg)
             self.processo_entry.delete(0, "end"); self.endereco_entry.delete(0, "end")
-            self.linhas_add.clear()
+            self.linhas_add.clear(); self.datas_isoladas_add.clear()
             self._on_tipo_change()
+            self._on_modo_data_change()
         else:
             messagebox.showerror("Erro", msg)
 

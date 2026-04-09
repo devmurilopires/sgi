@@ -20,14 +20,14 @@ class ParecerItinerarioService:
     def _limpar_nome_arquivo(self, nome):
         return re.sub(r'[\\/:*?"<>|]', '', nome)
 
-    def _formatar_datas_para_docx(self, texto_datas: str) -> str:
-        if not texto_datas: return ""
-        partes = [p.strip() for p in texto_datas.split(",") if p.strip()]
-        if len(partes) == 2: return f"{partes[0]} até {partes[1]}"
-        return ", ".join(partes)
+    def formatar_lista_com_e(self, lista):
+        lst = [s for s in lista if s]
+        if not lst: return ""
+        if len(lst) == 1: return lst[0]
+        if len(lst) == 2: return f"{lst[0]} e {lst[1]}"
+        return ", ".join(lst[:-1]) + f" e {lst[-1]}"
 
     def _substituir_tags_xml(self, caminho_docx, mapeamento):
-        """Mágica de XML mantida do código original para proteger o cabeçalho/rodapé do Word"""
         temp_dir = tempfile.mkdtemp()
         temp_copy = os.path.join(temp_dir, "temp_copy.docx")
         shutil.copyfile(caminho_docx, temp_copy)
@@ -82,6 +82,17 @@ class ParecerItinerarioService:
         except Exception as e:
             return False, f"Falha ao manipular o arquivo: {e}"
 
+        # --- TRATAMENTO INTELIGENTE DA DATA NO WORD ---
+        data_text = ""
+        datas_raw = dados_form.get("datas", [])
+        modo_data = dados_form.get("modo_data", "PERIODO")
+
+        if datas_raw:
+            if modo_data == "ISOLADOS":
+                data_text = "nos dias " + self.formatar_lista_com_e(datas_raw) if len(datas_raw) > 1 else f"no dia {datas_raw[0]}"
+            else:
+                data_text = f"no dia {datas_raw[0]}" if len(datas_raw) == 1 else f"no período de {datas_raw[0]} a {datas_raw[1]}"
+
         # Montagem dos Textos Dinâmicos (DEFERIDO vs INDEFERIDO)
         mapeamento = {
             "{{NUMERO_PARECER}}": f"{numero_parecer:03d}",
@@ -96,24 +107,26 @@ class ParecerItinerarioService:
             texto_desvio = f"Informamos que este evento interfere no itinerário das linhas: {', '.join(linhas)}. Do Sistema de Transporte Coletivo e, portanto, deve ser feita uma ordem de serviço autorizando o desvio das mesmas." if linhas else "Informamos que este evento interfere no itinerário de algumas linhas do sistema de transporte coletivo de Fortaleza, portanto, deve ser feita uma ordem de serviço autorizando o desvio das mesmas."
             mapeamento.update({
                 "{{EVENTO}}": f",para realização do evento {dados_form['evento']}," if dados_form["evento"] else "",
-                "{{DATA_EVENTO}}": f", que acontecerá no dia {self._formatar_datas_para_docx(dados_form['data_evento'])}" if dados_form["data_evento"] else "",
+                "{{DATA_EVENTO}}": f", que acontecerá {data_text}" if data_text else "",
                 "{{PERIODO}}": f", das {dados_form['periodo']} horas" if dados_form["periodo"] else "",
                 "{{TEXTO_DESVIO}}": texto_desvio
             })
         else:
             mapeamento.update({
                 "{{EVENTO}}": f"em razão da realização do evento {dados_form['evento']}," if dados_form["evento"] else "",
-                "{{DATA_EVENTO}}": f"que ocorrerá no dia {self._formatar_datas_para_docx(dados_form['data_evento'])}" if dados_form["data_evento"] else "",
+                "{{DATA_EVENTO}}": f"que ocorrerá {data_text}" if data_text else "",
                 "{{PERIODO}}": f", no período das {dados_form['periodo']} horas" if dados_form["periodo"] else "",
                 "{{MOTIVO}}": dados_form["motivo"]
             })
 
         self._substituir_tags_xml(caminho_destino, mapeamento)
 
+        # Adicionando a "origem" no pacote de dados pro BD
         dados_db = {
             "numero_parecer": numero_parecer, "tipo": tipo, "processo": dados_form["processo"],
+            "origem": dados_form["origem"], # <-- NOVO CAMPO SENDO ENVIADO AO BANCO
             "assunto": dados_form["assunto"], "evento": dados_form["evento"],
-            "data_evento": dados_form["data_evento"], "periodo": dados_form["periodo"],
+            "data_evento": data_text, "periodo": dados_form["periodo"],
             "endereco": dados_form["endereco"], "solicitante": dados_form["solicitante"],
             "linhas": ", ".join(linhas) if tipo == "DEFERIDO" else "",
             "motivo": dados_form["motivo"] if tipo == "INDEFERIDO" else "",
