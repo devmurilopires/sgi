@@ -241,6 +241,7 @@ def iniciar_sistema(usuario_dados):
             {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "PARECER")}
         ])
         categorias_menu["QUADRO DE HORÁRIO"].extend([
+            {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_qh(a, u)},
             {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
             {"nome": "Relatórios Pesquisas", "img_icon": loaded_imgs_items["Relatorio_Pesquisas"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")}
         ])
@@ -267,6 +268,7 @@ def iniciar_sistema(usuario_dados):
 
         if "QUADRO DE HORARIO" in tipo_perfil:
             categorias_menu["QUADRO DE HORÁRIO"].extend([
+                {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_qh(a, u)},
                 {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_qh(a, u)},
                 {"nome": "Pesquisas de Campo", "img_icon": loaded_imgs_items["Pesquisas"], "render": lambda a, u: renderizar_pesquisas_qh(a, u)},
                 {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
