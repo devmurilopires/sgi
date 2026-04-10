@@ -12,7 +12,6 @@ from src.modulos.quadro_horario.parecer.repository import ParecerQuadroHorarioRe
 class ParecerQuadroHorarioService:
     def __init__(self):
         self.repo = ParecerQuadroHorarioRepository()
-        # Ajuste a raiz de rede conforme o mapeamento da Etufor
         self.pasta_deferido = r"\\172.20.0.57\dados\DIPLA\Quadros de Horários\PARECER TECNICO - SPR\2026\DEFERIDO"
         self.pasta_indeferido = r"\\172.20.0.57\dados\DIPLA\Quadros de Horários\PARECER TECNICO - SPR\2026\INDEFERIDO"
 
@@ -21,6 +20,13 @@ class ParecerQuadroHorarioService:
 
     def _limpar_nome_arquivo(self, nome):
         return re.sub(r'[\\/:*?"<>|]', '', nome)
+
+    def formatar_lista_com_e(self, lista):
+        lst = [s for s in lista if s]
+        if not lst: return ""
+        if len(lst) == 1: return lst[0]
+        if len(lst) == 2: return f"{lst[0]} e {lst[1]}"
+        return ", ".join(lst[:-1]) + f" e {lst[-1]}"
 
     def _substituir_tags_xml(self, caminho_docx, mapeamento):
         temp_dir = tempfile.mkdtemp()
@@ -38,12 +44,10 @@ class ParecerQuadroHorarioService:
             for chave, valor in mapeamento.items():
                 safe_val = xml_escape(str(valor or ""))
                 
-                # Tenta substituição direta
                 if chave in xml_content:
                     xml_content = xml_content.replace(chave, safe_val)
                     continue
 
-                # Tenta substituição com tags fragmentadas do Word
                 pattern = "".join(re.escape(ch) + r"(?:<[^>]+>)*" for ch in chave)
                 try:
                     new_xml, n = re.subn(pattern, safe_val, xml_content, flags=re.IGNORECASE)
@@ -61,39 +65,46 @@ class ParecerQuadroHorarioService:
                     zip_out.write(caminho_abs, os.path.relpath(caminho_abs, temp_dir))
         shutil.rmtree(temp_dir)
 
-    def processar_parecer(self, tipo, dados, linhas, usuario):
+    def processar_parecer(self, tipo, dados_form, linhas, usuario):
         numero = self.repo.obter_proximo_numero_parecer(tipo)
         data_str = datetime.now().strftime("%d/%m/%Y")
         
-        # Definição de Texto (Evento vs Linhas)
-        evento = dados.get("evento", "").strip()
-        data_evento = dados.get("data_evento", "").strip()
+        evento = dados_form.get("evento", "").strip()
         
+        # --- TRATAMENTO INTELIGENTE DA DATA ---
+        data_text = ""
+        datas_raw = dados_form.get("datas", [])
+        modo_data = dados_form.get("modo_data", "PERIODO")
+
+        if evento and datas_raw:
+            if modo_data == "ISOLADOS":
+                data_text = "nos dias " + self.formatar_lista_com_e(datas_raw) if len(datas_raw) > 1 else f"no dia {datas_raw[0]}"
+            else:
+                data_text = f"no dia {datas_raw[0]}" if len(datas_raw) == 1 else f"do dia {datas_raw[0]} até o dia {datas_raw[1]}"
+
+        # --- TRATAMENTO DE TEXTO (EVENTO vs LINHA) ---
         if evento:
             evento_text = f"ao evento {evento}"
-            if data_evento:
-                partes = [p.strip() for p in data_evento.split(",") if p.strip()]
-                if len(partes) == 1: evento_text += f" que ocorrerá no dia {partes[0]}"
-                elif len(partes) >= 2: evento_text += f" que ocorrerá no dia {partes[0]} até o dia {partes[1]}"
+            if data_text: evento_text += f" que ocorrerá {data_text}"
             linhas_text = ""
         else:
             if len(linhas) == 1: linhas_text = f"a linha {linhas[0]}"
-            elif len(linhas) > 1: linhas_text = f"as linhas {', '.join(linhas)}"
+            elif len(linhas) > 1: linhas_text = f"as linhas {self.formatar_lista_com_e(linhas)}"
             else: linhas_text = ""
             evento_text = ""
 
         evento_ou_linha_text = evento_text or linhas_text
-
-        # Nome do arquivo e pastas
         identificador = evento if evento else ", ".join(linhas)
+
+        # Configuração de Arquivos
         if tipo == "DEFERIDO":
-            nome_arquivo = f"Parecer N°_{numero:03d}_{dados['assunto']}_{identificador}_({usuario}).docx"
+            nome_arquivo = f"Parecer N°_{numero:03d}_{dados_form['assunto']}_{identificador}_({usuario}).docx"
             pasta_base = self.pasta_deferido
-            modelo = resource_path("dados/modelo_parecer_deferido.docx")
+            modelo = resource_path("dados/modelo_parecer_deferido_spr.docx")
         else:
-            nome_arquivo = f"Parecer N°_{numero:03d}_{dados['assunto']}_INDEFERIDO_({usuario}).docx"
+            nome_arquivo = f"Parecer N°_{numero:03d}_{dados_form['assunto']}_INDEFERIDO_({usuario}).docx"
             pasta_base = self.pasta_indeferido
-            modelo = resource_path("dados/modelo_parecer_indeferido.docx")
+            modelo = resource_path("dados/modelo_parecer_indeferido_spr.docx")
 
         nome_arquivo = self._limpar_nome_arquivo(nome_arquivo)
         os.makedirs(pasta_base, exist_ok=True)
@@ -107,35 +118,35 @@ class ParecerQuadroHorarioService:
             os.chmod(caminho_destino, stat.S_IWRITE)
         except Exception as e: return False, f"Erro de permissão no arquivo: {e}"
 
-        # Mapeamento de Tags
+        # Substituição de Tags no Documento
         mapeamento = {
             "{{NUM_PARECER}}": f"{numero:03d}",
             "{{NUMERO_PARECER}}": f"{numero:03d}",
             "{{DATA}}": data_str,
-            "{{PROCESSO}}": dados["processo"],
-            "{{ASSUNTO}}": dados["assunto"],
-            "{{SOLICITANTE}}": dados["solicitante"],
-            "{{SOLICITACAO}}": dados["solicitacao"],
+            "{{PROCESSO}}": dados_form["processo"],
+            "{{ASSUNTO}}": dados_form["assunto"],
+            "{{SOLICITANTE}}": dados_form["solicitante"],
+            "{{SOLICITACAO}}": dados_form["solicitacao"],
             "{{EVENTO_OU_LINHA}}": evento_ou_linha_text,
-            "{{DATA_EVENTO}}": data_evento,
-            "{{MOTIVO}}": dados.get("motivo", ""),
+            "{{DATA_EVENTO}}": data_text,
+            "{{MOTIVO}}": dados_form.get("motivo", ""),
             "{{EVENTO}}": evento_text or linhas_text,
             "{{LINHAS}}": linhas_text
         }
 
         self._substituir_tags_xml(caminho_destino, mapeamento)
 
-        # Salva no Banco
+        # Salva no Banco de Dados
         dados_db = {
-            "numero_parecer": numero, "tipo": tipo, "processo": dados["processo"],
-            "assunto": dados["assunto"], "solicitacao": dados["solicitacao"],
-            "evento": evento, "data_evento": data_evento,
-            "solicitante": dados["solicitante"], "linhas": ", ".join(linhas),
-            "motivo": dados.get("motivo", ""), "caminho_arquivo": caminho_destino,
+            "numero_parecer": numero, "tipo": tipo, "processo": dados_form["processo"],
+            "assunto": dados_form["assunto"], "solicitacao": dados_form["solicitacao"],
+            "evento": evento, "data_evento": data_text,
+            "solicitante": dados_form["solicitante"], "linhas": ", ".join(linhas),
+            "motivo": dados_form.get("motivo", ""), "caminho_arquivo": caminho_destino,
             "criado_por": f"%{usuario}%"
         }
 
         sucesso, msg = self.repo.salvar_parecer_no_banco(dados_db)
         if not sucesso: return False, msg
 
-        return True, f"Parecer gerado com sucesso!\nSalvo em: {nome_arquivo}"
+        return True, f"Parecer Técnico (Quadro de Horário) gerado com sucesso!\nSalvo em: {nome_arquivo}"
