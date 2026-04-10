@@ -12,8 +12,8 @@ class PesquisaQuadroHorarioService:
     def buscar_sugestoes_linhas(self):
         return self.repo.buscar_linhas()
 
-    def salvar_dados(self, titulo, tipo, dados, usuario):
-        return self.repo.salvar_pesquisa(titulo, tipo, dados, usuario)
+    def salvar_dados(self, linha, tipo, dados_completos, usuario):
+        return self.repo.salvar_pesquisa(linha, tipo, dados_completos, usuario)
 
     # --- Utilitários Internos ---
     def _normalizar_nome(self, s):
@@ -65,7 +65,8 @@ class PesquisaQuadroHorarioService:
         if not blocos: return False, "Nenhum dado válido."
 
         sentidos = {}
-        for i, bloco in enumerate(blocos[:4], start=1):
+        # Limite alterado de 4 para a quantidade de sentidos dinâmica
+        for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco["Partida Real"].apply(self._extrair_hora)
             bloco["TempoStr"] = bloco["Tempo Viagem"].apply(self._normalizar_tempo)
             bloco["TempoMin"] = pd.to_timedelta(bloco["TempoStr"], errors='coerce').dt.total_seconds() / 60.0
@@ -75,7 +76,7 @@ class PesquisaQuadroHorarioService:
 
             medias = bloco.groupby("Hora")["TempoMin"].mean()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco["Trajeto"].iloc[0]))
-            col_alvo = nomes_sentidos.get(nome_norm, f"sentido{i}")
+            col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
 
             sentidos[col_alvo] = {int(h): math.ceil(float(m)) for h, m in medias.items()}
         return True, sentidos
@@ -87,7 +88,7 @@ class PesquisaQuadroHorarioService:
         
         blocos = self._separar_blocos(df[req].copy(), "Trajeto")
         sentidos = {}
-        for i, bloco in enumerate(blocos[:4], start=1):
+        for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco["Partida Planejada"].apply(self._extrair_hora)
             bloco = bloco[bloco["Hora"].notna() & bloco["TV"].notna()]
             if bloco.empty: continue
@@ -108,7 +109,7 @@ class PesquisaQuadroHorarioService:
         
         blocos = self._separar_blocos(df, t_col)
         sentidos = {}
-        for i, bloco in enumerate(blocos[:4], start=1):
+        for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
             bloco[pass_col] = pd.to_numeric(bloco[pass_col], errors='coerce')
             bloco = bloco[bloco["Hora"].notna() & bloco[pass_col].notna()]
@@ -116,7 +117,7 @@ class PesquisaQuadroHorarioService:
 
             somas = bloco.groupby("Hora")[pass_col].sum()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
-            col_alvo = nomes_sentidos.get(nome_norm, f"sentido{i}")
+            col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
             
             sentidos[col_alvo] = {int(h): int(round(float(s))) for h, s in somas.items()}
         return True, sentidos
@@ -129,7 +130,7 @@ class PesquisaQuadroHorarioService:
 
         blocos = self._separar_blocos(df, t_col)
         viagens = {}
-        for i, bloco in enumerate(blocos[:4], start=1):
+        for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
             bloco = bloco[bloco["Hora"].notna()]
             if bloco.empty: continue

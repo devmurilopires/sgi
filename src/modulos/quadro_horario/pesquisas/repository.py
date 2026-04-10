@@ -11,7 +11,8 @@ class PesquisaQuadroHorarioRepository:
         except Exception as e:
             return []
 
-    def salvar_pesquisa(self, titulo, tipo, dados_tabelas, criado_por):
+    def salvar_pesquisa(self, linha, tipo, dados_completos, criado_por):
+        # A coluna 'titulo' no banco vai guardar a 'linha' selecionada
         query = """
             INSERT INTO spr.pesquisas (titulo, tipo_pesquisa, resultado_json, criado_por, created_at)
             VALUES (%s, %s, %s::jsonb, %s, NOW())
@@ -20,9 +21,9 @@ class PesquisaQuadroHorarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # Converte as tabelas para JSON string antes de mandar pro Postgres
-                    json_str = json.dumps(dados_tabelas, ensure_ascii=False)
-                    cur.execute(query, (titulo, tipo, json_str, criado_por))
+                    # Converte o dicionário completo (datas + tabelas) para JSON
+                    json_str = json.dumps(dados_completos, ensure_ascii=False)
+                    cur.execute(query, (linha, tipo, json_str, criado_por))
                     conn.commit()
                     row = cur.fetchone()
                     return True, f"Pesquisa salva com sucesso (ID: {row[0]})."
