@@ -3,6 +3,7 @@ import shutil
 import sys
 import subprocess
 from datetime import datetime
+import pandas as pd
 from src.modulos.ponto_parada.relatorios.repository import RelatorioRepository
 from config.settings import RAIZ_REDE
 
@@ -22,14 +23,12 @@ class RelatorioService:
     def _formatar_dados_os(self, dados_brutos):
         dados_formatados = []
         for linha in dados_brutos:
-            # Recebe as colunas exatas da nova Query do Repository
             (id_banco, numero, dt_criacao, id_princ, ids_adicionais, acao, item, logradouro, bairro, status_conclusao, dt_conclusao, pasta, resp, origem) = linha
             
             todos_ids = [id_princ] if id_princ else []
             if ids_adicionais and ids_adicionais != 'None':
                 todos_ids.extend([i.strip() for i in ids_adicionais.split('-') if i.strip() != id_princ])
             
-            # --- FORMATAÇÃO INTELIGENTE DE STATUS E DIAS AQUI ---
             status = status_conclusao or "NÃO"
             if dt_criacao:
                 d_criacao = dt_criacao.date() if type(dt_criacao) is datetime else dt_criacao
@@ -52,7 +51,6 @@ class RelatorioService:
             item_fmt = str(item).upper() if item else "-"
             end_fmt = str(logradouro) if logradouro else "-"
 
-            # O Bairro foi removido da visualização, entrando o Endereço e Origem no lugar
             dados_formatados.append([
                 id_banco, # 0 -> ID verdadeiro escondido
                 numero, dt_criacao.strftime("%d/%m/%Y") if dt_criacao else "-",
@@ -64,12 +62,10 @@ class RelatorioService:
     def _formatar_dados_parecer(self, dados_brutos):
         dados_formatados = []
         for linha in dados_brutos:
-            # Recebe as colunas exatas da nova Query
             (id_banco, num, tipo, proc, assun, ids, solic, endereco, origem, dt_criacao, resp, caminho) = linha
             dt_str = dt_criacao.strftime("%d/%m/%Y") if dt_criacao else "-"
             origem_fmt = str(origem).upper() if origem else "SPU"
             
-            # Adicionado Origem e Endereço na lista visual
             dados_formatados.append([
                 id_banco, # 0 -> ID verdadeiro escondido
                 num, tipo, origem_fmt, proc or "-", assun or "-", ids or "-", solic or "-", endereco or "-", dt_str, resp or "-", caminho
@@ -95,6 +91,15 @@ class RelatorioService:
             else: subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", caminho])
             return True, "Aberto com sucesso"
         except Exception as e: return False, f"Erro ao abrir: {e}"
+
+    def baixar_arquivo(self, caminho_origem, caminho_destino):
+        if not caminho_origem or not os.path.exists(caminho_origem):
+            return False, "O arquivo original não foi encontrado."
+        try:
+            shutil.copy2(caminho_origem, caminho_destino)
+            return True, "Download concluído com sucesso!"
+        except Exception as e:
+            return False, f"Erro ao fazer download: {str(e)}"
 
     def buscar_detalhes_para_edicao(self, tipo_relatorio, id_banco):
         if tipo_relatorio == "OS": return self.repo.buscar_detalhes_os(id_banco)
@@ -131,3 +136,98 @@ class RelatorioService:
                 try: os.remove(caminho_arquivo)
                 except: pass
             return sucesso, msg
+
+    def exportar_excel(self, filepath, dados, colunas, titulo, texto_filtros):
+        try:
+            df = pd.DataFrame(dados, columns=colunas)
+            with pd.ExcelWriter(filepath, engine='xlsxwriter') as writer:
+                workbook = writer.book
+                worksheet = writer.sheets.setdefault('Relatorio', workbook.add_worksheet('Relatorio'))
+                
+                bold_format = workbook.add_format({'bold': True, 'font_size': 14})
+                
+                worksheet.write('A1', titulo, bold_format)
+                worksheet.write('A2', f"Filtros Aplicados: {texto_filtros}")
+                worksheet.write('A3', f"Total de Resultados: {len(dados)} registro(s)")
+                
+                df.to_excel(writer, sheet_name='Relatorio', startrow=4, index=False)
+                
+                for i, col in enumerate(colunas):
+                    max_len = max(df[col].astype(str).map(len).max() if not df.empty else 0, len(col)) + 2
+                    worksheet.set_column(i, i, min(max_len, 50))
+                    
+            return True, "Relatório Excel exportado com sucesso!"
+        except Exception as e:
+            return False, f"Ocorreu um erro ao exportar o Excel: {e}"
+
+    def exportar_pdf(self, filepath, dados, colunas, titulo, texto_filtros):
+        try:
+            from reportlab.lib import colors
+            from reportlab.lib.pagesizes import A4, landscape
+            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        except ImportError:
+            return False, "A biblioteca 'reportlab' não está instalada no sistema. Instale com: pip install reportlab"
+
+        try:
+            doc = SimpleDocTemplate(filepath, pagesize=landscape(A4), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+            elements = []
+            styles = getSampleStyleSheet()
+            
+            # --- ESTILOS CUSTOMIZADOS PARA QUEBRA DE TEXTO ---
+            style_title = ParagraphStyle(name='TitleStyle', parent=styles['Title'], fontSize=16, textColor=colors.HexColor("#0F8C75"), fontName='Helvetica-Bold')
+            style_normal = ParagraphStyle(name='NormalStyle', parent=styles['Normal'], fontSize=10)
+            
+            # Estilo das células: O segredo para o texto quebrar e não vazar (Word Wrap)
+            style_cell = ParagraphStyle(name='CellText', fontSize=7.5, leading=9, fontName='Helvetica', alignment=0)
+            style_header = ParagraphStyle(name='CellHeader', fontSize=8.5, leading=10, fontName='Helvetica-Bold', textColor=colors.whitesmoke, alignment=0)
+            
+            elements.append(Paragraph(f"<b>{titulo}</b>", style_title))
+            elements.append(Spacer(1, 10))
+            elements.append(Paragraph(f"<b>Filtros Utilizados:</b> {texto_filtros}", style_normal))
+            elements.append(Paragraph(f"<b>Total de Resultados Encontrados:</b> {len(dados)}", style_normal))
+            elements.append(Spacer(1, 20))
+            
+            # Envolve os cabeçalhos no estilo para padronizar
+            headers_formatados = [Paragraph(c, style_header) for c in colunas]
+            dados_tabela = [headers_formatados]
+            
+            for row in dados:
+                linha_limpa = []
+                for item in row:
+                    txt = str(item) if item and str(item) != 'None' else '-'
+                    txt = txt[:80] + '...' if len(txt) > 80 else txt # Evita strings absurdamente colossais
+                    
+                    # Ao injetar um Paragraph na tabela, ele quebra a linha automaticamente
+                    linha_limpa.append(Paragraph(txt, style_cell)) 
+                dados_tabela.append(linha_limpa)
+            
+            # --- LARGURAS PROPORCIONAIS INTELIGENTES ---
+            largura_disp = landscape(A4)[0] - 60 # Largura total da página menos as margens
+            
+            if "Ordens de Serviço" in titulo:
+                # 10 colunas da OS: "Nº", "Data", "ID(s)", "Origem", "Ação", "Item", "Endereço", "Status", "Pasta", "Criador"
+                # Distribuímos 100% da largura (1.0) conforme a necessidade de cada coluna
+                pesos = [0.05, 0.08, 0.08, 0.06, 0.10, 0.12, 0.23, 0.12, 0.08, 0.08]
+            else:
+                # 10 colunas do Parecer: "Nº", "Tipo", "Origem", "Processo", "Assunto", "ID(s)", "Solicitante", "Endereço", "Data", "Criador"
+                pesos = [0.05, 0.08, 0.06, 0.09, 0.16, 0.06, 0.14, 0.18, 0.08, 0.10]
+                
+            col_widths = [largura_disp * p for p in pesos]
+            
+            t = Table(dados_tabela, colWidths=col_widths, repeatRows=1)
+            t.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0F8C75")),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                ('TOPPADDING', (0, 0), (-1, 0), 8),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F1F3F5")]),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+            ]))
+            
+            elements.append(t)
+            doc.build(elements)
+            return True, "Relatório PDF gerado com sucesso!"
+        except Exception as e:
+            return False, f"Erro interno ao gerar PDF: {e}"

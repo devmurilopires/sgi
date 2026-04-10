@@ -1,7 +1,8 @@
 import math
+import os
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 from tkcalendar import DateEntry
 from src.modulos.ponto_parada.relatorios.service import RelatorioService
 
@@ -28,7 +29,7 @@ class RelatorioView(ctk.CTkFrame):
 
     # CONSTRUÇÃO DA INTERFACE
     def _construir_interface(self):
-        titulo = "Relatórios de Ordens de Serviço" if self.tipo_relatorio == "OS" else "Relatórios de Pareceres Técnicos"
+        titulo = "Relatórios de Ordens de Serviço (Ponto de Parada)" if self.tipo_relatorio == "OS" else "Relatórios de Pareceres Técnicos (Ponto de Parada)"
         ctk.CTkLabel(self, text=titulo, font=("Arial Black", 22), text_color="#0F8C75").pack(side="top", pady=(10, 5), anchor="w", padx=20)
 
         filtros_container = ctk.CTkFrame(self, fg_color="#F2F2F2", corner_radius=8)
@@ -38,7 +39,7 @@ class RelatorioView(ctk.CTkFrame):
         grid_frame.pack(padx=10, pady=8, fill="x") 
 
         # =========================================================================
-        # NOVO LAYOUT DE FILTROS (3 LINHAS)
+        # LAYOUT DE FILTROS 
         # =========================================================================
         if self.tipo_relatorio == "OS":
             # Linha 0
@@ -69,7 +70,7 @@ class RelatorioView(ctk.CTkFrame):
             self._add_combo_grid(grid_frame, "Solicitante", "solicitante", self._solicitantes_padrao, 1, 2, width=200)
             self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SPU", "SISGEP"], 1, 3, width=200)
 
-        # Linha 2 (Comum para ambos - Datas e Botões)
+        # Linha 2 (Comum para ambos - Datas e Botões Exportação)
         datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
         datas_frame.grid(row=2, column=0, columnspan=5, pady=(15, 5), sticky="w", padx=5)
 
@@ -81,9 +82,11 @@ class RelatorioView(ctk.CTkFrame):
         self.data_fim = DateEntry(datas_frame, date_pattern="dd/mm/yyyy", width=10, font=("Arial", 11))
         self.data_fim.pack(side="left", padx=(2, 15))
 
-        # Botões de Buscar e Limpar 
-        ctk.CTkButton(datas_frame, text="🔍 Buscar", fg_color="#0F8C75", font=("Arial Bold", 14), width=90, height=35, command=self.acao_buscar).pack(side="left", padx=(0, 5))
-        ctk.CTkButton(datas_frame, text="🧹 Limpar", fg_color="#F24822", hover_color="#FF4319", font=("Arial Bold", 14), width=90, height=35, command=self.acao_limpar).pack(side="left")
+        # Botões de Ação e Exportação 
+        ctk.CTkButton(datas_frame, text="🔍 Buscar", fg_color="#0F8C75", font=("Arial Bold", 13), width=90, height=35, command=self.acao_buscar).pack(side="left", padx=(0, 5))
+        ctk.CTkButton(datas_frame, text="🧹 Limpar", fg_color="#F24822", hover_color="#FF4319", font=("Arial Bold", 13), width=90, height=35, command=self.acao_limpar).pack(side="left", padx=(0, 5))
+        ctk.CTkButton(datas_frame, text="📥 Excel", fg_color="#28A745", hover_color="#218838", font=("Arial Bold", 13), width=90, height=35, command=self.acao_exportar_excel).pack(side="left", padx=(0, 5))
+        ctk.CTkButton(datas_frame, text="📄 PDF", fg_color="#DC3545", hover_color="#C82333", font=("Arial Bold", 13), width=90, height=35, command=self.acao_exportar_pdf).pack(side="left")
 
         # =========================================================================
 
@@ -113,12 +116,13 @@ class RelatorioView(ctk.CTkFrame):
         self.scroll_tabela = ctk.CTkScrollableFrame(self.tabela_container, fg_color="transparent")
         self.scroll_tabela.pack(fill="both", expand=True, padx=5, pady=5)
 
+        # Ajuste de Pesos para comportar o novo Botão "Download" (Ações maiores)
         if self.tipo_relatorio == "OS":
             self.headers = ["Nº", "Data", "ID(s)", "Origem", "Ação", "Item", "Endereço", "Status", "Pasta", "Criador", "Ações"]
-            self.col_weights = [4, 7, 7, 5, 9, 10, 18, 12, 8, 8, 12]
+            self.col_weights = [4, 7, 6, 5, 8, 9, 17, 11, 7, 7, 19] # Total = 100
         else:
             self.headers = ["Nº", "Tipo", "Origem", "Processo", "Assunto", "ID(s)", "Solicitante", "Endereço", "Data", "Criador", "Ações"]
-            self.col_weights = [4, 9, 6, 9, 15, 6, 12, 17, 7, 5, 10] 
+            self.col_weights = [4, 8, 5, 8, 14, 6, 11, 15, 6, 5, 18] # Total = 100
 
         current_relx = 0.0
         for j, h in enumerate(self.headers):
@@ -153,6 +157,17 @@ class RelatorioView(ctk.CTkFrame):
         combo.bind("<Return>", lambda e: self.acao_buscar())
         self.filtros_widgets[key] = combo
 
+    def _obter_texto_filtros(self):
+        filtros_aplicados = []
+        for key, widget in self.filtros_widgets.items():
+            if hasattr(widget, "get"):
+                val = widget.get().strip()
+                if val and val != "Todos" and val != "- Sem resultados -":
+                    filtros_aplicados.append(f"{key.capitalize()}: {val}")
+        if self.usar_data_var.get():
+            filtros_aplicados.append(f"Período: {self.data_inicio.get()} à {self.data_fim.get()}")
+        return " | ".join(filtros_aplicados) if filtros_aplicados else "Nenhum (Todos os registros)"
+
     def acao_limpar(self):
         for key, widget in self.filtros_widgets.items():
             if hasattr(widget, "set") and isinstance(widget, ctk.CTkComboBox):
@@ -172,6 +187,43 @@ class RelatorioView(ctk.CTkFrame):
         self.lbl_contador.configure(text=f"{len(self.dados_completos)} resultado(s) encontrados")
         self.pagina_atual = 1
         self._renderizar_pagina()
+
+    def acao_exportar_excel(self):
+        if not self.dados_completos:
+            return messagebox.showwarning("Aviso", "Não há dados para exportar.")
+        filepath = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
+        if not filepath: return
+        
+        titulo = f"Relatório Estruturado de {self.tipo_relatorio} (Ponto de Parada)"
+        colunas = self.headers[:-1] # Exclui a coluna Ações
+        dados = [row[1:-1] for row in self.dados_completos] # Exclui ID Oculto e Caminho do ficheiro
+        
+        sucesso, msg = self.service.exportar_excel(filepath, dados, colunas, titulo, self._obter_texto_filtros())
+        if sucesso: os.startfile(filepath)
+        else: messagebox.showerror("Erro", msg)
+
+    def acao_exportar_pdf(self):
+        if not self.dados_completos:
+            return messagebox.showwarning("Aviso", "Não há dados para exportar.")
+        filepath = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
+        if not filepath: return
+        
+        titulo = f"Relatório Analítico de {self.tipo_relatorio} (Ponto de Parada)"
+        colunas = self.headers[:-1]
+        dados = [row[1:-1] for row in self.dados_completos]
+        
+        sucesso, msg = self.service.exportar_pdf(filepath, dados, colunas, titulo, self._obter_texto_filtros())
+        if sucesso: os.startfile(filepath)
+        else: messagebox.showwarning("Informação", msg)
+
+    def _acao_download(self, caminho):
+        if not caminho or caminho == "-": return
+        nome_arquivo = os.path.basename(caminho)
+        destino = filedialog.asksaveasfilename(defaultextension=".docx", initialfile=nome_arquivo, title="Salvar Documento", filetypes=[("Word", "*.docx")])
+        if destino:
+            s, m = self.service.baixar_arquivo(caminho, destino)
+            if s: messagebox.showinfo("Sucesso", m)
+            else: messagebox.showerror("Erro", m)
 
     def _renderizar_pagina(self):
         for w in self.scroll_tabela.winfo_children(): w.destroy()
@@ -224,6 +276,7 @@ class RelatorioView(ctk.CTkFrame):
                 
                 current_relx += w_pct
 
+            # COLUNA DE AÇÕES COM 4 BOTÕES (Adicionado o de Download)
             w_pct_acoes = self.col_weights[-1] / 100.0
             frame_coluna_acoes = ctk.CTkFrame(linha_frame, fg_color="transparent")
             frame_coluna_acoes.place(relx=current_relx, rely=0, relwidth=w_pct_acoes, relheight=1)
@@ -231,15 +284,16 @@ class RelatorioView(ctk.CTkFrame):
             frame_botoes = ctk.CTkFrame(frame_coluna_acoes, fg_color="transparent")
             frame_botoes.place(relx=0.5, rely=0.5, anchor="center")
 
-            ctk.CTkButton(frame_botoes, text="🔍", font=("Arial", 16), fg_color="#F24822", hover_color="#FF522B", width=45, height=32, command=lambda id_reg=id_banco_invisivel: self._acao_detalhes(id_reg)).pack(side="left", padx=3)
+            ctk.CTkButton(frame_botoes, text="🔍", font=("Arial", 16), fg_color="#F24822", hover_color="#FF522B", width=32, height=28, command=lambda id_reg=id_banco_invisivel: self._acao_detalhes(id_reg)).pack(side="left", padx=2)
 
             if caminho_arquivo and caminho_arquivo != "-":
-                ctk.CTkButton(frame_botoes, text="📄", font=("Arial Bold", 16), fg_color="#0F8C75", hover_color="#0B6B59", width=75, height=32, command=lambda p=caminho_arquivo: self._abrir_word(p)).pack(side="left", padx=3)
+                ctk.CTkButton(frame_botoes, text="📄", font=("Arial Bold", 16), fg_color="#0F8C75", hover_color="#0B6B59", width=32, height=28, command=lambda p=caminho_arquivo: self._abrir_word(p)).pack(side="left", padx=2)
+                ctk.CTkButton(frame_botoes, text="⬇️", font=("Arial Bold", 15), fg_color="#17A2B8", hover_color="#138496", width=32, height=28, command=lambda p=caminho_arquivo: self._acao_download(p)).pack(side="left", padx=2)
             else:
-                ctk.CTkLabel(frame_botoes, text="-", width=75, anchor="center").pack(side="left", padx=3)
+                ctk.CTkLabel(frame_botoes, text="-", width=68, anchor="center").pack(side="left", padx=2)
 
             if self.is_admin:
-                ctk.CTkButton(frame_botoes, text="🗑️", anchor="center", font=("Arial", 16),fg_color="#D32F2F", hover_color="#B71C1C", width=45, height=32, command=lambda id_reg=id_banco_invisivel: self._acao_excluir(id_reg)).pack(side="left", padx=3)
+                ctk.CTkButton(frame_botoes, text="🗑️", anchor="center", font=("Arial", 16),fg_color="#D32F2F", hover_color="#B71C1C", width=32, height=28, command=lambda id_reg=id_banco_invisivel: self._acao_excluir(id_reg)).pack(side="left", padx=2)
                 
     def _proxima_pagina(self):
         self.pagina_atual += 1
