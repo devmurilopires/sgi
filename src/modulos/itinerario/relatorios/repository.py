@@ -6,7 +6,8 @@ class RelatorioItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT nome FROM public.empresas ORDER BY nome;")
+                    # Busca da nova tabela comum
+                    cur.execute("SELECT nome FROM common.empresas WHERE ativo = TRUE ORDER BY nome;")
                     return [r[0] for r in cur.fetchall()]
         except: return []
 
@@ -14,7 +15,8 @@ class RelatorioItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT nome FROM common.linhas ORDER BY nome;")
+                    # Concatenação inteligente de Código + Nome
+                    cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas WHERE ativo = TRUE ORDER BY codigo;")
                     return [r[0] for r in cur.fetchall()]
         except: return []
 
@@ -31,8 +33,6 @@ class RelatorioItinerarioRepository:
             query += " AND processo_adm ILIKE %s"; params.append(f"%{filtros['processo']}%")
         if filtros.get('tipo_os') and filtros['tipo_os'] != "Todos":
             query += " AND TRIM(tipo_evento) ILIKE %s"; params.append(f"%{filtros['tipo_os'].strip()}%")
-        
-        # Filtro de Origem restaurado
         if filtros.get('origem') and filtros['origem'] != "Todos":
             query += " AND origem ILIKE %s"; params.append(f"%{filtros['origem']}%")
             
@@ -72,8 +72,6 @@ class RelatorioItinerarioRepository:
             query += " AND p.processo ILIKE %s"; params.append(f"%{filtros['processo']}%")
         if filtros.get('tipo') and filtros['tipo'] != "Todos":
             query += " AND TRIM(p.tipo_parecer) ILIKE %s"; params.append(f"%{filtros['tipo'].strip()}%")
-            
-        # Filtro de Origem restaurado
         if filtros.get('origem') and filtros['origem'] != "Todos":
             query += " AND p.origem ILIKE %s"; params.append(f"%{filtros['origem']}%")
             

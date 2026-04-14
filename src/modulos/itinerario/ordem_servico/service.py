@@ -11,7 +11,7 @@ class OSItinerarioService:
     def __init__(self):
         self.repo = OSItinerarioRepository()
         self.ano_atual = datetime.now().year
-        self.output_root = r"\\172.20.0.57\dados\DIPLA\AA Itinerarios - OS\FAX 2026 - SIGA"
+        self.output_root = r"\\172.20.0.57\dados\DIPLA\ARQUIVOS SIGP - SIGA - SPR\ITINERARIO\ORDENS DE SERVICO"
         os.makedirs(self.output_root, exist_ok=True)
 
     def formatar_lista_com_e(self, lista):

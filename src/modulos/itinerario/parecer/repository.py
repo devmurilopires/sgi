@@ -6,9 +6,12 @@ class ParecerItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT nome FROM common.linhas ORDER BY nome;")
+                    # Concatena o código e o nome diretamente no banco de dados
+                    cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas WHERE ativo = TRUE ORDER BY codigo;")
                     return [r[0] for r in cur.fetchall()]
-        except Exception as e: return []
+        except Exception as e: 
+            print(f"Erro ao buscar linhas formatadas: {e}")
+            return []
 
     def obter_proximo_numero_parecer(self, tipo):
         try:
@@ -26,7 +29,6 @@ class ParecerItinerarioRepository:
             RETURNING id;
         """
         
-        # AQUI FOI INSERIDA A NOVA COLUNA "origem"
         query_especifica = """
             INSERT INTO siga.pareceres (
                 id, processo, tipo_parecer, origem, assunto, evento, data_evento, periodo, 

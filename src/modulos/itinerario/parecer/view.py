@@ -1,8 +1,106 @@
 import customtkinter as ctk
-from tkinter import messagebox
+import tkinter as tk
+from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 import re
 from src.modulos.itinerario.parecer.service import ParecerItinerarioService
+
+MODERN_STYLE = {
+    "fg_color": "#FFFFFF",
+    "text_color": "#333333",
+    "border_color": "#CCCCCC",
+    "button_color": "#E0E0E0",
+    "button_hover_color": "#CCCCCC",
+    "dropdown_fg_color": "#FFFFFF",
+    "dropdown_text_color": "#333333",
+    "dropdown_hover_color": "#0F8C75"
+}
+
+class ModernAutocomplete(ctk.CTkFrame):
+    def __init__(self, master, values, width=250, **kwargs):
+        super().__init__(master, fg_color="transparent", width=width, height=35, **kwargs)
+        self.pack_propagate(False)
+        self.values = values
+        
+        self.entry = ctk.CTkEntry(self, width=width, height=35, fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
+        self.entry.pack(fill="both", expand=True)
+        self.entry.insert(0, "") 
+
+        self.listbox_frame = None
+
+        self.entry.bind("<KeyRelease>", self._on_keyrelease)
+        self.entry.bind("<FocusOut>", self._on_focusout)
+        self.entry.bind("<FocusIn>", self._on_keyrelease) 
+        self.entry.bind("<Button-1>", self._on_keyrelease) 
+
+    def _on_keyrelease(self, event):
+        if event and getattr(event, 'keysym', '') in ['Up', 'Down', 'Return', 'Escape', 'Tab']:
+            return
+        
+        val = self.entry.get().lower()
+        hits = [item for item in self.values if val in item.lower()] if val else self.values
+        self._show_listbox(hits)
+
+    def _show_listbox(self, hits):
+        self._hide_listbox()
+        if not hits: return
+
+        toplevel = self.winfo_toplevel()
+        x = self.entry.winfo_rootx() - toplevel.winfo_rootx()
+        y = self.entry.winfo_rooty() - toplevel.winfo_rooty() + self.entry.winfo_height()
+
+        w = self.entry.winfo_width()
+        h = min(150, len(hits)*25 + 5)
+
+        self.listbox_frame = ctk.CTkFrame(toplevel, width=w, height=h, fg_color="#FFFFFF", border_width=1, border_color="#0F8C75", corner_radius=4)
+        self.listbox_frame.pack_propagate(False) 
+        self.listbox_frame.place(x=x, y=y) 
+
+        self.listbox = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#0F8C75", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox.pack(side="left", fill="both", expand=True, padx=2, pady=2)
+
+        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.listbox.config(yscrollcommand=scrollbar.set)
+
+        for hit in hits:
+            self.listbox.insert("end", hit)
+
+        self.listbox.bind("<<ListboxSelect>>", self._on_select)
+
+    def _on_select(self, event):
+        if not self.listbox: return
+        selection = self.listbox.curselection()
+        if selection:
+            item = self.listbox.get(selection[0])
+            self.entry.delete(0, "end")
+            self.entry.insert(0, item)
+            self.entry.event_generate("<KeyRelease>")
+        self._hide_listbox()
+
+    def _hide_listbox(self):
+        if hasattr(self, 'listbox_frame') and self.listbox_frame:
+            self.listbox_frame.destroy()
+            self.listbox_frame = None
+
+    def _on_focusout(self, event):
+        self.after(150, self._hide_listbox)
+
+    def get(self):
+        return self.entry.get()
+
+    def set(self, value):
+        self.entry.delete(0, "end")
+        if value: self.entry.insert(0, value)
+
+    def configure(self, **kwargs):
+        if "state" in kwargs:
+            self.entry.configure(state=kwargs["state"])
+        if "values" in kwargs:
+            self.values = kwargs["values"]
+
+    def bind(self, sequence, func, add="+"):
+        self.entry.bind(sequence, func, add=add)
 
 class ParecerItinerarioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -34,9 +132,6 @@ class ParecerItinerarioView(ctk.CTkFrame):
         header_frame.pack(fill="x", pady=(0, 15))
         ctk.CTkLabel(header_frame, text="Gerador de Parecer Técnico (Itinerário)", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
 
-        # =====================================================================
-        # FORMULÁRIO PRINCIPAL (Layout Grid Alinhado: Base 250px)
-        # =====================================================================
         form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E0E0E0")
         form_frame.pack(fill="x", pady=10, padx=10)
 
@@ -49,15 +144,27 @@ class ParecerItinerarioView(ctk.CTkFrame):
         cb_tipo.configure(variable=self.tipo_var, command=self._on_tipo_change)
         
         self.processo_entry = self._criar_campo_grid(grid_master, "Nº Processo", 250, 0, 1)
-        self.processo_entry.bind("<KeyRelease>", lambda e: self.processo_entry.delete(0, "end") or self.processo_entry.insert(0, self.processo_entry.get().upper()))
-        
+
+        # --- CORREÇÃO DO BUG AQUI (Lê, Converte, Mantém Posição do Cursor) ---
+        def upper_processo_par(event):
+            if getattr(event, 'keysym', '') in ['Up', 'Down', 'Left', 'Right', 'Home', 'End']: return
+            texto = self.processo_entry.get()
+            if texto != texto.upper():
+                pos = self.processo_entry.index("insert")
+                self.processo_entry.delete(0, "end")
+                self.processo_entry.insert(0, texto.upper())
+                self.processo_entry.icursor(pos)
+                
+        self.processo_entry.bind("<KeyRelease>", upper_processo_par)
+        # ---------------------------------------------------------------------
+
         self.solicitante_combo = self._criar_autocomplete_grid(grid_master, "Solicitante", 250, self.lista_solicitantes, 0, 2)
 
         # --- LINHA 1 ---
         self.assunto_combo = self._criar_autocomplete_grid(grid_master, "Assunto", 250, self.lista_assuntos, 1, 0)
         self.endereco_entry = self._criar_campo_grid(grid_master, "Endereço / Logradouro", 520, 1, 1, columnspan=2)
 
-        # --- LINHA 2 (Eventos e Novos Checkboxes) ---
+        # --- LINHA 2 ---
         self.evento_combo = self._criar_autocomplete_grid(grid_master, "Evento", 250, self.lista_eventos, 2, 0)
         
         cb_evento_frame = ctk.CTkFrame(grid_master, fg_color="transparent")
@@ -74,7 +181,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
         self.no_hora_var = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(cb_data_hora_frame, text="Sem Horário", variable=self.no_hora_var, command=self._toggle_hora, font=("Arial Bold", 12)).pack(side="left", pady=(24,0))
 
-        # --- LINHA 3 (Seleção de Modo e Horários) ---
+        # --- LINHA 3 ---
         HORARIOS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
         self.modo_data_var = ctk.StringVar(value="Período (Início-Fim)")
         self.modo_combo = self._criar_combo_grid(grid_master, "Seleção de Datas", 250, ["Período (Início-Fim)", "Dias Isolados"], 3, 0)
@@ -83,17 +190,15 @@ class ParecerItinerarioView(ctk.CTkFrame):
         self.hr_inicio = self._criar_combo_grid(grid_master, "Hora Início", 250, HORARIOS, 3, 1)
         self.hr_fim = self._criar_combo_grid(grid_master, "Hora Fim", 250, HORARIOS, 3, 2)
 
-        # --- LINHA 4 (Container do Calendário + ORIGEM) ---
-        # Container do calendário reduzido para caber perfeitamente nas colunas 0 e 1
+        # --- LINHA 4 ---
         self.container_datas = ctk.CTkFrame(grid_master, fg_color="transparent")
         self.container_datas.grid(row=4, column=0, columnspan=2, sticky="w", padx=0, pady=5)
         self._on_modo_data_change()
 
-        # O Novo Campo de Origem inserido EXATAMENTE abaixo do "Hora Fim" (Coluna 2)
         self.origem_combo = self._criar_combo_grid(grid_master, "Origem", 250, ["SISGEP", "SPU"], 4, 2)
 
         # =====================================================================
-        # CONTAINER DINÂMICO (DEFERIDO vs INDEFERIDO)
+        # CONTAINER DINÂMICO
         # =====================================================================
         self.container_dinamico = ctk.CTkFrame(form_frame, fg_color="transparent")
         self.container_dinamico.pack(fill="x", pady=(0, 15), padx=15)
@@ -110,7 +215,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        entry = ctk.CTkEntry(frame, width=width, height=35, font=("Arial", 12))
+        entry = ctk.CTkEntry(frame, width=width, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
         entry.pack(anchor="w", pady=(2,0))
         return entry
         
@@ -118,21 +223,18 @@ class ParecerItinerarioView(ctk.CTkFrame):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), state=state)
+        combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), state=state, **MODERN_STYLE)
         combo.pack(anchor="w", pady=(2,0))
         return combo
 
     def _criar_autocomplete_grid(self, parent, label, width, values, row, col, columnspan=1):
-        combo = self._criar_combo_grid(parent, label, width, values, row, col, columnspan, state="normal")
-        combo._valores_originais = values
-        def on_key(event):
-            valor_digitado = combo.get().lower()
-            if not valor_digitado: combo.configure(values=combo._valores_originais)
-            else:
-                filtrados = [v for v in combo._valores_originais if valor_digitado in v.lower()]
-                combo.configure(values=filtrados if filtrados else ["- Sem resultados -"])
-        combo.bind("<KeyRelease>", on_key)
-        return combo
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        
+        autocomplete = ModernAutocomplete(frame, values=values, width=width)
+        autocomplete.pack(anchor="w", pady=(2,0))
+        return autocomplete
 
     def _criar_date_wrapper(self, parent, width):
         container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
@@ -141,7 +243,6 @@ class ParecerItinerarioView(ctk.CTkFrame):
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
 
-    # --- CONTROLO DE ESTADO INDEPENDENTE ---
     def _toggle_evento(self):
         estado = "disabled" if self.no_evento_var.get() else "normal"
         self.evento_combo.configure(state=estado)
@@ -151,28 +252,23 @@ class ParecerItinerarioView(ctk.CTkFrame):
         estado = "disabled" if self.no_data_var.get() else "normal"
         self.modo_combo.configure(state=estado)
         
-        if hasattr(self, 'data_inicio') and self.data_inicio.winfo_exists():
-            self.data_inicio.configure(state=estado)
-        if hasattr(self, 'data_fim') and self.data_fim.winfo_exists():
-            self.data_fim.configure(state=estado)
-        if hasattr(self, 'data_isolada') and self.data_isolada.winfo_exists():
-            self.data_isolada.configure(state=estado)
-        if hasattr(self, 'btn_add_data') and self.btn_add_data.winfo_exists():
-            self.btn_add_data.configure(state=estado)
+        if hasattr(self, 'data_inicio') and self.data_inicio.winfo_exists(): self.data_inicio.configure(state=estado)
+        if hasattr(self, 'data_fim') and self.data_fim.winfo_exists(): self.data_fim.configure(state=estado)
+        if hasattr(self, 'data_isolada') and self.data_isolada.winfo_exists(): self.data_isolada.configure(state=estado)
+        if hasattr(self, 'btn_add_data') and self.btn_add_data.winfo_exists(): self.btn_add_data.configure(state=estado)
 
         if self.no_data_var.get():
             self.datas_isoladas_add.clear()
             self._render_datas_chips()
 
     def _toggle_hora(self):
-        estado = "disabled" if self.no_hora_var.get() else "normal"
+        estado = "disabled" if self.no_hora_var.get() else "readonly"
         self.hr_inicio.configure(state=estado)
         self.hr_fim.configure(state=estado)
         if self.no_hora_var.get():
             self.hr_inicio.set("")
             self.hr_fim.set("")
 
-    # --- MÓDULO DE DATAS ---
     def _on_modo_data_change(self, *args):
         for w in self.container_datas.winfo_children(): w.destroy()
         modo = self.modo_data_var.get()
@@ -235,18 +331,17 @@ class ParecerItinerarioView(ctk.CTkFrame):
             ctk.CTkLabel(chip, text=d, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
             ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda date=d: self._remove_data_isolada(date)).pack(side="right", padx=5)
 
-    # --- DINAMISMO (DEFERIDO vs INDEFERIDO) ---
     def _on_tipo_change(self, *args):
         for w in self.container_dinamico.winfo_children(): w.destroy()
         tipo = self.tipo_var.get()
         
         if tipo == "DEFERIDO":
-            self.lista_linhas = self.service.buscar_sugestoes_linhas()
+            self.lista_linhas_banco = self.service.buscar_sugestoes_linhas()
             
             add_lin_row = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
             add_lin_row.pack(fill="x", anchor="w")
             
-            self.linha_combo = self._criar_autocomplete_grid(add_lin_row, "Pesquise a Linha Afetada", 250, self.lista_linhas, 0, 0)
+            self.linha_combo = self._criar_autocomplete_grid(add_lin_row, "Pesquise a Linha Afetada", 250, self.lista_linhas_banco, 0, 0)
             ctk.CTkButton(add_lin_row, text="➕ Add Linha", width=100, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_linha).grid(row=0, column=1, sticky="s", pady=(0,10), padx=10)
             
             self.frame_chips_linhas = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
@@ -255,14 +350,15 @@ class ParecerItinerarioView(ctk.CTkFrame):
         else:
             frame_motivo = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
             frame_motivo.pack(fill="x", padx=10, pady=5)
-            ctk.CTkLabel(frame_motivo, text="Motivo do Indeferimento:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-            self.motivo_text = ctk.CTkTextbox(frame_motivo, height=80, border_width=2)
+            ctk.CTkLabel(frame_motivo, text="Motivo do Indeferimento:", font=("Arial Bold", 12), text_color="#D32F2F").pack(anchor="w")
+            self.motivo_text = ctk.CTkTextbox(frame_motivo, height=80, border_width=2, fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
             self.motivo_text.pack(fill="x", pady=(2,0))
 
     def _add_linha(self):
         lin = self.linha_combo.get().strip()
         if lin and lin != "- Sem resultados -" and lin not in self.linhas_add:
             self.linhas_add.append(lin)
+            self.linha_combo.set("") 
             self._render_linhas_chips()
 
     def _remove_linha(self, lin):
@@ -281,7 +377,6 @@ class ParecerItinerarioView(ctk.CTkFrame):
             ctk.CTkLabel(chip, text=lin, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
             ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda l=lin: self._remove_linha(l)).pack(side="right", padx=5)
 
-    # --- AÇÃO PRINCIPAL ---
     def acao_gerar(self):
         tipo = self.tipo_var.get()
         
@@ -303,7 +398,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
             
         dados_form = {
             "processo": self.processo_entry.get().strip(),
-            "origem": self.origem_combo.get().strip(), # <-- NOVA CHAVE EXTRAÍDA AQUI
+            "origem": self.origem_combo.get().strip(),
             "solicitante": self.solicitante_combo.get().strip(),
             "assunto": self.assunto_combo.get().strip(),
             "evento": self.evento_combo.get() if not self.no_evento_var.get() else "",

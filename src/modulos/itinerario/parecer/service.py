@@ -11,8 +11,8 @@ from src.modulos.itinerario.parecer.repository import ParecerItinerarioRepositor
 class ParecerItinerarioService:
     def __init__(self):
         self.repo = ParecerItinerarioRepository()
-        self.pasta_deferido = r"\\172.20.0.57\dados\DIPLA\AA Itinerários - Pareceres Tecnicos\Z 2026 - SIGA\DEFERIDO"
-        self.pasta_indeferido = r"\\172.20.0.57\dados\DIPLA\AA Itinerários - Pareceres Tecnicos\Z 2026 - SIGA\INDEFERIDO"
+        self.pasta_deferido = r"\\172.20.0.57\dados\DIPLA\ARQUIVOS SIGP - SIGA - SPR\ITINERARIO\PARECERES\DEFERIDO"
+        self.pasta_indeferido = r"\\172.20.0.57\dados\DIPLA\ARQUIVOS SIGP - SIGA - SPR\ITINERARIO\PARECERES\INDEFERIDO"
 
     def buscar_sugestoes_linhas(self):
         return self.repo.buscar_linhas()

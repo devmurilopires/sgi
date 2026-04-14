@@ -1,10 +1,105 @@
 import math
 import os
 import customtkinter as ctk
-from tkinter import messagebox, filedialog
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 from src.modulos.itinerario.relatorios.service import RelatorioItinerarioService
 
+# --- ESTILIZAÇÃO MODERNA PARA DROPDOWNS NORMAIS ---
+MODERN_STYLE = {
+    "fg_color": "#FFFFFF",
+    "text_color": "#333333",
+    "border_color": "#CCCCCC",
+    "button_color": "#E0E0E0",
+    "button_hover_color": "#CCCCCC",
+    "dropdown_fg_color": "#FFFFFF",
+    "dropdown_text_color": "#333333",
+    "dropdown_hover_color": "#0F8C75"
+}
+
+# =====================================================================
+# COMPONENTE: AUTOCOMPLETE MODERNO COM POPUP (WEB-LIKE)
+# =====================================================================
+class ModernAutocomplete(ctk.CTkFrame):
+    def __init__(self, master, values, width=250, **kwargs):
+        super().__init__(master, fg_color="transparent", width=width, height=35, **kwargs)
+        self.pack_propagate(False)
+        self.values = values
+        
+        self.entry = ctk.CTkEntry(self, width=width, height=35, fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
+        self.entry.pack(fill="both", expand=True)
+        self.entry.insert(0, "")
+
+        self.listbox_frame = None
+
+        self.entry.bind("<KeyRelease>", self._on_keyrelease)
+        self.entry.bind("<FocusOut>", self._on_focusout)
+        self.entry.bind("<FocusIn>", self._on_keyrelease) 
+        self.entry.bind("<Button-1>", self._on_keyrelease) 
+
+    def _on_keyrelease(self, event):
+        if event and getattr(event, 'keysym', '') in ['Up', 'Down', 'Return', 'Escape', 'Tab']: return
+        
+        val = self.entry.get().lower()
+        hits = [item for item in self.values if val in item.lower()] if val else self.values
+        self._show_listbox(hits)
+
+    def _show_listbox(self, hits):
+        self._hide_listbox()
+        if not hits: return
+
+        toplevel = self.winfo_toplevel()
+        x = self.entry.winfo_rootx() - toplevel.winfo_rootx()
+        y = self.entry.winfo_rooty() - toplevel.winfo_rooty() + self.entry.winfo_height()
+
+        w = self.entry.winfo_width()
+        h = min(150, len(hits)*25 + 5)
+
+        self.listbox_frame = ctk.CTkFrame(toplevel, width=w, height=h, fg_color="#FFFFFF", border_width=1, border_color="#0F8C75", corner_radius=4)
+        self.listbox_frame.pack_propagate(False)
+        self.listbox_frame.place(x=x, y=y)
+
+        self.listbox = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#0F8C75", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox.pack(side="left", fill="both", expand=True, padx=2, pady=2)
+
+        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.listbox.config(yscrollcommand=scrollbar.set)
+
+        for hit in hits: self.listbox.insert("end", hit)
+        self.listbox.bind("<<ListboxSelect>>", self._on_select)
+
+    def _on_select(self, event):
+        if not self.listbox: return
+        selection = self.listbox.curselection()
+        if selection:
+            item = self.listbox.get(selection[0])
+            self.entry.delete(0, "end")
+            self.entry.insert(0, item)
+            self.entry.event_generate("<KeyRelease>")
+        self._hide_listbox()
+
+    def _hide_listbox(self):
+        if hasattr(self, 'listbox_frame') and self.listbox_frame:
+            self.listbox_frame.destroy()
+            self.listbox_frame = None
+
+    def _on_focusout(self, event):
+        self.after(150, self._hide_listbox)
+
+    def get(self): return self.entry.get()
+    def set(self, value):
+        self.entry.delete(0, "end")
+        if value: self.entry.insert(0, value)
+
+    # CORREÇÃO: add="+" obrigatório no CustomTkinter para não apagar eventos internos
+    def bind(self, sequence, func, add="+"):
+        self.entry.bind(sequence, func, add=add)
+
+# =====================================================================
+# VIEW PRINCIPAL 
+# =====================================================================
 class RelatorioItinerarioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado, tipo_relatorio):
         super().__init__(master, fg_color="transparent")
@@ -37,7 +132,7 @@ class RelatorioItinerarioView(ctk.CTkFrame):
         self.lista_assuntos = ["Alteração de itinerário", "Desvio temporário de itinerário para Obra" , "Desvio temporário de itinerário para Evento", "Desvio temporário de itinerário para Corrida", "Implantação de linha", "Outros"]
 
         # =========================================================================
-        # LAYOUT DE FILTROS (Assunto Autocomplete vs Origem Combobox)
+        # LAYOUT DE FILTROS COM OS NOVOS COMPONENTES
         # =========================================================================
         if self.tipo_relatorio == "OS":
             self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 0, width=90)
@@ -52,7 +147,6 @@ class RelatorioItinerarioView(ctk.CTkFrame):
             datas_frame.grid(row=1, column=0, columnspan=7, pady=(15,5), sticky="w", padx=5)
 
         else:
-            # Assunto recuperado como Autocomplete e Origem isolada!
             self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 0, 0, width=200)
             self._add_filtro_grid(grid_frame, "Nº Parecer", "numero_parecer", 0, 1, width=130)
             self._add_autocomplete_grid(grid_frame, "Linha", "linha", 270, self.lista_linhas, 0, 2)
@@ -98,7 +192,7 @@ class RelatorioItinerarioView(ctk.CTkFrame):
         self.btn_prox = ctk.CTkButton(pag_frame, text=">", width=35, height=30, fg_color="#0F8C75", hover_color="#0B6B59", font=("Arial Black", 14), command=self._proxima_pagina)
         self.btn_prox.pack(side="left", padx=5)
 
-        # TABELA RESPONSIVA (Com a Origem incluída)
+        # TABELA RESPONSIVA
         self.tabela_container = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=10)
         self.tabela_container.pack(fill="both", expand=True, padx=20, pady=(0, 15))
         
@@ -127,12 +221,12 @@ class RelatorioItinerarioView(ctk.CTkFrame):
             lbl.pack(fill="both", expand=True, padx=5)
             current_relx += w_pct
 
-    # --- HELPERS UI ---
+    # --- HELPERS UI MODERNOS ---
     def _add_filtro_grid(self, parent, label, key, row, col, width=120, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=5, pady=2, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        entry = ctk.CTkEntry(frame, width=width, height=35, font=("Arial", 12))
+        entry = ctk.CTkEntry(frame, width=width, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
         entry.pack(anchor="w")
         entry.bind("<Return>", lambda e: self.acao_buscar())
         self.filtros_widgets[key] = entry
@@ -141,10 +235,9 @@ class RelatorioItinerarioView(ctk.CTkFrame):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=5, pady=2, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = ctk.CTkComboBox(frame, values=values, width=width, height=35, font=("Arial", 12), state="readonly")
+        combo = ctk.CTkComboBox(frame, values=values, width=width, height=35, font=("Arial", 12), state="readonly", **MODERN_STYLE)
         combo.set(values[0])
         combo.pack(anchor="w")
-        combo.bind("<Return>", lambda e: self.acao_buscar())
         self.filtros_widgets[key] = combo
 
     def _add_autocomplete_grid(self, parent, label, key, width, values, row, col, columnspan=1):
@@ -152,19 +245,12 @@ class RelatorioItinerarioView(ctk.CTkFrame):
         frame.grid(row=row, column=col, columnspan=columnspan, padx=5, pady=2, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
         
-        combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), state="normal")
-        combo.set("") 
-        combo.pack(anchor="w")
-        combo._valores_originais = values
+        # APLICA O AUTOCOMPLETE MODERNO AQUI TAMBÉM
+        autocomplete = ModernAutocomplete(frame, values=values, width=width)
+        autocomplete.pack(anchor="w")
+        autocomplete.bind("<Return>", lambda e: self.acao_buscar())
         
-        def on_key(event):
-            valor_digitado = combo.get().lower()
-            if not valor_digitado: combo.configure(values=combo._valores_originais)
-            else:
-                filtrados = [v for v in combo._valores_originais if valor_digitado in v.lower()]
-                combo.configure(values=filtrados if filtrados else ["- Sem resultados -"])
-        combo.bind("<KeyRelease>", on_key)
-        self.filtros_widgets[key] = combo
+        self.filtros_widgets[key] = autocomplete
 
     def _criar_date_wrapper(self, parent, width):
         container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
@@ -188,6 +274,8 @@ class RelatorioItinerarioView(ctk.CTkFrame):
             if isinstance(widget, ctk.CTkComboBox):
                 if widget.cget("state") == "readonly": widget.set(widget.cget("values")[0])
                 else: widget.set("")
+            elif isinstance(widget, ModernAutocomplete):
+                widget.set("")
             elif isinstance(widget, ctk.CTkEntry):
                 widget.delete(0, "end")
         self.usar_data_var.set(False)
@@ -265,9 +353,9 @@ class RelatorioItinerarioView(ctk.CTkFrame):
                 texto = str(val) if val and str(val) != "None" else "-"
                 cor_txt = "#333333"
                 
-                if self.tipo_relatorio == "PARECER" and j == 2: # Situação
+                if self.tipo_relatorio == "PARECER" and j == 2: 
                     cor_txt = "#D32F2F" if "INDEFERIDO" in texto else "#0F8C75"
-                if self.tipo_relatorio == "OS" and j == 2: # Tipo OS
+                if self.tipo_relatorio == "OS" and j == 2: 
                     texto = texto.upper()
 
                 w_pct = self.col_weights[j] / 100.0
@@ -289,7 +377,6 @@ class RelatorioItinerarioView(ctk.CTkFrame):
             fb = ctk.CTkFrame(frame_acoes, fg_color="transparent")
             fb.place(relx=0.5, rely=0.5, anchor="center")
 
-            # Botões Ajustados
             ctk.CTkButton(fb, text="🔍", font=("Arial", 16), fg_color="#F24822", hover_color="#FF522B", width=30, height=28, command=lambda id_reg=id_banco_invisivel: self._acao_detalhes(id_reg)).pack(side="left", padx=2)
             
             if caminho_arquivo and caminho_arquivo != "None":

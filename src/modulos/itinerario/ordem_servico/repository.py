@@ -8,17 +8,23 @@ class OSItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT nome FROM public.empresas ORDER BY nome;")
+                    # Aponta para o novo schema 'common' e filtra as ativas
+                    cur.execute("SELECT nome FROM common.empresas WHERE ativo = TRUE ORDER BY nome;")
                     return [r[0] for r in cur.fetchall()]
-        except: return []
+        except Exception as e: 
+            print(f"Erro ao buscar empresas: {e}")
+            return []
 
     def buscar_linhas(self):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT nome FROM common.linhas ORDER BY nome;")
+                    # Concatena o código e o nome da linha diretamente na query
+                    cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas WHERE ativo = TRUE ORDER BY codigo;")
                     return [r[0] for r in cur.fetchall()]
-        except: return []
+        except Exception as e:
+            print(f"Erro ao buscar linhas: {e}")
+            return []
 
     def obter_proximo_numero_os(self, pasta_destino):
         try:
@@ -36,7 +42,6 @@ class OSItinerarioRepository:
         except: return 1
 
     def salvar_os_itinerario(self, dados_db):
-        # AQUI FOI INSERIDA A NOVA COLUNA "origem"
         query = """
             INSERT INTO siga.ordens_servico (
                 numero, ano, tipo_evento, processo_adm, origem, empresas_text, endereco,

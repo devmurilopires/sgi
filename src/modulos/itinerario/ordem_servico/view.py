@@ -1,8 +1,98 @@
 import customtkinter as ctk
-from tkinter import messagebox, filedialog
+import tkinter as tk
+from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 import re
 from src.modulos.itinerario.ordem_servico.service import OSItinerarioService
+
+MODERN_STYLE = {
+    "fg_color": "#FFFFFF",
+    "text_color": "#333333",
+    "border_color": "#CCCCCC",
+    "button_color": "#E0E0E0",
+    "button_hover_color": "#CCCCCC",
+    "dropdown_fg_color": "#FFFFFF",
+    "dropdown_text_color": "#333333",
+    "dropdown_hover_color": "#0F8C75"
+}
+
+class ModernAutocomplete(ctk.CTkFrame):
+    def __init__(self, master, values, width=250, **kwargs):
+        super().__init__(master, fg_color="transparent", width=width, height=35, **kwargs)
+        self.pack_propagate(False)
+        self.values = values
+        
+        self.entry = ctk.CTkEntry(self, width=width, height=35, fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
+        self.entry.pack(fill="both", expand=True)
+        self.entry.insert(0, "")
+
+        self.listbox_frame = None
+
+        self.entry.bind("<KeyRelease>", self._on_keyrelease)
+        self.entry.bind("<FocusOut>", self._on_focusout)
+        self.entry.bind("<FocusIn>", self._on_keyrelease) 
+        self.entry.bind("<Button-1>", self._on_keyrelease) 
+
+    def _on_keyrelease(self, event):
+        if event and getattr(event, 'keysym', '') in ['Up', 'Down', 'Return', 'Escape', 'Tab']: return
+        
+        val = self.entry.get().lower()
+        hits = [item for item in self.values if val in item.lower()] if val else self.values
+        self._show_listbox(hits)
+
+    def _show_listbox(self, hits):
+        self._hide_listbox()
+        if not hits: return
+
+        toplevel = self.winfo_toplevel()
+        x = self.entry.winfo_rootx() - toplevel.winfo_rootx()
+        y = self.entry.winfo_rooty() - toplevel.winfo_rooty() + self.entry.winfo_height()
+
+        w = self.entry.winfo_width()
+        h = min(150, len(hits)*25 + 5)
+
+        self.listbox_frame = ctk.CTkFrame(toplevel, width=w, height=h, fg_color="#FFFFFF", border_width=1, border_color="#0F8C75", corner_radius=4)
+        self.listbox_frame.pack_propagate(False)
+        self.listbox_frame.place(x=x, y=y) 
+
+        self.listbox = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#0F8C75", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox.pack(side="left", fill="both", expand=True, padx=2, pady=2)
+
+        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.listbox.config(yscrollcommand=scrollbar.set)
+
+        for hit in hits:
+            self.listbox.insert("end", hit)
+
+        self.listbox.bind("<<ListboxSelect>>", self._on_select)
+
+    def _on_select(self, event):
+        if not self.listbox: return
+        selection = self.listbox.curselection()
+        if selection:
+            item = self.listbox.get(selection[0])
+            self.entry.delete(0, "end")
+            self.entry.insert(0, item)
+            self.entry.event_generate("<KeyRelease>")
+        self._hide_listbox()
+
+    def _hide_listbox(self):
+        if hasattr(self, 'listbox_frame') and self.listbox_frame:
+            self.listbox_frame.destroy()
+            self.listbox_frame = None
+
+    def _on_focusout(self, event):
+        self.after(150, self._hide_listbox)
+
+    def get(self): return self.entry.get()
+    def set(self, value):
+        self.entry.delete(0, "end")
+        if value: self.entry.insert(0, value)
+    def configure(self, **kwargs):
+        if "state" in kwargs: self.entry.configure(state=kwargs["state"])
+        if "values" in kwargs: self.values = kwargs["values"]
+
 
 class OSItinerarioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -23,14 +113,10 @@ class OSItinerarioView(ctk.CTkFrame):
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#F8F9FA")
         self.scroll_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
-        # --- CABEÇALHO ---
         header_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 15))
         ctk.CTkLabel(header_frame, text="Gerador de Ordem de Serviço (Itinerário)", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
 
-        # =====================================================================
-        # FORMULÁRIO PRINCIPAL (Grelha Matemática: Base 250px)
-        # =====================================================================
         form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E0E0E0")
         form_frame.pack(fill="x", pady=10, padx=10)
 
@@ -38,22 +124,29 @@ class OSItinerarioView(ctk.CTkFrame):
         linha_fixa.pack(fill="x", pady=(15, 0), padx=15)
 
         self.tipo_os_var = ctk.StringVar(value="EVENTOS")
-        # Coluna 0
         cb_tipo = self._criar_combo_grid(linha_fixa, "Tipo de OS", 250, ["EVENTOS", "CORRIDA", "OBRAS"], 0, 0)
         cb_tipo.configure(variable=self.tipo_os_var, command=self._on_tipo_change)
         
-        # Coluna 1
         self.processo_entry = self._criar_campo_grid(linha_fixa, "Nº Processo (Opcional)", 250, 0, 1)
-        self.processo_entry.bind("<KeyRelease>", lambda e: self.processo_entry.delete(0, "end") or self.processo_entry.insert(0, self.processo_entry.get().upper()))
+        
+        # --- CORREÇÃO DO BUG AQUI (Lê, Converte, Mantém Posição do Cursor) ---
+        def upper_processo_os(event):
+            if getattr(event, 'keysym', '') in ['Up', 'Down', 'Left', 'Right', 'Home', 'End']: return
+            texto = self.processo_entry.get()
+            if texto != texto.upper():
+                pos = self.processo_entry.index("insert")
+                self.processo_entry.delete(0, "end")
+                self.processo_entry.insert(0, texto.upper())
+                self.processo_entry.icursor(pos)
+                
+        self.processo_entry.bind("<KeyRelease>", upper_processo_os)
+        # ---------------------------------------------------------------------
 
-        # Coluna 2 (NOVO CAMPO ORIGEM AO LADO DO PROCESSO)
         self.origem_combo = self._criar_combo_grid(linha_fixa, "Origem", 250, ["SISGEP", "SPU"], 0, 2)
 
-        # Container Dinâmico onde as Datas e Empresas ficarão alinhadas
         self.container_dinamico = ctk.CTkFrame(form_frame, fg_color="transparent")
         self.container_dinamico.pack(fill="x", pady=0, padx=15)
 
-        # --- Container de Listas (Dedicado EXCLUSIVAMENTE às Linhas) ---
         self.container_listas = ctk.CTkFrame(form_frame, fg_color="transparent")
         self.container_listas.pack(fill="x", pady=(0, 15), padx=15)
 
@@ -64,18 +157,18 @@ class OSItinerarioView(ctk.CTkFrame):
         add_lin_row.pack(fill="x")
         
         self.lista_linhas = self.service.buscar_sugestoes("LINHAS")
-        # Alinhado com as colunas superiores: 250px
-        self.linha_combo = self._criar_autocomplete_grid(add_lin_row, "Pesquise a Linha de Ônibus", 250, self.lista_linhas, 0, 0)
-        ctk.CTkButton(add_lin_row, text="➕ Add", width=80, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_linha).grid(row=0, column=1, sticky="s", pady=(0,10), padx=10)
+        ctk.CTkLabel(add_lin_row, text="Pesquise a Linha de Ônibus", font=("Arial Bold", 12), text_color="#555").grid(row=0, column=0, padx=10, pady=(10,0), sticky="w")
+        
+        self.linha_combo = ModernAutocomplete(add_lin_row, values=self.lista_linhas, width=350)
+        self.linha_combo.grid(row=1, column=0, padx=10, pady=(2, 10), sticky="w")
+        
+        ctk.CTkButton(add_lin_row, text="➕ Add", width=80, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_linha).grid(row=1, column=1, sticky="w", pady=(2, 10))
         
         self.frame_chips_linhas = ctk.CTkFrame(self.frame_linhas_master, fg_color="transparent")
         self.frame_chips_linhas.pack(fill="both", expand=True, padx=10, pady=(0,10))
 
         self._on_tipo_change() 
 
-        # =====================================================================
-        # SESSÃO DE ANEXOS E CROQUIS
-        # =====================================================================
         anexos_container = ctk.CTkFrame(self.scroll_frame, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E0E0E0")
         anexos_container.pack(fill="x", pady=10, padx=10)
         
@@ -89,43 +182,34 @@ class OSItinerarioView(ctk.CTkFrame):
         self.lista_anexos_frame = ctk.CTkFrame(anexos_container, fg_color="transparent")
         self.lista_anexos_frame.pack(fill="x", padx=15, pady=10)
 
-        # --- RODAPÉ ---
         footer_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         footer_frame.pack(fill="x", pady=20)
         ctk.CTkLabel(footer_frame, text=f"Responsável pelo Documento: {self.usuario_logado}", font=("Arial Bold", 12), text_color="#777").pack(side="left", padx=10)
         ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color="#0F8C75", hover_color="#0B6B59", font=("Arial Black", 16), height=50, width=320, command=self.acao_criar_os).pack(side="right", padx=10)
 
-    # --- HELPERS DE GRID UI/UX ---
     def _criar_campo_grid(self, parent, label, width, row, col, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        entry = ctk.CTkEntry(frame, width=width, height=35, font=("Arial", 12))
+        entry = ctk.CTkEntry(frame, width=width, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
         entry.pack(anchor="w", pady=(2,0))
         return entry
         
     def _criar_combo_grid(self, parent, label, width, values, row, col, columnspan=1, state="readonly"):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), state=state)
+        combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), state=state, **MODERN_STYLE)
         combo.pack(anchor="w", pady=(2,0))
         return combo
 
     def _criar_autocomplete_grid(self, parent, label, width, values, row, col, columnspan=1):
-        combo = self._criar_combo_grid(parent, label, width, values, row, col, columnspan, state="normal")
-        combo._valores_originais = values
-        
-        def on_key(event):
-            valor_digitado = combo.get().lower()
-            if not valor_digitado:
-                combo.configure(values=combo._valores_originais)
-            else:
-                filtrados = [v for v in combo._valores_originais if valor_digitado in v.lower()]
-                combo.configure(values=filtrados if filtrados else ["- Sem resultados -"])
-                
-        combo.bind("<KeyRelease>", on_key)
-        return combo
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        autocomplete = ModernAutocomplete(frame, values=values, width=width)
+        autocomplete.pack(anchor="w", pady=(2,0))
+        return autocomplete
 
     def _criar_date_wrapper(self, parent, width):
         container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
@@ -134,14 +218,13 @@ class OSItinerarioView(ctk.CTkFrame):
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
 
-    # --- DINÂMICA DE CAMPOS ---
     def _on_tipo_change(self, *args):
         for w in self.container_dinamico.winfo_children(): w.destroy()
         tipo = self.tipo_os_var.get()
         self.campos_dinamicos = {}
 
         if tipo == "EVENTOS":
-            self.campos_dinamicos['evento'] = self._criar_combo_grid(self.container_dinamico, "Nome do Evento", 250, ["Obras", "Corrida", "Pré Carnaval", "Outros"], 0, 0)
+            self.campos_dinamicos['evento'] = self._criar_combo_grid(self.container_dinamico, "Nome do Evento", 250, ["Obras", "Corrida", "Pré Carnaval", "Outros"], 0, 0, state="normal")
             self.campos_dinamicos['endereco'] = self._criar_campo_grid(self.container_dinamico, "Endereço/Logradouro", 520, 0, 1, columnspan=2)
             self.container_listas.pack(fill="x", pady=(0, 15), padx=15)
         elif tipo == "CORRIDA":
@@ -170,19 +253,15 @@ class OSItinerarioView(ctk.CTkFrame):
         self.frame_empresas = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
         self.frame_empresas.grid(row=2, column=2, sticky="nw", padx=0, pady=0)
         
-        add_emp_row = ctk.CTkFrame(self.frame_empresas, fg_color="transparent")
-        add_emp_row.pack(fill="x")
-        
         self.lista_empresas = self.service.buscar_sugestoes("EMPRESAS")
-        self.empresa_combo = self._criar_autocomplete_grid(add_emp_row, "Pesquise a Empresa", 190, self.lista_empresas, 0, 0)
+        self.empresa_combo = self._criar_autocomplete_grid(self.frame_empresas, "Pesquise a Empresa", 250, self.lista_empresas, 0, 0)
         
-        ctk.CTkButton(add_emp_row, text="➕ Add", width=50, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_empresa).grid(row=0, column=1, sticky="s", pady=(0, 10), padx=(0, 10))
+        ctk.CTkButton(self.frame_empresas, text="➕ Add", width=50, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_empresa).grid(row=0, column=1, sticky="sw", pady=(10, 10), padx=(0, 10))
         
         self.frame_chips_empresas = ctk.CTkFrame(self.frame_empresas, fg_color="transparent")
-        self.frame_chips_empresas.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        self.frame_chips_empresas.grid(row=1, column=0, columnspan=2, sticky="nw", padx=10, pady=(0, 10))
         self._render_empresas_chips()
 
-    # --- MÓDULO DE DATAS ---
     def _on_modo_data_change(self, *args):
         for w in self.container_datas.winfo_children(): w.destroy()
         modo = self.modo_data_var.get()
@@ -245,11 +324,11 @@ class OSItinerarioView(ctk.CTkFrame):
             ctk.CTkLabel(chip, text=d, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
             ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda date=d: self._remove_data_isolada(date)).pack(side="right", padx=5)
 
-    # --- SISTEMA DE CHIPS (EMPRESAS E LINHAS) ---
     def _add_empresa(self):
         emp = self.empresa_combo.get().strip()
         if emp and emp != "- Sem resultados -" and emp not in self.empresas_add:
             self.empresas_add.append(emp)
+            self.empresa_combo.set("") 
             self._render_empresas_chips()
             
     def _remove_empresa(self, emp):
@@ -259,7 +338,7 @@ class OSItinerarioView(ctk.CTkFrame):
     def _render_empresas_chips(self):
         for w in self.frame_chips_empresas.winfo_children(): w.destroy()
         if not self.empresas_add:
-            ctk.CTkLabel(self.frame_chips_empresas, text="Nenhuma empresa.", text_color="gray", font=("Arial", 11)).pack(anchor="w", padx=10)
+            ctk.CTkLabel(self.frame_chips_empresas, text="Nenhuma empresa.", text_color="gray", font=("Arial", 11)).pack(anchor="w")
             return
         for emp in self.empresas_add:
             chip = ctk.CTkFrame(self.frame_chips_empresas, fg_color="#F1F3F5", corner_radius=6, height=32)
@@ -272,6 +351,7 @@ class OSItinerarioView(ctk.CTkFrame):
         lin = self.linha_combo.get().strip()
         if lin and lin != "- Sem resultados -" and lin not in self.linhas_add:
             self.linhas_add.append(lin)
+            self.linha_combo.set("") 
             self._render_linhas_chips()
 
     def _remove_linha(self, lin):
@@ -285,12 +365,11 @@ class OSItinerarioView(ctk.CTkFrame):
             return
         for lin in self.linhas_add:
             chip = ctk.CTkFrame(self.frame_chips_linhas, fg_color="#F1F3F5", corner_radius=6, height=32)
-            chip.pack(side="top", fill="x", pady=3)
+            chip.pack(side="left", padx=(0,5), pady=3) 
             chip.pack_propagate(False)
             ctk.CTkLabel(chip, text=lin, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
             ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda l=lin: self._remove_linha(l)).pack(side="right", padx=5)
 
-    # --- GESTÃO DE ANEXOS (CARTÕES COM GRID) ---
     def _add_anexo(self, vazio=False):
         caminho = ""
         if not vazio:
@@ -326,16 +405,14 @@ class OSItinerarioView(ctk.CTkFrame):
         if ref_obj in self.anexos_add:
             self.anexos_add.remove(ref_obj)
 
-    # --- PROCESSAMENTO PRINCIPAL ---
     def acao_criar_os(self):
         form_dados = {}
         for k, v in self.campos_dinamicos.items():
             if hasattr(v, 'get'): form_dados[k] = v.get().strip()
 
         form_dados['processo'] = self.processo_entry.get().strip()
-        form_dados['origem'] = self.origem_combo.get().strip() # <-- NOVO CAMPO RECOLHIDO
+        form_dados['origem'] = self.origem_combo.get().strip()
         
-        # Processamento das Datas
         modo_data = self.modo_data_var.get()
         if "Período" in modo_data:
             d_ini = self.data_inicio.get()
