@@ -100,11 +100,11 @@ class ParecerQuadroHorarioService:
         if tipo == "DEFERIDO":
             nome_arquivo = f"Parecer N°_{numero:03d}_{dados_form['assunto']}_{identificador}_({usuario}).docx"
             pasta_base = self.pasta_deferido
-            modelo = resource_path("dados/modelo_parecer_deferido_spr.docx")
+            modelo = resource_path("dados/modelo_parecer_deferido_qh.docx")
         else:
             nome_arquivo = f"Parecer N°_{numero:03d}_{dados_form['assunto']}_INDEFERIDO_({usuario}).docx"
             pasta_base = self.pasta_indeferido
-            modelo = resource_path("dados/modelo_parecer_indeferido_spr.docx")
+            modelo = resource_path("dados/modelo_parecer_indeferido_qh.docx")
 
         nome_arquivo = self._limpar_nome_arquivo(nome_arquivo)
         os.makedirs(pasta_base, exist_ok=True)

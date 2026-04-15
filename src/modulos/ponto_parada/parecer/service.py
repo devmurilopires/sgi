@@ -53,7 +53,7 @@ class ParecerService:
             return False, str(e)
 
         # Prepara Caminhos do Arquivo Word
-        modelo = resource_path(os.path.join("dados", "modelo_deferido.docx")) if tipo_parecer == "Deferido" else resource_path(os.path.join("dados", "modelo_indeferido.docx"))
+        modelo = resource_path(os.path.join("dados", "modelo_deferido_pp.docx")) if tipo_parecer == "Deferido" else resource_path(os.path.join("dados", "modelo_indeferido_pp.docx"))
         
         if not os.path.exists(modelo):
             return False, f"Modelo Word não encontrado em: {modelo}"

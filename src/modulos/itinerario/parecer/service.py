@@ -71,7 +71,7 @@ class ParecerItinerarioService:
         os.makedirs(pasta_base, exist_ok=True)
         caminho_destino = os.path.join(pasta_base, nome_arquivo)
         
-        modelo_path = resource_path(f"dados/modelo_parecer_{tipo.lower()}.docx")
+        modelo_path = resource_path(f"dados/modelo_parecer_{tipo.lower()}_it.docx")
         if not os.path.exists(modelo_path):
             return False, f"Modelo {modelo_path} não encontrado."
 

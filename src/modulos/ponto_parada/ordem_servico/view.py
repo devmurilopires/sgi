@@ -201,7 +201,7 @@ class OSView(ctk.CTkFrame):
             'complemento': self.complemento_entry.get().upper()
         }
         
-        modelo = "dados/modelo_etufor_mcmensagem.docx" if self.pasta_escolhida_var.get() == "MC MENSAGEM" else "dados/modelo_etufor_prxparada.docx"
+        modelo = "dados/modelo_etufor_mcmensagem_pp.docx" if self.pasta_escolhida_var.get() == "MC MENSAGEM" else "dados/modelo_etufor_prxparada_pp.docx"
 
         # ---> NOVO: Passando a Origem selecionada para o Service
         sucesso, mensagem = self.service.processar_criacao_os(

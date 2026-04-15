@@ -69,7 +69,7 @@ class OSItinerarioService:
         num_os = self.repo.obter_proximo_numero_os(self.output_root)
         num_os_str = f"{num_os:03d}"
         
-        tmpl_nome = f"modelo_os_{tipo_os.lower()}.docx"
+        tmpl_nome = f"modelo_os_{tipo_os.lower()}_it.docx"
         tmpl_path = resource_path(f"dados/{tmpl_nome}")
         legenda_path = resource_path(f"dados/img_legenda_{'obra' if tipo_os == 'OBRAS' else 'evento'}.png")
 
