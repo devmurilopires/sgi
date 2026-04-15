@@ -16,6 +16,9 @@ MODERN_STYLE = {
     "dropdown_hover_color": "#0F8C75"
 }
 
+# =====================================================================
+# COMPONENTE BLINDADO: AUTOCOMPLETE MODERNO COM POPUP (WEB-LIKE)
+# =====================================================================
 class ModernAutocomplete(ctk.CTkFrame):
     def __init__(self, master, values, width=250, **kwargs):
         super().__init__(master, fg_color="transparent", width=width, height=35, **kwargs)
@@ -24,7 +27,7 @@ class ModernAutocomplete(ctk.CTkFrame):
         
         self.entry = ctk.CTkEntry(self, width=width, height=35, fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
         self.entry.pack(fill="both", expand=True)
-        self.entry.insert(0, "") 
+        self.entry.insert(0, "")
 
         self.listbox_frame = None
 
@@ -32,10 +35,17 @@ class ModernAutocomplete(ctk.CTkFrame):
         self.entry.bind("<FocusOut>", self._on_focusout)
         self.entry.bind("<FocusIn>", self._on_keyrelease) 
         self.entry.bind("<Button-1>", self._on_keyrelease) 
+        
+        # PROTEÇÃO: Se o frame pai for destruído, limpa a lista fantasma
+        self.bind("<Destroy>", self._on_destroy)
+
+    def _on_destroy(self, event):
+        self._hide_listbox()
 
     def _on_keyrelease(self, event):
-        if event and getattr(event, 'keysym', '') in ['Up', 'Down', 'Return', 'Escape', 'Tab']:
-            return
+        # PROTEÇÃO: Verifica se o widget ainda existe antes de agir
+        if not self.winfo_exists() or not self.entry.winfo_exists(): return
+        if event and getattr(event, 'keysym', '') in ['Up', 'Down', 'Return', 'Escape', 'Tab']: return
         
         val = self.entry.get().lower()
         hits = [item for item in self.values if val in item.lower()] if val else self.values
@@ -43,9 +53,11 @@ class ModernAutocomplete(ctk.CTkFrame):
 
     def _show_listbox(self, hits):
         self._hide_listbox()
-        if not hits: return
+        if not hits or not self.entry.winfo_exists(): return
 
         toplevel = self.winfo_toplevel()
+        if not toplevel.winfo_exists(): return
+
         x = self.entry.winfo_rootx() - toplevel.winfo_rootx()
         y = self.entry.winfo_rooty() - toplevel.winfo_rooty() + self.entry.winfo_height()
 
@@ -53,8 +65,8 @@ class ModernAutocomplete(ctk.CTkFrame):
         h = min(150, len(hits)*25 + 5)
 
         self.listbox_frame = ctk.CTkFrame(toplevel, width=w, height=h, fg_color="#FFFFFF", border_width=1, border_color="#0F8C75", corner_radius=4)
-        self.listbox_frame.pack_propagate(False) 
-        self.listbox_frame.place(x=x, y=y) 
+        self.listbox_frame.pack_propagate(False)
+        self.listbox_frame.place(x=x, y=y)
 
         self.listbox = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#0F8C75", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
         self.listbox.pack(side="left", fill="both", expand=True, padx=2, pady=2)
@@ -63,9 +75,9 @@ class ModernAutocomplete(ctk.CTkFrame):
         scrollbar.pack(side="right", fill="y")
         self.listbox.config(yscrollcommand=scrollbar.set)
 
-        for hit in hits:
+        for hit in hits: 
             self.listbox.insert("end", hit)
-
+            
         self.listbox.bind("<<ListboxSelect>>", self._on_select)
 
     def _on_select(self, event):
@@ -73,34 +85,41 @@ class ModernAutocomplete(ctk.CTkFrame):
         selection = self.listbox.curselection()
         if selection:
             item = self.listbox.get(selection[0])
-            self.entry.delete(0, "end")
-            self.entry.insert(0, item)
-            self.entry.event_generate("<KeyRelease>")
+            # PROTEÇÃO: Só tenta inserir se o campo ainda existir na tela
+            if self.entry.winfo_exists():
+                self.entry.delete(0, "end")
+                self.entry.insert(0, item)
+                self.entry.event_generate("<KeyRelease>")
         self._hide_listbox()
 
     def _hide_listbox(self):
-        if hasattr(self, 'listbox_frame') and self.listbox_frame:
+        if hasattr(self, 'listbox_frame') and self.listbox_frame and self.listbox_frame.winfo_exists():
             self.listbox_frame.destroy()
-            self.listbox_frame = None
+        self.listbox_frame = None
 
     def _on_focusout(self, event):
-        self.after(150, self._hide_listbox)
+        if self.winfo_exists():
+            self.after(150, self._hide_listbox)
+        else:
+            self._hide_listbox()
 
-    def get(self):
-        return self.entry.get()
-
+    def get(self): 
+        return self.entry.get() if self.entry.winfo_exists() else ""
+        
     def set(self, value):
-        self.entry.delete(0, "end")
-        if value: self.entry.insert(0, value)
+        if self.entry.winfo_exists():
+            self.entry.delete(0, "end")
+            if value: self.entry.insert(0, value)
 
     def configure(self, **kwargs):
-        if "state" in kwargs:
+        if "state" in kwargs and self.entry.winfo_exists(): 
             self.entry.configure(state=kwargs["state"])
-        if "values" in kwargs:
+        if "values" in kwargs: 
             self.values = kwargs["values"]
 
     def bind(self, sequence, func, add="+"):
-        self.entry.bind(sequence, func, add=add)
+        if self.entry.winfo_exists():
+            self.entry.bind(sequence, func, add=add)
 
 class ParecerItinerarioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):

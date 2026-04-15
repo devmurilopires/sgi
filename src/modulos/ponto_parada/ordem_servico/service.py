@@ -66,9 +66,9 @@ class OSService:
             return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
 
         if pasta_escolhida == "MC MENSAGEM":
-            pasta_base = r"\\172.20.0.57\dados\DIPLA\OS Paradas\SIGP\2026\MC MENSAGEM - SIGP"
+            pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano_atual}\ORDENS DE SERVICO\MC MENSAGEM"
         else:
-            pasta_base = rf"{RAIZ_REDE}\SIGP\{ano_atual}\ORDENS DE SERVICO\PROXIMA PARADA"
+            pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano_atual}\ORDENS DE SERVICO\PROXIMA PARADA"
 
         ids_unicos = list(set([d["id"] for d in descricoes_acumuladas]))
         ids_formatado = "-".join(ids_unicos)

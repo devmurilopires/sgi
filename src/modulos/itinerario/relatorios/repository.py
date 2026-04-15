@@ -6,7 +6,6 @@ class RelatorioItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # Busca da nova tabela comum
                     cur.execute("SELECT nome FROM common.empresas WHERE ativo = TRUE ORDER BY nome;")
                     return [r[0] for r in cur.fetchall()]
         except: return []
@@ -15,7 +14,6 @@ class RelatorioItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # Concatenação inteligente de Código + Nome
                     cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas WHERE ativo = TRUE ORDER BY codigo;")
                     return [r[0] for r in cur.fetchall()]
         except: return []
@@ -100,11 +98,12 @@ class RelatorioItinerarioRepository:
             print(f"Erro Busca Parecer: {e}")
             return []
 
+    # CORREÇÃO: Adicionadas as colunas ruas_ida e ruas_volta
     def buscar_detalhes_os(self, id_banco):
         query = """
             SELECT numero, TO_CHAR(data_criacao, 'DD/MM/YYYY HH24:MI'), tipo_evento, processo_adm, 
                    origem, empresas_text, solicitante, endereco, 
-                   horario_inicio, horario_fim, linhas_text, evento, 
+                   horario_inicio, horario_fim, linhas_text, ruas_ida, ruas_volta, evento, 
                    nome_corrida, km_impactado, tipo_obra, responsavel
             FROM siga.ordens_servico WHERE id = %s
         """
@@ -115,10 +114,10 @@ class RelatorioItinerarioRepository:
                     row = cursor.fetchone()
                     if row:
                         colunas = ["Nº OS", "Data Criação", "Tipo", "Processo", "Origem", "Empresas", "Solicitante", 
-                                   "Endereço", "Hr Início", "Hr Final", "Linhas", "Evento", 
+                                   "Endereço", "Hr Início", "Hr Final", "Linhas", "Ruas Ida", "Ruas Volta", "Evento", 
                                    "Nome Corrida", "KM", "Tipo Obra", "Criado por"]
                         return dict(zip(colunas, row))
-        except: pass
+        except Exception as e: print(f"Erro ao buscar detalhes da OS: {e}")
         return None
 
     def buscar_detalhes_parecer(self, id_banco):

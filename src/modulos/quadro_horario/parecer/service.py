@@ -6,14 +6,16 @@ import re
 import stat
 from datetime import datetime
 from xml.sax.saxutils import escape as xml_escape
+from config.settings import RAIZ_REDE
 from src.core.shared.utils import resource_path
 from src.modulos.quadro_horario.parecer.repository import ParecerQuadroHorarioRepository
 
 class ParecerQuadroHorarioService:
     def __init__(self):
         self.repo = ParecerQuadroHorarioRepository()
-        self.pasta_deferido = r"\\172.20.0.57\dados\DIPLA\Quadros de Horários\PARECER TECNICO - SPR\2026\DEFERIDO"
-        self.pasta_indeferido = r"\\172.20.0.57\dados\DIPLA\Quadros de Horários\PARECER TECNICO - SPR\2026\INDEFERIDO"
+        self.ano_atual = datetime.now().year
+        self.pasta_deferido = rf"{RAIZ_REDE}\QUADRO DE HORARIO\{self.ano_atual}\PARECERES TECNICOS\DEFERIDO"
+        self.pasta_indeferido = rf"{RAIZ_REDE}\QUADRO DE HORARIO\{self.ano_atual}\PARECERES TECNICOS\INDEFERIDO"
 
     def buscar_sugestoes_linhas(self):
         return self.repo.buscar_linhas()

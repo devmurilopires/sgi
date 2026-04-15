@@ -5,14 +5,16 @@ import tempfile
 import re
 import stat
 from datetime import datetime
+from config.settings import RAIZ_REDE
 from src.core.shared.utils import resource_path
 from src.modulos.itinerario.parecer.repository import ParecerItinerarioRepository
 
 class ParecerItinerarioService:
     def __init__(self):
         self.repo = ParecerItinerarioRepository()
-        self.pasta_deferido = r"\\172.20.0.57\dados\DIPLA\ARQUIVOS SIGP - SIGA - SPR\ITINERARIO\PARECERES\DEFERIDO"
-        self.pasta_indeferido = r"\\172.20.0.57\dados\DIPLA\ARQUIVOS SIGP - SIGA - SPR\ITINERARIO\PARECERES\INDEFERIDO"
+        self.ano_atual = datetime.now().year
+        self.pasta_deferido = rf"{RAIZ_REDE}\ITINERARIO\{self.ano_atual}\PARECERES TECNICOS\DEFERIDO"
+        self.pasta_indeferido = rf"{RAIZ_REDE}\ITINERARIO\{self.ano_atual}\PARECERES TECNICOS\INDEFERIDO"
 
     def buscar_sugestoes_linhas(self):
         return self.repo.buscar_linhas()

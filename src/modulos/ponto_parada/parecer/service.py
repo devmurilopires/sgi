@@ -62,7 +62,7 @@ class ParecerService:
         if not os.path.exists(RAIZ_REDE):
             return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
 
-        pasta_base = rf"{RAIZ_REDE}\SIGP\{ano}\PARECERES TECNICOS"
+        pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano}\PARECERES TECNICOS"
         pasta_saida = os.path.join(pasta_base, tipo_parecer.upper())
         
         nome_arquivo = f"Parecer_{numero:03d}_{ano}_{tipo_parecer}.docx"

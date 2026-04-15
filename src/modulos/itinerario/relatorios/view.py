@@ -19,7 +19,7 @@ MODERN_STYLE = {
 }
 
 # =====================================================================
-# COMPONENTE: AUTOCOMPLETE MODERNO COM POPUP (WEB-LIKE)
+# COMPONENTE OTIMIZADO: AUTOCOMPLETE MODERNO COM POPUP (WEB-LIKE)
 # =====================================================================
 class ModernAutocomplete(ctk.CTkFrame):
     def __init__(self, master, values, width=250, **kwargs):
@@ -32,13 +32,20 @@ class ModernAutocomplete(ctk.CTkFrame):
         self.entry.insert(0, "")
 
         self.listbox_frame = None
+        self.listbox = None
 
         self.entry.bind("<KeyRelease>", self._on_keyrelease)
         self.entry.bind("<FocusOut>", self._on_focusout)
         self.entry.bind("<FocusIn>", self._on_keyrelease) 
         self.entry.bind("<Button-1>", self._on_keyrelease) 
+        self.bind("<Destroy>", self._on_destroy)
+
+    def _on_destroy(self, event):
+        if self.listbox_frame and self.listbox_frame.winfo_exists():
+            self.listbox_frame.destroy()
 
     def _on_keyrelease(self, event):
+        if not self.winfo_exists() or not self.entry.winfo_exists(): return
         if event and getattr(event, 'keysym', '') in ['Up', 'Down', 'Return', 'Escape', 'Tab']: return
         
         val = self.entry.get().lower()
@@ -46,34 +53,44 @@ class ModernAutocomplete(ctk.CTkFrame):
         self._show_listbox(hits)
 
     def _show_listbox(self, hits):
-        self._hide_listbox()
-        if not hits: return
+        if not hits or not self.entry.winfo_exists(): 
+            self._hide_listbox()
+            return
 
         toplevel = self.winfo_toplevel()
+        if not toplevel.winfo_exists(): return
+
         x = self.entry.winfo_rootx() - toplevel.winfo_rootx()
         y = self.entry.winfo_rooty() - toplevel.winfo_rooty() + self.entry.winfo_height()
 
         w = self.entry.winfo_width()
         h = min(150, len(hits)*25 + 5)
 
-        self.listbox_frame = ctk.CTkFrame(toplevel, width=w, height=h, fg_color="#FFFFFF", border_width=1, border_color="#0F8C75", corner_radius=4)
-        self.listbox_frame.pack_propagate(False)
+        # OTIMIZAÇÃO: Cria o frame apenas uma vez na memória para evitar LAG e congelamentos
+        if not self.listbox_frame or not self.listbox_frame.winfo_exists():
+            self.listbox_frame = ctk.CTkFrame(toplevel, fg_color="#FFFFFF", border_width=1, border_color="#0F8C75", corner_radius=4)
+            self.listbox_frame.pack_propagate(False)
+            
+            self.listbox = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#0F8C75", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+            self.listbox.pack(side="left", fill="both", expand=True, padx=2, pady=2)
+            
+            scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox.yview)
+            scrollbar.pack(side="right", fill="y")
+            self.listbox.config(yscrollcommand=scrollbar.set)
+            self.listbox.bind("<<ListboxSelect>>", self._on_select)
+
+        self.listbox_frame.configure(width=w, height=h)
         self.listbox_frame.place(x=x, y=y)
+        self.listbox_frame.lift() # Traz para a frente de tudo
 
-        self.listbox = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#0F8C75", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
-        self.listbox.pack(side="left", fill="both", expand=True, padx=2, pady=2)
-
-        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox.yview)
-        scrollbar.pack(side="right", fill="y")
-        self.listbox.config(yscrollcommand=scrollbar.set)
-
-        for hit in hits: self.listbox.insert("end", hit)
-        self.listbox.bind("<<ListboxSelect>>", self._on_select)
+        self.listbox.delete(0, tk.END)
+        for hit in hits: 
+            self.listbox.insert(tk.END, hit)
 
     def _on_select(self, event):
         if not self.listbox: return
         selection = self.listbox.curselection()
-        if selection:
+        if selection and self.entry.winfo_exists():
             item = self.listbox.get(selection[0])
             self.entry.delete(0, "end")
             self.entry.insert(0, item)
@@ -81,21 +98,29 @@ class ModernAutocomplete(ctk.CTkFrame):
         self._hide_listbox()
 
     def _hide_listbox(self):
-        if hasattr(self, 'listbox_frame') and self.listbox_frame:
-            self.listbox_frame.destroy()
-            self.listbox_frame = None
+        if self.listbox_frame and self.listbox_frame.winfo_exists():
+            self.listbox_frame.place_forget() # Esconde em vez de destruir (Mais rápido)
 
     def _on_focusout(self, event):
         self.after(150, self._hide_listbox)
 
-    def get(self): return self.entry.get()
+    def get(self): 
+        return self.entry.get() if self.entry.winfo_exists() else ""
+        
     def set(self, value):
-        self.entry.delete(0, "end")
-        if value: self.entry.insert(0, value)
+        if self.entry.winfo_exists():
+            self.entry.delete(0, "end")
+            if value: self.entry.insert(0, value)
 
-    # CORREÇÃO: add="+" obrigatório no CustomTkinter para não apagar eventos internos
+    def configure(self, **kwargs):
+        if "state" in kwargs and self.entry.winfo_exists(): 
+            self.entry.configure(state=kwargs["state"])
+        if "values" in kwargs: 
+            self.values = kwargs["values"]
+
     def bind(self, sequence, func, add="+"):
-        self.entry.bind(sequence, func, add=add)
+        if self.entry.winfo_exists():
+            self.entry.bind(sequence, func, add=add)
 
 # =====================================================================
 # VIEW PRINCIPAL 
@@ -116,7 +141,7 @@ class RelatorioItinerarioView(ctk.CTkFrame):
         self.itens_por_pagina = 25
 
         self._construir_interface()
-        self.after(200, self.acao_buscar) 
+        self.after(400, self.acao_buscar) # Atraso maior para garantir que a UI desenhou completamente
 
     def _construir_interface(self):
         titulo = "Relatórios de Ordens de Serviço (Itinerário)" if self.tipo_relatorio == "OS" else "Relatórios de Pareceres (Itinerário)"
@@ -132,48 +157,51 @@ class RelatorioItinerarioView(ctk.CTkFrame):
         self.lista_assuntos = ["Alteração de itinerário", "Desvio temporário de itinerário para Obra" , "Desvio temporário de itinerário para Evento", "Desvio temporário de itinerário para Corrida", "Implantação de linha", "Outros"]
 
         # =========================================================================
-        # LAYOUT DE FILTROS COM OS NOVOS COMPONENTES
+        # LAYOUT DE FILTROS (Organizado em Múltiplas Linhas para não sobrepor)
         # =========================================================================
         if self.tipo_relatorio == "OS":
-            self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 0, width=90)
-            self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 0, 1, width=120)
-            self._add_combo_grid(grid_frame, "Tipo", "tipo_os", ["Todos", "Eventos", "Corrida", "Obras"], 0, 2, width=120)
-            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SISGEP", "SPU"], 0, 3, width=100)
-            self._add_autocomplete_grid(grid_frame, "Empresa", "empresa", 180, self.lista_empresas, 0, 4)
-            self._add_autocomplete_grid(grid_frame, "Linhas", "linha", 180, self.lista_linhas, 0, 5)
-            self._add_filtro_grid(grid_frame, "Responsável", "responsavel", 0, 6, width=140)
+            # Linha 0
+            self._add_filtro_grid(grid_frame, "Nº OS", "numero_os", 0, 0, width=120)
+            self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 0, 1, width=160)
+            self._add_combo_grid(grid_frame, "Tipo", "tipo_os", ["Todos", "Eventos", "Corrida", "Obras"], 0, 2, width=160)
+            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SISGEP", "SPU"], 0, 3, width=140)
+            
+            # Linha 1
+            self._add_autocomplete_grid(grid_frame, "Empresa", "empresa", 250, self.lista_empresas, 1, 0, columnspan=2)
+            self._add_autocomplete_grid(grid_frame, "Linhas", "linha", 250, self.lista_linhas, 1, 2)
+            self._add_filtro_grid(grid_frame, "Responsável", "responsavel", 1, 3, width=140)
 
             datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
-            datas_frame.grid(row=1, column=0, columnspan=7, pady=(15,5), sticky="w", padx=5)
+            datas_frame.grid(row=2, column=0, columnspan=4, pady=(15,5), sticky="w", padx=5)
 
         else:
-            self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 0, 0, width=200)
-            self._add_filtro_grid(grid_frame, "Nº Parecer", "numero_parecer", 0, 1, width=130)
-            self._add_autocomplete_grid(grid_frame, "Linha", "linha", 270, self.lista_linhas, 0, 2)
-            self._add_filtro_grid(grid_frame, "Responsável", "responsavel", 0, 3, width=260)
-            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SISGEP", "SPU"], 0, 4, width=110)
+            # Linha 0
+            self._add_filtro_grid(grid_frame, "Nº Processo", "processo", 0, 0, width=160)
+            self._add_filtro_grid(grid_frame, "Nº Parecer", "numero_parecer", 0, 1, width=120)
+            self._add_autocomplete_grid(grid_frame, "Linha", "linha", 250, self.lista_linhas, 0, 2)
+            self._add_combo_grid(grid_frame, "Situação", "tipo", ["Todos", "DEFERIDO", "INDEFERIDO"], 0, 3, width=140)
 
-            self._add_filtro_grid(grid_frame, "Solicitante", "solicitante", 1, 0, width=200)
-            self._add_combo_grid(grid_frame, "Situação", "tipo", ["Todos", "DEFERIDO", "INDEFERIDO"], 1, 1, width=130)
-            self._add_filtro_grid(grid_frame, "Endereço", "endereco", 1, 2, width=270)
-            self._add_autocomplete_grid(grid_frame, "Assunto", "assunto", 260, self.lista_assuntos, 1, 3)
+            # Linha 1
+            self._add_filtro_grid(grid_frame, "Solicitante", "solicitante", 1, 0, width=160)
+            self._add_combo_grid(grid_frame, "Origem", "origem", ["Todos", "SISGEP", "SPU"], 1, 1, width=120)
+            self._add_autocomplete_grid(grid_frame, "Assunto", "assunto", 250, self.lista_assuntos, 1, 2)
+            self._add_filtro_grid(grid_frame, "Responsável", "responsavel", 1, 3, width=140)
 
             datas_frame = ctk.CTkFrame(grid_frame, fg_color="transparent")
-            datas_frame.grid(row=2, column=0, columnspan=5, pady=(15,5), sticky="w", padx=5)
+            datas_frame.grid(row=2, column=0, columnspan=4, pady=(15,5), sticky="w", padx=5)
 
         # --- DATAS E BOTÕES ---
         self.usar_data_var = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(datas_frame, text="Filtrar por Período", variable=self.usar_data_var, font=("Arial Bold", 12)).pack(side="left", padx=(0, 15))
         
-        wrapper_ini, self.data_inicio = self._criar_date_wrapper(datas_frame, 150)
+        wrapper_ini, self.data_inicio = self._criar_date_wrapper(datas_frame, 130)
         wrapper_ini.pack(side="left", padx=2)
         ctk.CTkLabel(datas_frame, text="à", text_color="#555", font=("Arial Bold", 12)).pack(side="left", padx=5)
-        wrapper_fim, self.data_fim = self._criar_date_wrapper(datas_frame, 150)
+        wrapper_fim, self.data_fim = self._criar_date_wrapper(datas_frame, 130)
         wrapper_fim.pack(side="left", padx=(2, 15))
 
         ctk.CTkButton(datas_frame, text="🔍 Buscar", fg_color="#0F8C75", font=("Arial Bold", 13), width=90, height=35, command=self.acao_buscar).pack(side="left", padx=(0, 5))
         ctk.CTkButton(datas_frame, text="🧹 Limpar", fg_color="#F24822", hover_color="#FF4319", font=("Arial Bold", 13), width=90, height=35, command=self.acao_limpar).pack(side="left", padx=(0, 5))
-        
         ctk.CTkButton(datas_frame, text="📥 Excel", fg_color="#28A745", hover_color="#218838", font=("Arial Bold", 13), width=90, height=35, command=self.acao_exportar_excel).pack(side="left", padx=(0, 5))
         ctk.CTkButton(datas_frame, text="📄 PDF", fg_color="#DC3545", hover_color="#C82333", font=("Arial Bold", 13), width=90, height=35, command=self.acao_exportar_pdf).pack(side="left")
 
@@ -245,7 +273,6 @@ class RelatorioItinerarioView(ctk.CTkFrame):
         frame.grid(row=row, column=col, columnspan=columnspan, padx=5, pady=2, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
         
-        # APLICA O AUTOCOMPLETE MODERNO AQUI TAMBÉM
         autocomplete = ModernAutocomplete(frame, values=values, width=width)
         autocomplete.pack(anchor="w")
         autocomplete.bind("<Return>", lambda e: self.acao_buscar())
@@ -395,13 +422,20 @@ class RelatorioItinerarioView(ctk.CTkFrame):
         s, m = self.service.abrir_arquivo(caminho)
         if not s: messagebox.showerror("Erro", m)
 
+    # --- CORREÇÃO DO BUG DO POPUP (Transiência e Cor do Texto) ---
     def _acao_detalhes(self, id_registro):
         dados = self.service.buscar_detalhes(self.tipo_relatorio, id_registro)
         if not dados: return
+        
         popup = ctk.CTkToplevel(self)
+        # CORREÇÃO DO BUG: Desativa a busca do ícone padrão do CustomTkinter
+        popup.iconbitmap = lambda *args, **kwargs: None 
+        
+        popup.transient(self.winfo_toplevel()) 
         popup.title(f"Detalhes {self.tipo_relatorio} Nº {id_registro}")
         popup.geometry("700x700")
         popup.grab_set()
+        
         ctk.CTkLabel(popup, text=f"Detalhes: {self.tipo_relatorio} Nº {id_registro}", font=("Arial Black", 20), text_color="#0F8C75").pack(pady=15)
         scroll = ctk.CTkScrollableFrame(popup, fg_color="#F9F9F9", corner_radius=10)
         scroll.pack(fill="both", expand=True, padx=20, pady=10)
@@ -409,23 +443,29 @@ class RelatorioItinerarioView(ctk.CTkFrame):
         for k, v in dados.items():
             linha = ctk.CTkFrame(scroll, fg_color="transparent")
             linha.pack(fill="x", pady=6, padx=10)
-            ctk.CTkLabel(linha, text=k + ":", font=("Arial Bold", 12), width=180, anchor="w").pack(side="left")
+            
+            ctk.CTkLabel(linha, text=k + ":", font=("Arial Bold", 12), text_color="#333333", width=180, anchor="w").pack(side="left")
             valor = str(v) if v and str(v) != "None" else "-"
             
             if "Motivo" in k or "Linhas" in k or "Empresas" in k:
-                tb = ctk.CTkTextbox(linha, height=70, font=("Arial", 12))
+                tb = ctk.CTkTextbox(linha, height=70, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC", border_width=1)
                 tb.insert("1.0", valor); tb.configure(state="disabled")
                 tb.pack(side="left", fill="x", expand=True)
             else:
-                ctk.CTkLabel(linha, text=valor, font=("Arial", 12), anchor="w", justify="left", wraplength=450).pack(side="left", fill="x", expand=True)
+                ctk.CTkLabel(linha, text=valor, font=("Arial", 12), text_color="#333333", anchor="w", justify="left", wraplength=450).pack(side="left", fill="x", expand=True)
                 
         ctk.CTkButton(popup, text="Fechar", fg_color="gray", font=("Arial Bold", 15), height=45, command=popup.destroy).pack(fill="x", padx=40, pady=20)
 
     def _acao_excluir(self, id_registro):
         popup = ctk.CTkToplevel(self)
+        # CORREÇÃO DO BUG: Desativa a busca do ícone padrão do CustomTkinter
+        popup.iconbitmap = lambda *args, **kwargs: None 
+        
+        popup.transient(self.winfo_toplevel()) 
         popup.title(f"Excluir {self.tipo_relatorio}")
         popup.geometry("500x350")
         popup.grab_set()
+        
         ctk.CTkLabel(popup, text="EXCLUSÃO PERMANENTE", font=("Arial Black", 18), text_color="#D32F2F").pack(pady=(20, 5))
         ctk.CTkLabel(popup, text="Esta ação moverá o documento para a Lixeira Global.", font=("Arial", 12)).pack(pady=(0, 15))
         ctk.CTkLabel(popup, text="Motivo da exclusão:", font=("Arial Bold", 12)).pack(anchor="w", padx=30)

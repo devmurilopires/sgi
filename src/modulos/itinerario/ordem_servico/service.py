@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from docx import Document
 from docx.shared import Inches
+from config.settings import RAIZ_REDE
 from src.core.shared.utils import resource_path
 from src.modulos.itinerario.ordem_servico.repository import OSItinerarioRepository
 
@@ -11,7 +12,7 @@ class OSItinerarioService:
     def __init__(self):
         self.repo = OSItinerarioRepository()
         self.ano_atual = datetime.now().year
-        self.output_root = r"\\172.20.0.57\dados\DIPLA\ARQUIVOS SIGP - SIGA - SPR\ITINERARIO\ORDENS DE SERVICO"
+        self.output_root = rf"{RAIZ_REDE}\ITINERARIO\{self.ano_atual}\ORDENS DE SERVICO"
         os.makedirs(self.output_root, exist_ok=True)
 
     def formatar_lista_com_e(self, lista):

@@ -17,15 +17,19 @@ class ParecerItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 FROM common.pareceres_base WHERE tipo_parecer = %s AND ano = EXTRACT(YEAR FROM CURRENT_DATE)", (tipo,))
+                    # CORREÇÃO: Removido o "tipo_parecer = %s" da query. 
+                    # Agora a numeração segue uma única linha para o sistema SIGA, seja deferido ou indeferido.
+                    cur.execute("SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 FROM common.pareceres_base WHERE sistema_origem = 'SIGA' AND ano = EXTRACT(YEAR FROM CURRENT_DATE)")
                     resultado = cur.fetchone()
                     return resultado[0] if resultado else 1
-        except Exception as e: return 1
+        except Exception as e: 
+            print(f"Erro ao gerar numeração: {e}")
+            return 1
 
     def salvar_parecer_no_banco(self, dados_db):
         query_base = """
             INSERT INTO common.pareceres_base (numero_parecer_ano, tipo_parecer, sistema_origem, ano, criado_por_id)
-            VALUES (%(numero_parecer)s, %(tipo)s, 'siga', EXTRACT(YEAR FROM CURRENT_DATE), (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1))
+            VALUES (%(numero_parecer)s, %(tipo)s, 'SIGA', EXTRACT(YEAR FROM CURRENT_DATE), (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1))
             RETURNING id;
         """
         
