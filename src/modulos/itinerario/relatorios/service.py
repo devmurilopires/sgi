@@ -1,129 +1,83 @@
 import os
-import subprocess
-import sys
-import shutil
 import pandas as pd
-from src.modulos.itinerario.relatorios.repository import RelatorioItinerarioRepository
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from src.modulos.itinerario.relatorios.repository import RelatoriosItinerarioRepository
 
-class RelatorioItinerarioService:
+class RelatoriosItinerarioService:
     def __init__(self):
-        self.repo = RelatorioItinerarioRepository()
+        self.repo = RelatoriosItinerarioRepository()
 
-    def buscar_sugestoes(self, tipo):
-        if tipo == "EMPRESAS": return self.repo.buscar_empresas()
-        if tipo == "LINHAS": return self.repo.buscar_linhas()
-        return []
-
-    def buscar_dados(self, tipo_relatorio, filtros):
-        if tipo_relatorio == "OS":
-            return self.repo.buscar_ordens_servico(filtros)
-        elif tipo_relatorio == "PARECER":
-            return self.repo.buscar_pareceres(filtros)
-        return []
-
-    def buscar_detalhes(self, tipo_relatorio, id_banco):
-        if tipo_relatorio == "OS":
-            return self.repo.buscar_detalhes_os(id_banco)
-        return self.repo.buscar_detalhes_parecer(id_banco)
-
-    def excluir_registro(self, tipo_relatorio, id_banco, motivo, usuario_logado):
-        return self.repo.excluir_e_logar(id_banco, tipo_relatorio, motivo, usuario_logado)
-
-    def abrir_arquivo(self, caminho):
+    def abrir_documento(self, caminho):
         if not caminho or not os.path.exists(caminho):
-            return False, "O arquivo não foi encontrado na rede ou foi movido."
+            return False, "Arquivo não encontrado no diretório de rede."
         try:
-            if os.name == 'nt':
-                os.startfile(caminho)
+            os.startfile(caminho)
+            return True, "Abrindo documento..."
+        except Exception as e:
+            return False, f"Erro ao abrir o arquivo: {e}"
+
+    def excluir(self, tipo_doc, registro_id):
+        return self.repo.excluir_registro(tipo_doc, registro_id)
+
+    def exportar_excel(self, tipo_doc, filtros, destino):
+        dados = self.repo.buscar_dados_paginados(tipo_doc, filtros, limit=10000)
+        if not dados: return False, "Nenhum dado encontrado para os filtros atuais."
+        try:
+            df = pd.DataFrame(dados)
+            # Remove a coluna de ID interno
+            if 'id' in df.columns: df = df.drop(columns=['id'])
+            df.to_excel(destino, index=False)
+            return True, "Relatório Excel gerado com sucesso."
+        except Exception as e:
+            return False, f"Erro ao gerar Excel: {e}"
+
+    def exportar_pdf(self, tipo_doc, filtros, destino):
+        dados = self.repo.buscar_dados_paginados(tipo_doc, filtros, limit=1000)
+        if not dados: return False, "Nenhum dado encontrado para exportar."
+
+        try:
+            doc = SimpleDocTemplate(destino, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
+            elementos = []
+            estilos = getSampleStyleSheet()
+            
+            titulo = Paragraph(f"Relatório Gerencial - {tipo_doc} (Itinerário)", estilos['Heading1'])
+            elementos.append(titulo)
+            elementos.append(Spacer(1, 15))
+
+            # Definindo colunas baseadas no tipo
+            if tipo_doc == "OS":
+                cabecalho = ["Nº OS", "Processo", "Tipo", "Empresa", "Responsável", "Data"]
+                dados_tabela = [cabecalho]
+                for d in dados:
+                    dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
+                    dados_tabela.append([str(d.get('numero_os','')), str(d.get('processo','')), str(d.get('tipo','')), str(d.get('empresa',''))[:30], str(d.get('responsavel','')), dt])
+                col_widths = [60, 100, 100, 250, 150, 80]
             else:
-                opener = 'open' if sys.platform == 'darwin' else 'xdg-open'
-                subprocess.Popen([opener, caminho])
-            return True, ""
-        except Exception as e:
-            return False, f"Não foi possível abrir: {str(e)}"
+                cabecalho = ["Nº Parecer", "Processo", "Assunto", "Decisão", "Solicitante", "Data"]
+                dados_tabela = [cabecalho]
+                for d in dados:
+                    dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
+                    dados_tabela.append([str(d.get('numero_parecer_ano','')), str(d.get('processo','')), str(d.get('assunto',''))[:30], str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
+                col_widths = [80, 100, 220, 90, 180, 80]
 
-    def baixar_arquivo(self, caminho_origem, caminho_destino):
-        if not caminho_origem or not os.path.exists(caminho_origem):
-            return False, "O arquivo original não foi encontrado na rede."
-        try:
-            shutil.copy2(caminho_origem, caminho_destino)
-            return True, "Download concluído com sucesso!"
-        except Exception as e:
-            return False, f"Erro ao fazer download: {str(e)}"
-
-    def exportar_excel(self, filepath, dados, colunas, titulo, texto_filtros):
-        try:
-            df = pd.DataFrame(dados, columns=colunas)
-            with pd.ExcelWriter(filepath, engine='xlsxwriter') as writer:
-                workbook = writer.book
-                worksheet = writer.sheets.setdefault('Relatorio', workbook.add_worksheet('Relatorio'))
-                
-                bold_format = workbook.add_format({'bold': True, 'font_size': 14})
-                normal_bold = workbook.add_format({'bold': True})
-                
-                worksheet.write('A1', titulo, bold_format)
-                worksheet.write('A2', f"Filtros Aplicados: {texto_filtros}")
-                worksheet.write('A3', f"Total de Resultados: {len(dados)} registro(s)")
-                
-                df.to_excel(writer, sheet_name='Relatorio', startrow=4, index=False)
-                
-                for i, col in enumerate(colunas):
-                    max_len = max(df[col].astype(str).map(len).max() if not df.empty else 0, len(col)) + 2
-                    worksheet.set_column(i, i, min(max_len, 50))
-                    
-            return True, "Relatório Excel exportado com sucesso!"
-        except Exception as e:
-            return False, f"Ocorreu um erro ao exportar o Excel: {e}"
-
-    def exportar_pdf(self, filepath, dados, colunas, titulo, texto_filtros):
-        try:
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import A4, landscape
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet
-        except ImportError:
-            return False, "A biblioteca 'reportlab' não está instalada no sistema.\nAbra o terminal e digite:\npip install reportlab"
-
-        try:
-            doc = SimpleDocTemplate(filepath, pagesize=landscape(A4), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-            elements = []
-            styles = getSampleStyleSheet()
-            
-            elements.append(Paragraph(f"<b><font size=16>{titulo}</font></b>", styles['Title']))
-            elements.append(Spacer(1, 10))
-            elements.append(Paragraph(f"<b>Filtros Utilizados:</b> {texto_filtros}", styles['Normal']))
-            elements.append(Paragraph(f"<b>Total de Resultados Encontrados:</b> {len(dados)}", styles['Normal']))
-            elements.append(Spacer(1, 20))
-            
-            dados_tabela = [colunas]
-            for row in dados:
-                linha_limpa = []
-                for item in row:
-                    txt = str(item) if item and str(item) != 'None' else '-'
-                    linha_limpa.append(txt[:40] + '...' if len(txt) > 40 else txt) # Trunca textos muito longos
-                dados_tabela.append(linha_limpa)
-            
-            largura_disp = landscape(A4)[0] - 60
-            col_widths = [largura_disp / len(colunas)] * len(colunas)
-            
-            t = Table(dados_tabela, colWidths=col_widths, repeatRows=1)
-            t.setStyle(TableStyle([
+            tabela = Table(dados_tabela, colWidths=col_widths)
+            tabela.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0F8C75")),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, 0), 10),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F1F3F5")]),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
-                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 1), (-1, -1), 8),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#F9F9F9")),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.silver),
             ]))
             
-            elements.append(t)
-            doc.build(elements)
+            elementos.append(tabela)
+            doc.build(elementos)
             return True, "Relatório PDF gerado com sucesso!"
         except Exception as e:
-            return False, f"Erro interno ao gerar PDF: {e}"
+            return False, f"Erro ao gerar PDF: {e}"
