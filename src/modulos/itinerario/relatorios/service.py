@@ -10,6 +10,9 @@ class RelatoriosItinerarioService:
     def __init__(self):
         self.repo = RelatoriosItinerarioRepository()
 
+    def obter_empresas(self): return self.repo.obter_empresas()
+    def obter_linhas(self): return self.repo.obter_linhas()
+
     def abrir_documento(self, caminho):
         if not caminho or not os.path.exists(caminho):
             return False, "Arquivo não encontrado no diretório de rede."
@@ -27,7 +30,6 @@ class RelatoriosItinerarioService:
         if not dados: return False, "Nenhum dado encontrado para os filtros atuais."
         try:
             df = pd.DataFrame(dados)
-            # Remove a coluna de ID interno
             if 'id' in df.columns: df = df.drop(columns=['id'])
             df.to_excel(destino, index=False)
             return True, "Relatório Excel gerado com sucesso."
@@ -36,8 +38,7 @@ class RelatoriosItinerarioService:
 
     def exportar_pdf(self, tipo_doc, filtros, destino):
         dados = self.repo.buscar_dados_paginados(tipo_doc, filtros, limit=1000)
-        if not dados: return False, "Nenhum dado encontrado para exportar."
-
+        if not dados: return False, "Nenhum dado encontrado."
         try:
             doc = SimpleDocTemplate(destino, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
             elementos = []
@@ -47,7 +48,6 @@ class RelatoriosItinerarioService:
             elementos.append(titulo)
             elementos.append(Spacer(1, 15))
 
-            # Definindo colunas baseadas no tipo
             if tipo_doc == "OS":
                 cabecalho = ["Nº OS", "Processo", "Tipo", "Empresa", "Responsável", "Data"]
                 dados_tabela = [cabecalho]

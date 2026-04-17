@@ -4,7 +4,6 @@ from config.database import get_db_connection
 class RelatoriosItinerarioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
-            # LEFT JOIN garante que TODOS os pareceres apareçam, mesmo com dados faltando na base
             query = """
                 SELECT p.id, pb.numero_parecer_ano, p.processo, p.origem, p.assunto, 
                        p.tipo_parecer as decisao, p.solicitante, p.endereco, p.evento, 
@@ -15,18 +14,18 @@ class RelatoriosItinerarioRepository:
                 LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
                 WHERE 1=1
             """
-        else: # ORDEM DE SERVIÇO
+        else: # ORDEM DE SERVIÇO (Agora com Solicitante)
             query = """
-                SELECT o.id, o.numero as numero_os, o.processo_adm as processo, 
+                SELECT o.id, o.numero as numero_os, o.processo_adm as processo, o.solicitante,
                        o.tipo_evento as tipo, o.origem, o.empresas_text as empresa, 
                        o.linhas_text as linhas, o.responsavel, o.data_criacao, o.endereco,
-                       o.caminho_arquivo, o.evento, o.horario_inicio || ' às ' || o.horario_fim as periodo
+                       o.caminho_arquivo, o.evento, 
+                       COALESCE(o.horario_inicio, '') || ' às ' || COALESCE(o.horario_fim, '') as periodo
                 FROM siga.ordens_servico o
                 WHERE 1=1
             """
 
         params = []
-        # Mapeamento de filtros específicos por tipo de documento
         mapeamento = {
             "PARECER": {
                 "numero": "pb.numero_parecer_ano", "processo": "p.processo", "origem": "p.origem",
@@ -34,7 +33,7 @@ class RelatoriosItinerarioRepository:
                 "endereco": "p.endereco", "evento": "p.evento", "responsavel": "u.nome_completo"
             },
             "OS": {
-                "numero": "o.numero", "processo": "o.processo_adm", "tipo": "o.tipo_evento",
+                "numero": "o.numero", "processo": "o.processo_adm", "solicitante": "o.solicitante", "tipo": "o.tipo_evento",
                 "origem": "o.origem", "empresa": "o.empresas_text", "linhas": "o.linhas_text",
                 "responsavel": "o.responsavel", "endereco": "o.endereco"
             }
@@ -43,17 +42,15 @@ class RelatoriosItinerarioRepository:
         doc_map = mapeamento[tipo_doc]
         for chave, valor in filtros.items():
             if valor and chave in doc_map:
-                # O COALESCE converte NULL para '' para que a busca não exclua registros com campos vazios
                 query += f" AND COALESCE({doc_map[chave]}::text, '') ILIKE %s"
                 params.append(f"%{valor}%")
 
-        # Filtros de Data (Inicio/Fim)
         col_data = "pb.created_at" if tipo_doc == "PARECER" else "o.data_criacao"
         if filtros.get("data_inicio"):
-            query += f" AND {col_data}::date >= %s"
+            query += f" AND ({col_data} IS NULL OR {col_data}::date >= %s)"
             params.append(filtros["data_inicio"])
         if filtros.get("data_fim"):
-            query += f" AND {col_data}::date <= %s"
+            query += f" AND ({col_data} IS NULL OR {col_data}::date <= %s)"
             params.append(filtros["data_fim"])
 
         query += " ORDER BY id DESC"
@@ -86,7 +83,6 @@ class RelatoriosItinerarioRepository:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if tipo_doc == "PARECER":
-                        # Exclui primeiro da tabela filha, depois da base
                         cur.execute("DELETE FROM siga.pareceres WHERE id = %s", (registro_id,))
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     else:
@@ -95,3 +91,20 @@ class RelatoriosItinerarioRepository:
                     return True, "Registro excluído com sucesso."
         except Exception as e:
             return False, f"Erro ao excluir: {e}"
+
+    # --- NOVAS FUNÇÕES PARA POPULAR OS FILTROS ---
+    def obter_empresas(self):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT nome FROM common.empresas ORDER BY nome")
+                    return [row[0] for row in cur.fetchall()]
+        except: return []
+
+    def obter_linhas(self):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas ORDER BY codigo")
+                    return [row[0] for row in cur.fetchall()]
+        except: return []
