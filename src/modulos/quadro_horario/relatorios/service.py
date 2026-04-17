@@ -1,163 +1,84 @@
 import os
-import shutil
-import sys
-import subprocess
-from datetime import datetime
 import pandas as pd
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 from src.modulos.quadro_horario.relatorios.repository import RelatorioQuadroHorarioRepository
 
 class RelatorioQuadroHorarioService:
     def __init__(self):
         self.repo = RelatorioQuadroHorarioRepository()
 
-    def buscar_sugestoes_linhas(self):
-        return self.repo.buscar_linhas()
+    def obter_linhas(self): return self.repo.obter_linhas()
 
-    def buscar_dados(self, tipo_relatorio, filtros):
-        if tipo_relatorio == "PARECER":
-            dados_brutos = self.repo.buscar_pareceres(filtros)
-            return self._formatar_dados_parecer(dados_brutos)
-        elif tipo_relatorio == "PESQUISA":
-            dados_brutos = self.repo.buscar_pesquisas(filtros)
-            return self._formatar_dados_pesquisa(dados_brutos)
-        return []
-
-    def _formatar_dados_parecer(self, dados_brutos):
-        dados_formatados = []
-        for linha in dados_brutos:
-            (id_banco, num, tipo, proc, assun, solic, evt, lin, dt_evt, resp, dt_criacao, caminho) = linha
-            dt_str = dt_criacao.strftime("%d/%m/%Y") if dt_criacao else "-"
-            dados_formatados.append([
-                id_banco, # 0 -> Oculto
-                num, tipo, proc or "-", assun or "-", solic or "-", 
-                evt or "-", lin or "-", dt_evt or "-", dt_str, resp or "-", caminho
-            ])
-        return dados_formatados
-
-    def _formatar_dados_pesquisa(self, dados_brutos):
-        dados_formatados = []
-        for linha in dados_brutos:
-            (id_banco, titulo, tipo, criado_por, dt_criacao, json_dados) = linha
-            dt_str = dt_criacao.strftime("%d/%m/%Y %H:%M") if dt_criacao else "-"
-            tipo_fmt = "Tempo de Viagem" if "tempo" in str(tipo).lower() else "Demanda"
-            
-            # Extrai datas do JSON para resumo, se existirem
-            datas_str = "-"
-            if json_dados and isinstance(json_dados, dict) and "datas" in json_dados:
-                datas_str = ", ".join(json_dados["datas"])
-                
-            dados_formatados.append([
-                id_banco, # 0 -> Oculto
-                id_banco, titulo or "-", tipo_fmt, datas_str, dt_str, criado_por or "-", "None" # Caminho Falso p/ download
-            ])
-        return dados_formatados
-
-    def abrir_arquivo(self, caminho):
-        if not caminho or caminho == "None" or not os.path.exists(caminho):
-            return False, f"Arquivo não encontrado ou registro sem documento físico."
+    def abrir_documento(self, caminho):
+        if not caminho or not os.path.exists(caminho):
+            return False, "Arquivo não encontrado no diretório de rede."
         try:
-            if os.name == "nt": os.startfile(caminho)
-            else: subprocess.Popen(["open" if sys.platform == "darwin" else "xdg-open", caminho])
-            return True, "Aberto com sucesso"
-        except Exception as e: return False, f"Erro ao abrir: {e}"
-
-    def baixar_arquivo(self, caminho_origem, caminho_destino):
-        if not caminho_origem or caminho_origem == "None" or not os.path.exists(caminho_origem):
-            return False, "O documento original não foi encontrado na rede."
-        try:
-            shutil.copy2(caminho_origem, caminho_destino)
-            return True, "Download concluído com sucesso!"
+            os.startfile(caminho)
+            return True, "Abrindo documento..."
         except Exception as e:
-            return False, f"Erro ao fazer download: {str(e)}"
+            return False, f"Erro ao abrir o arquivo: {e}"
 
-    def excluir_registro(self, tipo_relatorio, id_banco, motivo, usuario_logado):
-        if tipo_relatorio == "PARECER":
-            return self.repo.excluir_e_logar_parecer(id_banco, motivo, usuario_logado)
-        else:
-            return self.repo.excluir_e_logar_pesquisa(id_banco, motivo, usuario_logado)
+    def excluir_registro(self, tipo_doc, registro_id, motivo, excluido_por):
+        return self.repo.excluir_registro(tipo_doc, registro_id, motivo, excluido_por)
 
-    def exportar_excel(self, filepath, dados, colunas, titulo, texto_filtros):
+    def exportar_excel(self, tipo_doc, filtros, destino):
+        dados = self.repo.buscar_dados_paginados(tipo_doc, filtros, limit=10000)
+        if not dados: return False, "Nenhum dado encontrado para os filtros atuais."
         try:
-            df = pd.DataFrame(dados, columns=colunas)
-            with pd.ExcelWriter(filepath, engine='xlsxwriter') as writer:
-                workbook = writer.book
-                worksheet = writer.sheets.setdefault('Relatorio', workbook.add_worksheet('Relatorio'))
-                
-                bold_format = workbook.add_format({'bold': True, 'font_size': 14})
-                worksheet.write('A1', titulo, bold_format)
-                worksheet.write('A2', f"Filtros Aplicados: {texto_filtros}")
-                worksheet.write('A3', f"Total de Resultados: {len(dados)} registro(s)")
-                
-                df.to_excel(writer, sheet_name='Relatorio', startrow=4, index=False)
-                
-                for i, col in enumerate(colunas):
-                    max_len = max(df[col].astype(str).map(len).max() if not df.empty else 0, len(col)) + 2
-                    worksheet.set_column(i, i, min(max_len, 50))
-                    
-            return True, "Relatório Excel exportado com sucesso!"
+            df = pd.DataFrame(dados)
+            if 'id' in df.columns: df = df.drop(columns=['id'])
+            df.to_excel(destino, index=False)
+            return True, "Relatório Excel gerado com sucesso."
         except Exception as e:
-            return False, f"Ocorreu um erro ao exportar o Excel: {e}"
+            return False, f"Erro ao gerar Excel: {e}"
 
-    def exportar_pdf(self, filepath, dados, colunas, titulo, texto_filtros):
+    def exportar_pdf(self, tipo_doc, filtros, destino):
+        dados = self.repo.buscar_dados_paginados(tipo_doc, filtros, limit=1000)
+        if not dados: return False, "Nenhum dado encontrado."
         try:
-            from reportlab.lib import colors
-            from reportlab.lib.pagesizes import A4, landscape
-            from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
-            from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        except ImportError:
-            return False, "A biblioteca 'reportlab' não está instalada. Instale com: pip install reportlab"
+            doc = SimpleDocTemplate(destino, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
+            elementos = []
+            estilos = getSampleStyleSheet()
+            
+            titulo = Paragraph(f"Relatório Gerencial - {tipo_doc} (Quadro de Horário)", estilos['Heading1'])
+            elementos.append(titulo)
+            elementos.append(Spacer(1, 15))
 
-        try:
-            doc = SimpleDocTemplate(filepath, pagesize=landscape(A4), rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
-            elements = []
-            styles = getSampleStyleSheet()
-            
-            style_title = ParagraphStyle(name='TitleStyle', parent=styles['Title'], fontSize=16, textColor=colors.HexColor("#0F8C75"), fontName='Helvetica-Bold')
-            style_normal = ParagraphStyle(name='NormalStyle', parent=styles['Normal'], fontSize=10)
-            style_cell = ParagraphStyle(name='CellText', fontSize=7.5, leading=9, fontName='Helvetica', alignment=0)
-            style_header = ParagraphStyle(name='CellHeader', fontSize=8.5, leading=10, fontName='Helvetica-Bold', textColor=colors.whitesmoke, alignment=0)
-            
-            elements.append(Paragraph(f"<b>{titulo}</b>", style_title))
-            elements.append(Spacer(1, 10))
-            elements.append(Paragraph(f"<b>Filtros Utilizados:</b> {texto_filtros}", style_normal))
-            elements.append(Paragraph(f"<b>Total de Resultados Encontrados:</b> {len(dados)}", style_normal))
-            elements.append(Spacer(1, 20))
-            
-            headers_formatados = [Paragraph(c, style_header) for c in colunas]
-            dados_tabela = [headers_formatados]
-            
-            for row in dados:
-                linha_limpa = []
-                for item in row:
-                    txt = str(item) if item and str(item) != 'None' else '-'
-                    txt = txt[:100] + '...' if len(txt) > 100 else txt 
-                    linha_limpa.append(Paragraph(txt, style_cell)) 
-                dados_tabela.append(linha_limpa)
-            
-            largura_disp = landscape(A4)[0] - 60 
-            
-            if "Pareceres" in titulo:
-                # 10 Colunas Parecer: Nº, Situação, Processo, Assunto, Solicitante, Evento, Linha, Data Evt, Data, Resp
-                pesos = [0.05, 0.09, 0.08, 0.16, 0.12, 0.12, 0.10, 0.08, 0.08, 0.12]
+            if tipo_doc == "PESQUISA":
+                cabecalho = ["ID", "Título", "Tipo de Pesquisa", "Início", "Fim", "Responsável", "Criação"]
+                dados_tabela = [cabecalho]
+                for d in dados:
+                    dt_c = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
+                    dt_i = d.get('data_inicio').strftime("%d/%m/%Y") if d.get('data_inicio') else "-"
+                    dt_f = d.get('data_fim').strftime("%d/%m/%Y") if d.get('data_fim') else "-"
+                    dados_tabela.append([str(d.get('id','')), str(d.get('titulo',''))[:40], str(d.get('tipo','')), dt_i, dt_f, str(d.get('responsavel',''))[:20], dt_c])
+                col_widths = [40, 200, 150, 80, 80, 150, 80]
             else:
-                # 6 Colunas Pesquisa: ID, Linha, Tipo, Datas, Data Criação, Resp
-                pesos = [0.08, 0.25, 0.12, 0.25, 0.15, 0.15]
-                
-            col_widths = [largura_disp * p for p in pesos]
-            
-            t = Table(dados_tabela, colWidths=col_widths, repeatRows=1)
-            t.setStyle(TableStyle([
+                cabecalho = ["Nº Parecer", "Processo", "Assunto", "Decisão", "Solicitante", "Data Criação"]
+                dados_tabela = [cabecalho]
+                for d in dados:
+                    dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
+                    dados_tabela.append([str(d.get('numero_parecer_ano','')), str(d.get('processo','')), str(d.get('assunto',''))[:35], str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
+                col_widths = [80, 100, 240, 90, 180, 90]
+
+            tabela = Table(dados_tabela, colWidths=col_widths)
+            tabela.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#0F8C75")),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
-                ('TOPPADDING', (0, 0), (-1, 0), 8),
-                ('BACKGROUND', (0, 1), (-1, -1), colors.white),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor("#F1F3F5")]),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.lightgrey),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#F9F9F9")),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.silver),
             ]))
             
-            elements.append(t)
-            doc.build(elements)
+            elementos.append(tabela)
+            doc.build(elementos)
             return True, "Relatório PDF gerado com sucesso!"
         except Exception as e:
-            return False, f"Erro interno ao gerar PDF: {e}"
+            return False, f"Erro ao gerar PDF: {e}"

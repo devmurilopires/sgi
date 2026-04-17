@@ -3,107 +3,106 @@ import json
 from config.database import get_db_connection
 
 class RelatorioQuadroHorarioRepository:
-    def buscar_linhas(self):
-        try:
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    cur.execute("SELECT nome FROM common.linhas ORDER BY nome;")
-                    return [r[0] for r in cur.fetchall()]
-        except Exception as e: return []
+    def _construir_query_filtros(self, tipo_doc, filtros):
+        if tipo_doc == "PARECER":
+            query = """
+                SELECT p.id, b.numero_parecer_ano, p.processo, p.assunto, 
+                       b.tipo_parecer as decisao, p.solicitante, p.evento, 
+                       p.linhas_afetadas as linhas, p.data_evento, 
+                       u.nome_completo as responsavel, b.created_at as data_criacao, 
+                       p.caminho_arquivo, p.motivo_indeferimento
+                FROM spr.pareceres p
+                LEFT JOIN common.pareceres_base b ON p.id = b.id
+                LEFT JOIN common.usuarios u ON b.criado_por_id = u.id 
+                WHERE 1=1
+            """
+        else: # PESQUISA
+            # CORREÇÃO: Usando 'criado_por' como responsavel e 'caminho_arquivo' (nomes exatos da tabela)
+            query = """
+                SELECT id, titulo, tipo_pesquisa as tipo, data_inicio, data_fim, 
+                       criado_por as responsavel, created_at as data_criacao, caminho_arquivo
+                FROM spr.pesquisas
+                WHERE 1=1
+            """
 
-    # --- PARECERES ---
-    def buscar_pareceres(self, filtros):
-        query = """
-            SELECT p.id, b.numero_parecer_ano, b.tipo_parecer, p.processo, p.assunto, 
-                   p.solicitante, p.evento, p.linhas_afetadas, p.data_evento, u.nome_completo, 
-                   b.created_at, p.caminho_arquivo
-            FROM spr.pareceres p
-            JOIN common.pareceres_base b ON p.id = b.id
-            LEFT JOIN common.usuarios u ON b.criado_por_id = u.id 
-            WHERE 1=1
-        """
         params = []
-        if filtros.get('numero_parecer'):
-            query += " AND b.numero_parecer_ano::text ILIKE %s"; params.append(f"%{filtros['numero_parecer']}%")
-        if filtros.get('processo'):
-            query += " AND p.processo ILIKE %s"; params.append(f"%{filtros['processo']}%")
-        if filtros.get('tipo') and filtros['tipo'] != "Todos":
-            query += " AND b.tipo_parecer ILIKE %s"; params.append(f"%{filtros['tipo']}%")
-        if filtros.get('assunto') and filtros['assunto'] != "Todos":
-            query += " AND p.assunto ILIKE %s"; params.append(f"%{filtros['assunto']}%")
-        if filtros.get('evento') and filtros['evento'] != "Todos":
-            query += " AND p.evento ILIKE %s"; params.append(f"%{filtros['evento']}%")
-        if filtros.get('solicitante') and filtros['solicitante'] != "Todos":
-            query += " AND p.solicitante ILIKE %s"; params.append(f"%{filtros['solicitante']}%")
-        if filtros.get('linha'):
-            query += " AND p.linhas_afetadas ILIKE %s"; params.append(f"%{filtros['linha']}%")
-        if filtros.get('responsavel'):
-            query += " AND u.nome_completo ILIKE %s"; params.append(f"%{filtros['responsavel']}%")
-            
-        if filtros.get('data_inicio') and filtros.get('data_fim'):
-            query += " AND DATE(b.created_at) BETWEEN %s AND %s"
-            params.extend([filtros['data_inicio'], filtros['data_fim']])
+        mapeamento = {
+            "PARECER": {
+                "processo": "p.processo", "assunto": "p.assunto", "decisao": "b.tipo_parecer",
+                "solicitante": "p.solicitante", "linhas": "p.linhas_afetadas", "responsavel": "u.nome_completo"
+            },
+            "PESQUISA": {
+                "titulo": "titulo", "tipo": "tipo_pesquisa", "responsavel": "criado_por"
+            }
+        }
 
-        query += " ORDER BY b.created_at DESC"
+        doc_map = mapeamento[tipo_doc]
+        for chave, valor in filtros.items():
+            if valor and chave in doc_map:
+                query += f" AND COALESCE({doc_map[chave]}::text, '') ILIKE %s"
+                params.append(f"%{valor}%")
+
+        col_data = "b.created_at" if tipo_doc == "PARECER" else "created_at"
+        if filtros.get("data_inicio"):
+            query += f" AND ({col_data} IS NULL OR {col_data}::date >= %s)"
+            params.append(filtros["data_inicio"])
+        if filtros.get("data_fim"):
+            query += f" AND ({col_data} IS NULL OR {col_data}::date <= %s)"
+            params.append(filtros["data_fim"])
+
+        query += " ORDER BY id DESC"
+        return query, params
+
+    def buscar_dados_paginados(self, tipo_doc, filtros, limit=50, offset=0):
+        query, params = self._construir_query_filtros(tipo_doc, filtros)
+        query += " LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(query, params)
-                    return cur.fetchall()
-        except Exception as e: return []
+                    colunas = [desc[0] for desc in cur.description]
+                    return [dict(zip(colunas, row)) for row in cur.fetchall()]
+        except Exception as e:
+            print(f"Erro ao buscar dados: {e}"); return []
 
-    def excluir_e_logar_parecer(self, id_banco, motivo, excluido_por):
+    def contar_total(self, tipo_doc, filtros):
+        query, params = self._construir_query_filtros(tipo_doc, filtros)
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT b.numero_parecer_ano, p.caminho_arquivo, row_to_json(p) FROM spr.pareceres p JOIN common.pareceres_base b ON p.id = b.id WHERE p.id = %s", (id_banco,))
-                    linha = cur.fetchone()
-                    if not linha: return False, "Parecer não encontrado."
-                    numero, caminho, dados_json = linha
-                    cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, caminho_original, motivo, excluido_por, data_exclusao) VALUES ('PARECER_SPR', %s, %s, %s, %s, %s, NOW())", (numero, json.dumps(dados_json), caminho, motivo, excluido_por))
-                    cur.execute("DELETE FROM spr.pareceres WHERE id = %s", (id_banco,))
-                    cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (id_banco,))
-            return True, "Parecer excluído com sucesso!"
-        except Exception as e: return False, f"Erro ao excluir Parecer: {e}"
+                    cur.execute(f"SELECT COUNT(*) FROM ({query}) AS total", params)
+                    return cur.fetchone()[0]
+        except: return 0
 
-    # --- PESQUISAS ---
-    def buscar_pesquisas(self, filtros):
-        query = """
-            SELECT id, titulo, tipo_pesquisa, criado_por, created_at, resultado_json
-            FROM spr.pesquisas WHERE 1=1
-        """
-        params = []
-        if filtros.get('id'):
-            query += " AND id::text ILIKE %s"; params.append(f"%{filtros['id']}%")
-        if filtros.get('linha'):
-            query += " AND titulo ILIKE %s"; params.append(f"%{filtros['linha']}%")
-        if filtros.get('tipo') and filtros['tipo'] != "Todos":
-            tipo_bd = "tempo" if "Tempo" in filtros['tipo'] else "demanda"
-            query += " AND tipo_pesquisa ILIKE %s"; params.append(f"%{tipo_bd}%")
-        if filtros.get('responsavel'):
-            query += " AND criado_por ILIKE %s"; params.append(f"%{filtros['responsavel']}%")
-            
-        if filtros.get('data_inicio') and filtros.get('data_fim'):
-            query += " AND DATE(created_at) BETWEEN %s AND %s"
-            params.extend([filtros['data_inicio'], filtros['data_fim']])
-
-        query += " ORDER BY created_at DESC"
+    def excluir_registro(self, tipo_doc, registro_id, motivo, excluido_por):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(query, params)
-                    return cur.fetchall()
-        except Exception as e: return []
+                    if tipo_doc == "PARECER":
+                        cur.execute("SELECT numero_parecer_ano FROM common.pareceres_base WHERE id = %s", (registro_id,))
+                        linha = cur.fetchone()
+                        numero = linha[0] if linha else registro_id
+                        cur.execute("INSERT INTO common.lixeira (modulo, numero, motivo, excluido_por, data_exclusao) VALUES ('PARECER_SPR', %s, %s, %s, NOW())", (numero, motivo, excluido_por))
+                        
+                        cur.execute("DELETE FROM spr.pareceres WHERE id = %s", (registro_id,))
+                        cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
+                    else: # PESQUISA
+                        cur.execute("SELECT row_to_json(p) FROM spr.pesquisas p WHERE id = %s", (registro_id,))
+                        linha = cur.fetchone()
+                        if linha:
+                            dados_json = linha[0]
+                            cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por, data_exclusao) VALUES ('PESQUISA_SPR', %s, %s, %s, %s, NOW())", (registro_id, json.dumps(dados_json), motivo, excluido_por))
+                        cur.execute("DELETE FROM spr.pesquisas WHERE id = %s", (registro_id,))
+                    conn.commit()
+                    return True, "Registro excluído e arquivado com sucesso."
+        except Exception as e:
+            return False, f"Erro ao excluir: {e}"
 
-    def excluir_e_logar_pesquisa(self, id_banco, motivo, excluido_por):
+    def obter_linhas(self):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT id, row_to_json(p) FROM spr.pesquisas p WHERE id = %s", (id_banco,))
-                    linha = cur.fetchone()
-                    if not linha: return False, "Pesquisa não encontrada."
-                    numero, dados_json = linha
-                    cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, caminho_original, motivo, excluido_por, data_exclusao) VALUES ('PESQUISA_SPR', %s, %s, %s, %s, %s, NOW())", (numero, json.dumps(dados_json), None, motivo, excluido_por))
-                    cur.execute("DELETE FROM spr.pesquisas WHERE id = %s", (id_banco,))
-            return True, "Pesquisa excluída com sucesso!"
-        except Exception as e: return False, f"Erro ao excluir Pesquisa: {e}"
+                    cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas ORDER BY codigo")
+                    return [row[0] for row in cur.fetchall()]
+        except: return []
