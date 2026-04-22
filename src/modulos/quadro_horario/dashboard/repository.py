@@ -14,7 +14,7 @@ class DashboardQuadroHorarioRepository:
                    p.linhas_afetadas,
                    u.nome_completo AS criado_por,
                    b.created_at AS data_dt
-            FROM spr.pareceres p
+            FROM quadro_horario.pareceres p
             JOIN common.pareceres_base b ON p.id = b.id
             LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
             WHERE b.created_at IS NOT NULL
@@ -23,7 +23,7 @@ class DashboardQuadroHorarioRepository:
             with get_db_connection() as conn:
                 return pd.read_sql(query, conn)
         except Exception as e:
-            print(f"Erro Pareceres SPR: {e}")
+            print(f"Erro Pareceres Quadro de Horário: {e}")
             return pd.DataFrame()
 
     def buscar_dados_pesquisas(self):
@@ -32,12 +32,12 @@ class DashboardQuadroHorarioRepository:
                    tipo_pesquisa AS tipo,
                    criado_por,
                    created_at AS data_dt
-            FROM spr.pesquisas
+            FROM quadro_horario.pesquisas
             WHERE created_at IS NOT NULL
         """
         try:
             with get_db_connection() as conn:
                 return pd.read_sql(query, conn)
         except Exception as e:
-            print(f"Erro Pesquisas SPR: {e}")
+            print(f"Erro Pesquisas Quadro de Horário: {e}")
             return pd.DataFrame()

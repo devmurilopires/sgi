@@ -18,7 +18,7 @@ class ParecerQuadroHorarioRepository:
                     cur.execute("""
                         SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 
                         FROM common.pareceres_base 
-                        WHERE tipo_parecer = %s AND sistema_origem = 'spr' 
+                        WHERE tipo_parecer = %s AND sistema_origem = 'quadro_horario' 
                         AND ano = EXTRACT(YEAR FROM CURRENT_DATE)
                     """, (tipo,))
                     resultado = cur.fetchone()
@@ -29,12 +29,12 @@ class ParecerQuadroHorarioRepository:
     def salvar_parecer_no_banco(self, dados_db):
         query_base = """
             INSERT INTO common.pareceres_base (numero_parecer_ano, tipo_parecer, sistema_origem, ano, criado_por_id)
-            VALUES (%(numero_parecer)s, %(tipo)s, 'spr', EXTRACT(YEAR FROM CURRENT_DATE), 
+            VALUES (%(numero_parecer)s, %(tipo)s, 'quadro_horario', EXTRACT(YEAR FROM CURRENT_DATE), 
             (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1))
             RETURNING id;
         """
         query_especifica = """
-            INSERT INTO spr.pareceres (
+            INSERT INTO quadro_horario.pareceres (
                 id, processo, assunto, evento, data_evento, 
                 solicitante, linhas_afetadas, motivo_indeferimento, caminho_arquivo
             ) VALUES (

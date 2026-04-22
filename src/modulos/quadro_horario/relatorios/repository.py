@@ -11,7 +11,7 @@ class RelatorioQuadroHorarioRepository:
                        p.linhas_afetadas as linhas, p.data_evento, 
                        u.nome_completo as responsavel, b.created_at as data_criacao, 
                        p.caminho_arquivo, p.motivo_indeferimento
-                FROM spr.pareceres p
+                FROM quadro_horario.pareceres p
                 LEFT JOIN common.pareceres_base b ON p.id = b.id
                 LEFT JOIN common.usuarios u ON b.criado_por_id = u.id 
                 WHERE 1=1
@@ -21,7 +21,7 @@ class RelatorioQuadroHorarioRepository:
             query = """
                 SELECT id, titulo, tipo_pesquisa as tipo, data_inicio, data_fim, 
                        criado_por as responsavel, created_at as data_criacao, caminho_arquivo
-                FROM spr.pesquisas
+                FROM quadro_horario.pesquisas
                 WHERE 1=1
             """
 
@@ -73,7 +73,9 @@ class RelatorioQuadroHorarioRepository:
                 with conn.cursor() as cur:
                     cur.execute(f"SELECT COUNT(*) FROM ({query}) AS total", params)
                     return cur.fetchone()[0]
-        except: return 0
+        except Exception as e:
+            print(f"Erro ao contar total: {e}")
+            return 0
 
     def excluir_registro(self, tipo_doc, registro_id, motivo, excluido_por):
         try:
@@ -83,17 +85,17 @@ class RelatorioQuadroHorarioRepository:
                         cur.execute("SELECT numero_parecer_ano FROM common.pareceres_base WHERE id = %s", (registro_id,))
                         linha = cur.fetchone()
                         numero = linha[0] if linha else registro_id
-                        cur.execute("INSERT INTO common.lixeira (modulo, numero, motivo, excluido_por, data_exclusao) VALUES ('PARECER_SPR', %s, %s, %s, NOW())", (numero, motivo, excluido_por))
+                        cur.execute("INSERT INTO common.lixeira (modulo, numero, motivo, excluido_por, data_exclusao) VALUES ('PARECER_quadro_horario', %s, %s, %s, NOW())", (numero, motivo, excluido_por))
                         
-                        cur.execute("DELETE FROM spr.pareceres WHERE id = %s", (registro_id,))
+                        cur.execute("DELETE FROM quadro_horario.pareceres WHERE id = %s", (registro_id,))
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     else: # PESQUISA
-                        cur.execute("SELECT row_to_json(p) FROM spr.pesquisas p WHERE id = %s", (registro_id,))
+                        cur.execute("SELECT row_to_json(p) FROM quadro_horario.pesquisas p WHERE id = %s", (registro_id,))
                         linha = cur.fetchone()
                         if linha:
                             dados_json = linha[0]
-                            cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por, data_exclusao) VALUES ('PESQUISA_SPR', %s, %s, %s, %s, NOW())", (registro_id, json.dumps(dados_json), motivo, excluido_por))
-                        cur.execute("DELETE FROM spr.pesquisas WHERE id = %s", (registro_id,))
+                            cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por, data_exclusao) VALUES ('PESQUISA_quadro_horario', %s, %s, %s, %s, NOW())", (registro_id, json.dumps(dados_json), motivo, excluido_por))
+                        cur.execute("DELETE FROM quadro_horario.pesquisas WHERE id = %s", (registro_id,))
                     conn.commit()
                     return True, "Registro excluído e arquivado com sucesso."
         except Exception as e:
@@ -105,4 +107,6 @@ class RelatorioQuadroHorarioRepository:
                 with conn.cursor() as cur:
                     cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas ORDER BY codigo")
                     return [row[0] for row in cur.fetchall()]
-        except: return []
+        except Exception as e:
+            print(f"Erro ao buscar linhas: {e}")
+            return []
