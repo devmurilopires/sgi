@@ -40,32 +40,30 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         grid_master = ctk.CTkFrame(form_frame, fg_color="transparent")
         grid_master.pack(fill="x", pady=15, padx=15)
 
-        # --- LINHA 0: Decisão e Processo ---
+        # --- LINHA 0: Decisão, Processo e evento---
         self.tipo_var = ctk.StringVar(value="DEFERIDO")
-        cb_tipo = self._criar_combo_grid(grid_master, "Decisão do Parecer", 380, ["DEFERIDO", "INDEFERIDO"], 0, 0)
+        cb_tipo = self._criar_combo_grid(grid_master, "Decisão do Parecer", 280, ["DEFERIDO", "INDEFERIDO"], 0, 0)
         cb_tipo.configure(variable=self.tipo_var, command=self._on_tipo_change)
         
-        self.processo_entry = self._criar_campo_grid(grid_master, "Nº Processo", 380, 0, 1)
+        self.processo_entry = self._criar_campo_grid(grid_master, "Nº Processo", 280, 0, 1)
         self.processo_entry.bind("<KeyRelease>", lambda e: self.processo_entry.delete(0, "end") or self.processo_entry.insert(0, self.processo_entry.get().upper()))
         
-        # --- LINHA 1: Assunto ---
-        self.assunto_combo = self._criar_autocomplete_grid(grid_master, "Assunto", 380, self.lista_assuntos, 1, 1)
-
-        # --- LINHA 2: Solicitante e Eventos ---
-        self.solicitante_combo = self._criar_autocomplete_grid(grid_master, "Solicitante", 380, self.lista_solicitantes, 2, 0)
-        
-        self.evento_combo = self._criar_autocomplete_grid(grid_master, "Evento (Deixe em branco se for apenas Linha)", 380, self.lista_eventos, 2, 1)
+        self.evento_combo = self._criar_autocomplete_grid(grid_master, "Evento (Deixe em branco se for apenas Linha)", 280, self.lista_eventos, 0, 2)
         self.evento_combo.set("")
         self.evento_combo.bind("<KeyRelease>", self._aplicar_regras_negocio, add="+")
         self.evento_combo.configure(command=self._aplicar_regras_negocio)
 
-        # --- LINHA 3: Datas (Modo de Seleção + Inputs + Chips) ---
+        # --- LINHA 1: Solicitante e Assunto ---
+        self.solicitante_combo = self._criar_autocomplete_grid(grid_master, "Solicitante", 280, self.lista_solicitantes, 1, 0)
+        self.assunto_combo = self._criar_autocomplete_grid(grid_master, "Assunto", 280, self.lista_assuntos, 1, 1)
+
+        # --- LINHA 2: Datas (Modo de Seleção + Inputs + Chips) ---
         self.modo_data_var = ctk.StringVar(value="Período (Início-Fim)")
-        self.modo_combo = self._criar_combo_grid(grid_master, "Seleção de Datas", 380, ["Período (Início-Fim)", "Dias Isolados"], 3, 0)
+        self.modo_combo = self._criar_combo_grid(grid_master, "Seleção de Datas", 280, ["Período (Início-Fim)", "Dias Isolados"], 2, 0)
         self.modo_combo.configure(variable=self.modo_data_var, command=self._on_modo_data_change)
 
         self.master_datas_frame = ctk.CTkFrame(grid_master, fg_color="transparent")
-        self.master_datas_frame.grid(row=3, column=1, sticky="nw", padx=10, pady=10)
+        self.master_datas_frame.grid(row=2, column=1, sticky="nw", padx=10, pady=10)
         
         self.container_datas_input = ctk.CTkFrame(self.master_datas_frame, fg_color="transparent")
         self.container_datas_input.pack(fill="x")
@@ -75,9 +73,9 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
 
         # Removido _on_modo_data_change() daqui!
 
-        # --- LINHA 4: Linhas (Input + Botão + Chips) ---
+        # --- LINHA 3: Linhas (Input + Botão + Chips) ---
         self.master_linhas_frame = ctk.CTkFrame(grid_master, fg_color="transparent")
-        self.master_linhas_frame.grid(row=4, column=0, columnspan=2, sticky="nw", padx=10, pady=10)
+        self.master_linhas_frame.grid(row=1, column=2, columnspan=2, sticky="nw", padx=10, pady=10)
 
         ctk.CTkLabel(self.master_linhas_frame, text="Linha afetada", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
         row_linha = ctk.CTkFrame(self.master_linhas_frame, fg_color="transparent")
