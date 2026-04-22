@@ -18,8 +18,8 @@ class ParecerItinerarioRepository:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     # CORREÇÃO: Removido o "tipo_parecer = %s" da query. 
-                    # Agora a numeração segue uma única linha para o sistema SIGA, seja deferido ou indeferido.
-                    cur.execute("SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 FROM common.pareceres_base WHERE sistema_origem = 'SIGA' AND ano = EXTRACT(YEAR FROM CURRENT_DATE)")
+                    # Agora a numeração segue uma única linha para o sistema itinerario, seja deferido ou indeferido.
+                    cur.execute("SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 FROM common.pareceres_base WHERE sistema_origem = 'itinerario' AND ano = EXTRACT(YEAR FROM CURRENT_DATE)")
                     resultado = cur.fetchone()
                     return resultado[0] if resultado else 1
         except Exception as e: 
@@ -29,12 +29,12 @@ class ParecerItinerarioRepository:
     def salvar_parecer_no_banco(self, dados_db):
         query_base = """
             INSERT INTO common.pareceres_base (numero_parecer_ano, tipo_parecer, sistema_origem, ano, criado_por_id)
-            VALUES (%(numero_parecer)s, %(tipo)s, 'SIGA', EXTRACT(YEAR FROM CURRENT_DATE), (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1))
+            VALUES (%(numero_parecer)s, %(tipo)s, 'itinerario', EXTRACT(YEAR FROM CURRENT_DATE), (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1))
             RETURNING id;
         """
         
         query_especifica = """
-            INSERT INTO siga.pareceres (
+            INSERT INTO itinerario.pareceres (
                 id, processo, tipo_parecer, origem, assunto, evento, data_evento, periodo, 
                 endereco, solicitante, linhas_afetadas, motivo_indeferimento, caminho_arquivo
             ) VALUES (

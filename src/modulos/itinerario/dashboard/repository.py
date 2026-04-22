@@ -10,7 +10,7 @@ class DashboardItinerarioRepository:
             SELECT tipo_evento AS tipo_os, 
                    data_criacao AS data_dt, 
                    responsavel AS criado_por
-            FROM siga.ordens_servico
+            FROM itinerario.ordens_servico
             WHERE data_criacao IS NOT NULL
         """
         try:
@@ -26,7 +26,7 @@ class DashboardItinerarioRepository:
                    u.nome_completo AS criado_por, 
                    b.created_at AS data_dt, 
                    p.solicitante
-            FROM siga.pareceres p
+            FROM itinerario.pareceres p
             JOIN common.pareceres_base b ON p.id = b.id
             LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
             WHERE b.created_at IS NOT NULL

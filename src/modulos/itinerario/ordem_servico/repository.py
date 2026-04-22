@@ -43,7 +43,7 @@ class OSItinerarioRepository:
 
     def salvar_os_itinerario(self, dados_db):
         query = """
-            INSERT INTO siga.ordens_servico (
+            INSERT INTO itinerario.ordens_servico (
                 numero, ano, tipo_evento, processo_adm, origem, empresas_text, endereco,
                 horario_inicio, horario_fim, linhas_text, ruas_ida, ruas_volta, evento,
                 caminho_arquivo, responsavel, nome_corrida, km_impactado, tipo_obra, data_criacao

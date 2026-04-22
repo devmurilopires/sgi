@@ -9,7 +9,7 @@ class RelatoriosItinerarioRepository:
                        p.tipo_parecer as decisao, p.solicitante, p.endereco, p.evento, 
                        pb.created_at as data_criacao, u.nome_completo as responsavel,
                        p.caminho_arquivo, p.linhas_afetadas, p.motivo_indeferimento, p.periodo
-                FROM siga.pareceres p
+                FROM itinerario.pareceres p
                 LEFT JOIN common.pareceres_base pb ON p.id = pb.id
                 LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
                 WHERE 1=1
@@ -21,7 +21,7 @@ class RelatoriosItinerarioRepository:
                        o.linhas_text as linhas, o.responsavel, o.data_criacao, o.endereco,
                        o.caminho_arquivo, o.evento, 
                        COALESCE(o.horario_inicio, '') || ' às ' || COALESCE(o.horario_fim, '') as periodo
-                FROM siga.ordens_servico o
+                FROM itinerario.ordens_servico o
                 WHERE 1=1
             """
 
@@ -83,10 +83,10 @@ class RelatoriosItinerarioRepository:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if tipo_doc == "PARECER":
-                        cur.execute("DELETE FROM siga.pareceres WHERE id = %s", (registro_id,))
+                        cur.execute("DELETE FROM itinerario.pareceres WHERE id = %s", (registro_id,))
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     else:
-                        cur.execute("DELETE FROM siga.ordens_servico WHERE id = %s", (registro_id,))
+                        cur.execute("DELETE FROM itinerario.ordens_servico WHERE id = %s", (registro_id,))
                     conn.commit()
                     return True, "Registro excluído com sucesso."
         except Exception as e:
