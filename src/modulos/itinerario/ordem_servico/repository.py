@@ -28,18 +28,14 @@ class OSItinerarioRepository:
 
     def obter_proximo_numero_os(self, pasta_destino):
         try:
-            padrao = re.compile(r"OS Nº(\d+)\s+de", re.IGNORECASE)
-            max_num = 0
-            if os.path.isdir(pasta_destino):
-                for nome in os.listdir(pasta_destino):
-                    m = padrao.search(nome)
-                    if m:
-                        try:
-                            n = int(m.group(1))
-                            if n > max_num: max_num = n
-                        except: pass
-            return max_num + 1
-        except: return 1
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT COALESCE(MAX(numero), 0) + 1 FROM siga.ordens_servico WHERE ano = EXTRACT(YEAR FROM CURRENT_DATE)")
+                    resultado = cur.fetchone()
+                    return resultado[0] if resultado else 1
+        except Exception as e:
+            print(f"Erro ao buscar próximo número da OS Itinerário no banco: {e}")
+            return 1
 
     def salvar_os_itinerario(self, dados_db):
         query = """
