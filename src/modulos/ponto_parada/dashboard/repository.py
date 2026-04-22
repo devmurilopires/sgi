@@ -16,7 +16,7 @@ class DashboardRepository:
                    data_criacao AS data_dt, 
                    responsavel AS criado_por,
                    origem_demanda AS origem
-            FROM sigp.ordens_servico
+            FROM ponto_parada.ordens_servico
             WHERE data_criacao IS NOT NULL
         """
         try:
@@ -35,7 +35,7 @@ class DashboardRepository:
                    b.created_at AS data_dt, 
                    p.solicitante,
                    p.origem_demanda AS origem
-            FROM sigp.pareceres p
+            FROM ponto_parada.pareceres p
             JOIN common.pareceres_base b ON p.id = b.id
             LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
             WHERE b.created_at IS NOT NULL

@@ -10,7 +10,7 @@ class EnderecoRepository:
             is_ativo = bool(status)
 
         query = """
-            INSERT INTO sigp.enderecos_cadastrados 
+            INSERT INTO ponto_parada.enderecos_cadastrados 
             (id_ponto, logradouro, numero, bairro, complemento, is_ativo, responsavel_vistoria, data_vistoria)
             VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
             ON CONFLICT (id_ponto) DO UPDATE SET
@@ -44,7 +44,7 @@ class EnderecoRepository:
                 CASE WHEN is_ativo THEN 'ATIVO' ELSE 'INATIVO' END AS status, 
                 responsavel_vistoria AS criado_por, 
                 data_vistoria AS updated_at
-            FROM sigp.enderecos_cadastrados
+            FROM ponto_parada.enderecos_cadastrados
             ORDER BY id_ponto
         """
         try:

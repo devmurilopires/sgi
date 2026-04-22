@@ -8,7 +8,7 @@ class OSRepository:
         # BUSCA DE ENDEREÇO CADASTRADO PELO ID DO PONTO
         query = """
             SELECT logradouro, bairro, numero, complemento, is_ativo
-            FROM sigp.enderecos_cadastrados 
+            FROM ponto_parada.enderecos_cadastrados 
             WHERE id_ponto = %s
         """
         try:
@@ -32,7 +32,7 @@ class OSRepository:
     def cadastrar_endereco(self, id_texto, endereco, numero, bairro, complemento, usuario):
         # CADASTRO DE NOVO ENDEREÇO PARA UM PONTO (COM RESPONSÁVEL E DATA DE VISTORIA)
         query = """
-            INSERT INTO sigp.enderecos_cadastrados 
+            INSERT INTO ponto_parada.enderecos_cadastrados 
             (id_ponto, logradouro, numero, bairro, complemento, is_ativo, responsavel_vistoria, data_vistoria)
             VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s)
         """
@@ -52,7 +52,7 @@ class OSRepository:
         
         # ATUALIZAÇÃO DE ENDEREÇO EXISTENTE (COM OPÇÃO DE REATIVAÇÃO)
         query = f"""
-            UPDATE sigp.enderecos_cadastrados
+            UPDATE ponto_parada.enderecos_cadastrados
             SET logradouro=%s, numero=%s, bairro=%s, complemento=%s, {set_ativo}
                 responsavel_vistoria=%s, data_vistoria=%s
             WHERE id_ponto=%s
@@ -73,7 +73,7 @@ class OSRepository:
         # BUSCA DO HISTÓRICO DE ORDEM DE SERVIÇO PARA UM PONTO (COM LIMITAÇÃO DE REGISTROS)
         query = """
             SELECT numero, TO_CHAR(data_criacao, 'DD/MM/YYYY'), acao_realizada, tipo_item, logradouro_completo, bairro, responsavel
-            FROM sigp.ordens_servico
+            FROM ponto_parada.ordens_servico
             WHERE ponto_principal_id = %s
             ORDER BY data_criacao DESC
             LIMIT %s
@@ -91,7 +91,7 @@ class OSRepository:
         # GERAÇÃO DO PRÓXIMO NÚMERO DE ORDEM DE SERVIÇO PARA O MODELO SELECIONADO NO ANO ATUAL
         query = """
             SELECT MAX(numero)
-            FROM sigp.ordens_servico
+            FROM ponto_parada.ordens_servico
             WHERE modelo_documento = %s AND EXTRACT(YEAR FROM data_criacao) = %s
         """
         try:
@@ -115,7 +115,7 @@ class OSRepository:
 
         data_criacao = datetime.strptime(data_str, "%d/%m/%Y").date()
         query = """
-            INSERT INTO sigp.ordens_servico (
+            INSERT INTO ponto_parada.ordens_servico (
                 numero, data_criacao, ponto_principal_id, pontos_adicionais,
                 acao_realizada, tipo_item, logradouro_completo, bairro,
                 complemento, descricao_tecnica, responsavel, modelo_documento, origem_demanda

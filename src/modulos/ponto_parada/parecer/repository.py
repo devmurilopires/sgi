@@ -4,8 +4,8 @@ from config.database import get_db_connection
 class ParecerRepository:
     
     def obter_proximo_numero(self, ano):
-        """Calcula o próximo número do parecer para o SIGP no ano atual consultando a Tabela Mãe."""
-        query = "SELECT MAX(numero_parecer_ano) FROM common.pareceres_base WHERE ano = %s AND sistema_origem = 'SIGP'"
+        """Calcula o próximo número do parecer para o ponto_parada no ano atual consultando a Tabela Mãe."""
+        query = "SELECT MAX(numero_parecer_ano) FROM common.pareceres_base WHERE ano = %s AND sistema_origem = 'ponto_parada'"
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
@@ -20,7 +20,7 @@ class ParecerRepository:
 
     def salvar_parecer(self, dados_banco):
         """
-        Salva na Tabela Mãe (common.pareceres_base) e na Tabela Filha (sigp.pareceres) 
+        Salva na Tabela Mãe (common.pareceres_base) e na Tabela Filha (ponto_parada.pareceres) 
         em uma única transação segura (Duplo Insert).
         """
         
@@ -42,7 +42,7 @@ class ParecerRepository:
                     query_mae = """
                         INSERT INTO common.pareceres_base 
                         (sistema_origem, numero_parecer_ano, ano, criado_por_id) 
-                        VALUES ('SIGP', %s, %s, %s)
+                        VALUES ('ponto_parada', %s, %s, %s)
                         RETURNING id;
                     """
                     cursor.execute(query_mae, (numero, ano, usuario_id))
@@ -50,7 +50,7 @@ class ParecerRepository:
 
                     # INSERE NA TABELA FILHA usando o ID DA MÃE (AGORA COM A ORIGEM)
                     query_filha = """
-                        INSERT INTO sigp.pareceres (
+                        INSERT INTO ponto_parada.pareceres (
                             id, tipo_parecer, processo, assunto, solicitante, ids_pontos,
                             tipo_execucao, item, endereco_vistoria, motivo_indeferimento,
                             quantidade, caminho_arquivo_docx, origem_demanda

@@ -10,20 +10,20 @@ class RelatorioRepository:
                        p.assunto, pb.tipo_parecer as decisao, p.solicitante, p.endereco_vistoria as endereco, 
                        pb.created_at as data_criacao, u.nome_completo as responsavel,
                        p.caminho_arquivo_docx as caminho_arquivo, p.motivo_indeferimento
-                FROM sigp.pareceres p
+                FROM ponto_parada.pareceres p
                 LEFT JOIN common.pareceres_base pb ON p.id = pb.id
                 LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
                 WHERE 1=1
             """
-        else: # ORDEM DE SERVIÇO (SIGP)
-            # A tabela sigp.ordens_servico NÃO possui 'caminho_arquivo'. 
+        else: # ORDEM DE SERVIÇO (ponto_parada)
+            # A tabela ponto_parada.ordens_servico NÃO possui 'caminho_arquivo'. 
             # Retornamos '' para não quebrar a view.
             query = """
                 SELECT o.id, o.numero as numero_os, o.origem_demanda as origem, o.acao_realizada as acao,
                        o.tipo_item as item, o.ponto_principal_id, o.pontos_adicionais, 
                        o.logradouro_completo as endereco, o.bairro, o.status_conclusao as status,
                        o.data_criacao, o.responsavel, '' as caminho_arquivo
-                FROM sigp.ordens_servico o
+                FROM ponto_parada.ordens_servico o
                 WHERE 1=1
             """
 
@@ -89,10 +89,10 @@ class RelatorioRepository:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if tipo_doc == "PARECER":
-                        cur.execute("DELETE FROM sigp.pareceres WHERE id = %s", (registro_id,))
+                        cur.execute("DELETE FROM ponto_parada.pareceres WHERE id = %s", (registro_id,))
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     else:
-                        cur.execute("DELETE FROM sigp.ordens_servico WHERE id = %s", (registro_id,))
+                        cur.execute("DELETE FROM ponto_parada.ordens_servico WHERE id = %s", (registro_id,))
                     conn.commit()
                     return True, "Registro excluído com sucesso."
         except Exception as e:
@@ -102,6 +102,6 @@ class RelatorioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT DISTINCT bairro FROM sigp.ordens_servico WHERE bairro IS NOT NULL AND bairro != '' ORDER BY bairro")
+                    cur.execute("SELECT DISTINCT bairro FROM ponto_parada.ordens_servico WHERE bairro IS NOT NULL AND bairro != '' ORDER BY bairro")
                     return [row[0] for row in cur.fetchall()]
         except: return []
