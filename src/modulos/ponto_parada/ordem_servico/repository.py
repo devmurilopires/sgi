@@ -107,25 +107,28 @@ class OSRepository:
             return 1
 
     def salvar_os(self, dados_os):
-        # SALVA A ORDEM DE SERVIÇO NO BANCO DE DADOS (COM A ORIGEM DA DEMANDA)
+        # SALVA A ORDEM DE SERVIÇO NO BANCO DE DADOS (COM A ORIGEM DA DEMANDA E CAMINHO DO ARQUIVO)
         (numero_os, data_str, id_principal, ids_formatado,
          tipo_os, _lixo1, tipo_item, _lixo2,
          endereco_completo, bairro_str, _lixo3,
-         complemento_str, descricoes, usuario_logado, pasta_escolhida, origem_demanda) = dados_os
+         complemento_str, descricoes, usuario_logado, pasta_escolhida, origem_demanda, caminho_arquivo) = dados_os
 
         data_criacao = datetime.strptime(data_str, "%d/%m/%Y").date()
+        
+        # ---> CORREÇÃO: Adicionada a coluna 'caminho_arquivo' no INSERT
         query = """
             INSERT INTO ponto_parada.ordens_servico (
                 numero, data_criacao, ponto_principal_id, pontos_adicionais,
                 acao_realizada, tipo_item, logradouro_completo, bairro,
-                complemento, descricao_tecnica, responsavel, modelo_documento, origem_demanda
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                complemento, descricao_tecnica, responsavel, modelo_documento, origem_demanda, caminho_arquivo
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
+        # ---> CORREÇÃO: Passando o parâmetro caminho_arquivo
         params = (
             numero_os, data_criacao, id_principal, ids_formatado,
             tipo_os, tipo_item, endereco_completo, bairro_str,
-            complemento_str, descricoes, usuario_logado, pasta_escolhida, origem_demanda
+            complemento_str, descricoes, usuario_logado, pasta_escolhida, origem_demanda, caminho_arquivo
         )
 
         try:

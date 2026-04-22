@@ -111,24 +111,27 @@ class OSService:
         tipo_os_up = str(tipo_os).strip().upper() if tipo_os else ""
         tipo_item_up = str(tipo_item).strip().upper() if tipo_item else ""
 
+        # ---> CORREÇÃO: Movemos o cálculo do nome do arquivo para ANTES de salvar no banco
+        nome_pasta = f"{numero_os:03d}-{datetime.now().strftime('%m')}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}"
+        caminho_pasta = os.path.join(pasta_base, nome_pasta)
+        nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
+        destino_docx = os.path.join(caminho_pasta, nome_arquivo)
+
+        # ---> Adicionamos o 'destino_docx' no final da tupla
         dados_salvar_os = (
             numero_os, data_str, id_principal, ids_formatado,
             tipo_os_up, self.normalizar(tipo_os_up),
             tipo_item_up, self.normalizar(tipo_item_up),
             endereco_completo, bairro_str, self.normalizar(bairro_str),
             complemento_str, "\n".join([item["descricao"] for item in descricoes_acumuladas]),
-            usuario_logado, pasta_escolhida, origem_demanda 
+            usuario_logado, pasta_escolhida, origem_demanda,
+            destino_docx # <--- NOVO CAMPO AQUI
         )
 
         try:
             self.repo.salvar_os(dados_salvar_os)
         except Exception as e:
             return False, f"Erro Crítico! A OS NÃO foi gerada pois houve falha no Banco de Dados:\n{str(e)}"
-
-        nome_pasta = f"{numero_os:03d}-{datetime.now().strftime('%m')}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}"
-        caminho_pasta = os.path.join(pasta_base, nome_pasta)
-        nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
-        destino_docx = os.path.join(caminho_pasta, nome_arquivo)
 
         try:
             os.makedirs(caminho_pasta, exist_ok=True)
@@ -139,7 +142,7 @@ class OSService:
             
         except Exception as e:
             return False, f"Atenção: A OS foi registrada no banco, mas houve falha ao gerar o documento Word na rede:\n{e}"
-
+        
     # =========================================================
     # MANIPULAÇÃO DO WORD (DOCX)
     # =========================================================
