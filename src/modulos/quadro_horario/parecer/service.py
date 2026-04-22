@@ -128,7 +128,6 @@ class ParecerQuadroHorarioService:
             "{{PROCESSO}}": dados_form["processo"],
             "{{ASSUNTO}}": dados_form["assunto"],
             "{{SOLICITANTE}}": dados_form["solicitante"],
-            "{{SOLICITACAO}}": dados_form["solicitacao"],
             "{{EVENTO_OU_LINHA}}": evento_ou_linha_text,
             "{{DATA_EVENTO}}": data_text,
             "{{MOTIVO}}": dados_form.get("motivo", ""),
@@ -141,7 +140,7 @@ class ParecerQuadroHorarioService:
         # Salva no Banco de Dados
         dados_db = {
             "numero_parecer": numero, "tipo": tipo, "processo": dados_form["processo"],
-            "assunto": dados_form["assunto"], "solicitacao": dados_form["solicitacao"],
+            "assunto": dados_form["assunto"],
             "evento": evento, "data_evento": data_text,
             "solicitante": dados_form["solicitante"], "linhas": ", ".join(linhas),
             "motivo": dados_form.get("motivo", ""), "caminho_arquivo": caminho_destino,

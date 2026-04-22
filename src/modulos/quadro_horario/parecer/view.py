@@ -48,8 +48,7 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         self.processo_entry = self._criar_campo_grid(grid_master, "Nº Processo", 380, 0, 1)
         self.processo_entry.bind("<KeyRelease>", lambda e: self.processo_entry.delete(0, "end") or self.processo_entry.insert(0, self.processo_entry.get().upper()))
         
-        # --- LINHA 1: Solicitação e Assunto ---
-        self.solicitacao_combo = self._criar_autocomplete_grid(grid_master, "Solicitação", 380, self.lista_assuntos, 1, 0)
+        # --- LINHA 1: Assunto ---
         self.assunto_combo = self._criar_autocomplete_grid(grid_master, "Assunto", 380, self.lista_assuntos, 1, 1)
 
         # --- LINHA 2: Solicitante e Eventos ---
@@ -305,15 +304,14 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
             "processo": self.processo_entry.get().strip(),
             "solicitante": self.solicitante_combo.get().strip(),
             "assunto": self.assunto_combo.get().strip(),
-            "solicitacao": self.solicitacao_combo.get().strip(),
             "evento": self.evento_combo.get().strip(),
             "datas": datas_selecionadas,
             "modo_data": "PERIODO" if "Período" in self.modo_data_var.get() else "ISOLADOS",
             "motivo": self.motivo_text.get("1.0", "end").strip() if tipo == "INDEFERIDO" else ""
         }
 
-        if not all([dados_form["processo"], dados_form["solicitante"], dados_form["assunto"], dados_form["solicitacao"]]):
-            messagebox.showerror("Erro", "Preencha Processo, Solicitante, Assunto e Solicitação.")
+        if not all([dados_form["processo"], dados_form["solicitante"], dados_form["assunto"]):
+            messagebox.showerror("Erro", "Preencha Processo, Solicitante e Assunto.")
             return
 
         if not self.linhas_add and not dados_form["evento"]:

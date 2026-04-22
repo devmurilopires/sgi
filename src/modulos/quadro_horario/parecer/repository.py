@@ -35,10 +35,10 @@ class ParecerQuadroHorarioRepository:
         """
         query_especifica = """
             INSERT INTO spr.pareceres (
-                id, processo, assunto, solicitacao, evento, data_evento, 
+                id, processo, assunto, evento, data_evento, 
                 solicitante, linhas_afetadas, motivo_indeferimento, caminho_arquivo
             ) VALUES (
-                %(id_base)s, %(processo)s, %(assunto)s, %(solicitacao)s, %(evento)s, %(data_evento)s,
+                %(id_base)s, %(processo)s, %(assunto)s, %(evento)s, %(data_evento)s,
                 %(solicitante)s, %(linhas)s, %(motivo)s, %(caminho_arquivo)s
             );
         """
