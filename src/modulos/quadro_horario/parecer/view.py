@@ -310,7 +310,7 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
             "motivo": self.motivo_text.get("1.0", "end").strip() if tipo == "INDEFERIDO" else ""
         }
 
-        if not all([dados_form["processo"], dados_form["solicitante"], dados_form["assunto"]):
+        if not all([dados_form["processo"], dados_form["solicitante"], dados_form["assunto"]]):
             messagebox.showerror("Erro", "Preencha Processo, Solicitante e Assunto.")
             return
 
