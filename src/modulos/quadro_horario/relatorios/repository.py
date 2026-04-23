@@ -17,10 +17,10 @@ class RelatorioQuadroHorarioRepository:
                 WHERE 1=1
             """
         else: # PESQUISA
-            # CORREÇÃO: Usando 'criado_por' como responsavel e 'caminho_arquivo' (nomes exatos da tabela)
             query = """
                 SELECT id, titulo, tipo_pesquisa as tipo, data_inicio, data_fim, 
-                       criado_por as responsavel, created_at as data_criacao, caminho_arquivo
+                       criado_por as responsavel, created_at as data_criacao, caminho_arquivo,
+                       resultado_json as payload
                 FROM quadro_horario.pesquisas
                 WHERE 1=1
             """
@@ -41,6 +41,11 @@ class RelatorioQuadroHorarioRepository:
             if valor and chave in doc_map:
                 query += f" AND COALESCE({doc_map[chave]}::text, '') ILIKE %s"
                 params.append(f"%{valor}%")
+
+        # Filtro para buscar por data específica dentro da lista de relatórios utilizados
+        if tipo_doc == "PESQUISA" and filtros.get("relatorios"):
+            query += " AND resultado_json::text ILIKE %s"
+            params.append(f"%{filtros['relatorios']}%")
 
         col_data = "b.created_at" if tipo_doc == "PARECER" else "created_at"
         if filtros.get("data_inicio"):
@@ -64,7 +69,8 @@ class RelatorioQuadroHorarioRepository:
                     colunas = [desc[0] for desc in cur.description]
                     return [dict(zip(colunas, row)) for row in cur.fetchall()]
         except Exception as e:
-            print(f"Erro ao buscar dados: {e}"); return []
+            print(f"Erro ao buscar dados: {e}")
+            return []
 
     def contar_total(self, tipo_doc, filtros):
         query, params = self._construir_query_filtros(tipo_doc, filtros)
@@ -86,10 +92,9 @@ class RelatorioQuadroHorarioRepository:
                         linha = cur.fetchone()
                         numero = linha[0] if linha else registro_id
                         cur.execute("INSERT INTO common.lixeira (modulo, numero, motivo, excluido_por, data_exclusao) VALUES ('PARECER_quadro_horario', %s, %s, %s, NOW())", (numero, motivo, excluido_por))
-                        
                         cur.execute("DELETE FROM quadro_horario.pareceres WHERE id = %s", (registro_id,))
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
-                    else: # PESQUISA
+                    else:
                         cur.execute("SELECT row_to_json(p) FROM quadro_horario.pesquisas p WHERE id = %s", (registro_id,))
                         linha = cur.fetchone()
                         if linha:
@@ -97,7 +102,7 @@ class RelatorioQuadroHorarioRepository:
                             cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por, data_exclusao) VALUES ('PESQUISA_quadro_horario', %s, %s, %s, %s, NOW())", (registro_id, json.dumps(dados_json), motivo, excluido_por))
                         cur.execute("DELETE FROM quadro_horario.pesquisas WHERE id = %s", (registro_id,))
                     conn.commit()
-                    return True, "Registro excluído e arquivado com sucesso."
+                    return True, "Registro excluído com sucesso."
         except Exception as e:
             return False, f"Erro ao excluir: {e}"
 
@@ -108,5 +113,4 @@ class RelatorioQuadroHorarioRepository:
                     cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas ORDER BY codigo")
                     return [row[0] for row in cur.fetchall()]
         except Exception as e:
-            print(f"Erro ao buscar linhas: {e}")
             return []
