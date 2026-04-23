@@ -4,6 +4,7 @@ import unicodedata
 from datetime import datetime
 from numbers import Number
 from src.modulos.quadro_horario.pesquisas.repository import PesquisaQuadroHorarioRepository
+from datetime import datetime, time
 
 class PesquisaQuadroHorarioService:
     def __init__(self):
@@ -29,7 +30,8 @@ class PesquisaQuadroHorarioService:
 
     def _extrair_hora(self, v):
         if pd.isna(v): return None
-        if isinstance(v, (datetime.time, datetime)): return v.hour
+        # CORREÇÃO: Usar apenas 'time' e 'datetime'
+        if isinstance(v, (time, datetime)): return v.hour
         try:
             ts = pd.to_datetime(v, errors='coerce')
             if pd.isna(ts): return int(str(v).strip().split(":")[0]) if ":" in str(v) else None
@@ -38,7 +40,8 @@ class PesquisaQuadroHorarioService:
 
     def _normalizar_tempo(self, v):
         if pd.isna(v): return ""
-        if isinstance(v, (datetime.time, datetime)): return v.strftime("%H:%M:%S")
+        # CORREÇÃO: Usar apenas 'time' e 'datetime'
+        if isinstance(v, (time, datetime)): return v.strftime("%H:%M:%S")
         if isinstance(v, Number):
             fv = float(v)
             sec = int(round(fv * 86400.0)) if abs(fv) <= 1.0 else int(round(fv))
