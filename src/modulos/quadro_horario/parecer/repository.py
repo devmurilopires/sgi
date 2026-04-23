@@ -5,7 +5,8 @@ class ParecerQuadroHorarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT nome FROM common.linhas ORDER BY nome;")
+                    # MÁGICA: Retorna Código + Nome concatenados!
+                    cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas ORDER BY codigo;")
                     return [r[0] for r in cur.fetchall()]
         except Exception as e:
             print(f"Erro ao buscar linhas: {e}")
@@ -51,6 +52,7 @@ class ParecerQuadroHorarioRepository:
                     
                     cur.execute(query_especifica, dados_db)
                     conn.commit()
-            return True, "Registro salvo no banco com sucesso."
+                    return True
         except Exception as e:
-            return False, f"Erro ao salvar no banco: {e}"
+            print(f"Erro detalhado DB: {e}")
+            return False

@@ -1,8 +1,111 @@
 import customtkinter as ctk
-from tkinter import messagebox
+import tkinter as tk
+from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 import re
 from src.modulos.quadro_horario.parecer.service import ParecerQuadroHorarioService
+
+# =====================================================================
+# COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
+# =====================================================================
+class Autocomplete(ctk.CTkEntry):
+    def __init__(self, master, values, **kwargs):
+        super().__init__(master, **kwargs)
+        self.lista_sugestoes = values
+        self.listbox_frame = None
+        self.listbox_widget = None
+        self.selecao_idx = -1
+
+        self.bind("<KeyRelease>", self.on_keyrelease)
+        self.bind("<Down>", self.navegar_para_baixo)
+        self.bind("<Up>", self.navegar_para_cima)
+        self.bind("<Return>", self.selecionar_com_enter)
+        self.bind("<FocusOut>", self.esconder_lista_com_atraso)
+        self.bind("<Destroy>", lambda e: self.esconder_lista())
+
+    def on_keyrelease(self, event):
+        if event.keysym in ["Up", "Down", "Return", "Escape", "Tab"]: return  
+        texto = self.get().strip().lower()
+        if not texto:
+            self.esconder_lista(); return
+        filtradas = [linha for linha in self.lista_sugestoes if texto in linha.lower()][:15]
+        if filtradas: self.mostrar_lista(filtradas)
+        else: self.esconder_lista()
+
+    def mostrar_lista(self, filtradas):
+        self.esconder_lista()
+        toplevel = self.winfo_toplevel()
+        if not toplevel.winfo_exists(): return
+        
+        x = self.winfo_rootx() - toplevel.winfo_rootx()
+        y = self.winfo_rooty() - toplevel.winfo_rooty() + self.winfo_height() + 2
+        w = self.winfo_width()
+        h = min(180, len(filtradas) * 26 + 5)
+        
+        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color="#FFFFFF", border_width=1, border_color="#10B981", corner_radius=6, width=w, height=h)
+        self.listbox_frame.place(x=x, y=y)
+        self.listbox_frame.pack_propagate(False)
+        
+        self.listbox_widget = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#10B981", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox_widget.pack(side="left", fill="both", expand=True, padx=3, pady=3)
+        
+        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox_widget.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.listbox_widget.config(yscrollcommand=scrollbar.set)
+        
+        for item in filtradas: self.listbox_widget.insert(tk.END, item)
+            
+        self.selecao_idx = -1
+        self.listbox_widget.bind("<<ListboxSelect>>", self.on_listbox_click)
+        self.listbox_frame.lift()
+
+    def esconder_lista(self, event=None):
+        if self.listbox_frame and self.listbox_frame.winfo_exists(): self.listbox_frame.destroy()
+        self.listbox_frame = None
+
+    def esconder_lista_com_atraso(self, event):
+        self.after(200, self.esconder_lista)
+
+    def navegar_para_baixo(self, event):
+        if self.listbox_widget:
+            total = self.listbox_widget.size()
+            if self.selecao_idx < total - 1:
+                self.selecao_idx += 1
+                self.listbox_widget.selection_clear(0, tk.END)
+                self.listbox_widget.selection_set(self.selecao_idx)
+                self.listbox_widget.see(self.selecao_idx)
+
+    def navegar_para_cima(self, event):
+        if self.listbox_widget and self.selecao_idx > 0:
+            self.selecao_idx -= 1
+            self.listbox_widget.selection_clear(0, tk.END)
+            self.listbox_widget.selection_set(self.selecao_idx)
+            self.listbox_widget.see(self.selecao_idx)
+
+    def selecionar_com_enter(self, event):
+        if self.listbox_widget and self.selecao_idx >= 0:
+            selecionado = self.listbox_widget.get(self.selecao_idx)
+            self.delete(0, tk.END)
+            self.insert(0, selecionado)
+            self.esconder_lista()
+            self.event_generate("<<AutocompleteSelected>>")
+            return "break"
+        return None
+
+    def on_listbox_click(self, event):
+        if not self.listbox_widget: return
+        selecao = self.listbox_widget.curselection()
+        if selecao:
+            item = self.listbox_widget.get(selecao[0])
+            self.delete(0, tk.END)
+            self.insert(0, item)
+            self.esconder_lista()
+            self.event_generate("<<AutocompleteSelected>>")
+
+    def set(self, value):
+        self.delete(0, "end")
+        if value: self.insert(0, value)
+
 
 class ParecerQuadroHorarioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -20,309 +123,264 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
     def _construir_listas_padrao(self):
         self.lista_solicitantes = ["AGEFIS", "AMC", "Cidadão", "CMF", "Comunidade", "Construtoras", "Empresas Operadoras", "Sindiônibus", "Outros"]
         self.lista_assuntos = ["Aumento de frota para concurso", "Aumento de frota", "Redução de frota", "Execesso de demanda", "Remoção de empresas", "Retorno de Linha", "Mudança de frota", "Intervalo irregular", "Diversos--Requerimentos", "Inclusão de viagens", "Outros"]
-        self.lista_eventos = ["Cultural", "Esportivo", "Religioso", "Festival Junino", "Comunitário", "Festas", "Parada da Diversidade Sexual", "Fortal", "Academia Enem", "Caminhada com Maria", "Evangelizar", "Outros"]
+        self.lista_eventos = ["Carnaval", "Réveillon", "Enem", "Eleições", "Concurso", "Festival Halleluya", "Fortal", "Manifestação", "Obras", "Outros"]
+        self.linhas_disponiveis = self.service.buscar_sugestoes_linhas()
 
     def _construir_interface(self):
-        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#F8F9FA")
-        self.scroll_frame.pack(padx=20, pady=20, fill="both", expand=True)
+        top_bar = ctk.CTkFrame(self, fg_color="#FFFFFF", height=70, corner_radius=0)
+        top_bar.pack(fill="x", side="top")
+        top_bar.pack_propagate(False)
 
-        # --- CABEÇALHO ---
-        header_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(0, 15))
-        ctk.CTkLabel(header_frame, text="Gerador de Parecer Técnico (Quadro de Horário)", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
+        title_lbl = ctk.CTkLabel(top_bar, text="📄 Geração de Parecer", font=("Arial Black", 18), text_color="#0F8C75")
+        title_lbl.pack(side="left", padx=20, pady=15)
 
-        # =====================================================================
-        # FORMULÁRIO PRINCIPAL (Layout Grid Duplo: Base 380px)
-        # =====================================================================
-        form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E0E0E0")
-        form_frame.pack(fill="x", pady=10, padx=10)
+        self.container_principal = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.container_principal.pack(fill="both", expand=True, padx=20, pady=15)
 
-        grid_master = ctk.CTkFrame(form_frame, fg_color="transparent")
-        grid_master.pack(fill="x", pady=15, padx=15)
+        card_bg = ctk.CTkFrame(self.container_principal, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E5E7EB")
+        card_bg.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # --- LINHA 0: Decisão, Processo e evento---
-        self.tipo_var = ctk.StringVar(value="DEFERIDO")
-        cb_tipo = self._criar_combo_grid(grid_master, "Decisão do Parecer", 280, ["DEFERIDO", "INDEFERIDO"], 0, 0)
-        cb_tipo.configure(variable=self.tipo_var, command=self._on_tipo_change)
+        form_frame = ctk.CTkFrame(card_bg, fg_color="transparent")
+        form_frame.pack(fill="both", expand=True, padx=30, pady=30)
+        form_frame.columnconfigure((0, 1), weight=1, uniform="col")
+
+        # --- LINHA 0: Processo e Solicitante ---
+        f_proc = ctk.CTkFrame(form_frame, fg_color="transparent")
+        f_proc.grid(row=0, column=0, padx=(0, 15), pady=(0, 20), sticky="ew")
+        ctk.CTkLabel(f_proc, text="Processo:", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
+        self.processo_entry = ctk.CTkEntry(f_proc, height=40, font=("Arial", 13))
+        self.processo_entry.pack(fill="x")
+        self.processo_entry.bind("<KeyRelease>", self._formatar_processo)
+
+        f_sol = ctk.CTkFrame(form_frame, fg_color="transparent")
+        f_sol.grid(row=0, column=1, padx=(15, 0), pady=(0, 20), sticky="ew")
+        ctk.CTkLabel(f_sol, text="Solicitante:", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
+        self.solicitante_combo = ctk.CTkComboBox(f_sol, values=self.lista_solicitantes, height=40, font=("Arial", 13))
+        self.solicitante_combo.pack(fill="x")
+
+        # --- LINHA 1: Assunto e Evento ---
+        f_ass = ctk.CTkFrame(form_frame, fg_color="transparent")
+        f_ass.grid(row=1, column=0, padx=(0, 15), pady=(0, 20), sticky="ew")
+        ctk.CTkLabel(f_ass, text="Assunto:", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
+        self.assunto_combo = ctk.CTkComboBox(f_ass, values=self.lista_assuntos, height=40, font=("Arial", 13))
+        self.assunto_combo.pack(fill="x")
+
+        f_evento = ctk.CTkFrame(form_frame, fg_color="transparent")
+        f_evento.grid(row=1, column=1, padx=(15, 0), pady=(0, 20), sticky="ew")
+        ctk.CTkLabel(f_evento, text="Evento (Opcional):", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
+        self.evento_combo = ctk.CTkComboBox(f_evento, values=[""] + self.lista_eventos, height=40, font=("Arial", 13))
+        self.evento_combo.pack(fill="x")
+
+        # ==========================================
+        # LINHA 2: COLUNAS INDEPENDENTES (Resolve o Bug da Margem)
+        # ==========================================
+        f_col_esq = ctk.CTkFrame(form_frame, fg_color="transparent")
+        f_col_esq.grid(row=2, column=0, padx=(0, 15), pady=(0, 20), sticky="nw")
         
-        self.processo_entry = self._criar_campo_grid(grid_master, "Nº Processo", 280, 0, 1)
-        self.processo_entry.bind("<KeyRelease>", lambda e: self.processo_entry.delete(0, "end") or self.processo_entry.insert(0, self.processo_entry.get().upper()))
+        f_col_dir = ctk.CTkFrame(form_frame, fg_color="transparent")
+        f_col_dir.grid(row=2, column=1, padx=(15, 0), pady=(0, 20), sticky="nw")
+
+        # Montando a Coluna Esquerda (Linhas)
+        ctk.CTkLabel(f_col_esq, text="Linha Afetada:", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
+        f_linha_input = ctk.CTkFrame(f_col_esq, fg_color="transparent")
+        f_linha_input.pack(fill="x", pady=(0, 5))
+        self.linha_combo = Autocomplete(f_linha_input, values=self.linhas_disponiveis, height=40, font=("Arial", 13), placeholder_text="Código ou Nome...")
+        self.linha_combo.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        self.linha_combo.bind("<<AutocompleteSelected>>", self._adicionar_linha)
+        ctk.CTkButton(f_linha_input, text="➕", fg_color="#10B981", hover_color="#059669", height=40, width=40, command=self._adicionar_linha).pack(side="right")
+        self.frame_chips_linhas = ctk.CTkFrame(f_col_esq, fg_color="transparent")
+        self.frame_chips_linhas.pack(fill="x", expand=True)
+
+        # Montando a Coluna Direita (Datas)
+        f_data_lbls = ctk.CTkFrame(f_col_dir, fg_color="transparent")
+        f_data_lbls.pack(fill="x", pady=(0, 5))
+        self.lbl_modo_data = ctk.CTkLabel(f_data_lbls, text="Data do Evento/Parecer:", font=("Arial Bold", 13), text_color="#4B5563")
+        self.lbl_modo_data.pack(side="left")
+        self.modo_data_var = ctk.StringVar(value="Isolada")
+        self.seg_modo_data = ctk.CTkSegmentedButton(f_data_lbls, values=["Isolada", "Período"], variable=self.modo_data_var, command=self._on_modo_data_change, height=25)
+        self.seg_modo_data.pack(side="right")
+
+        self.frame_data_container = ctk.CTkFrame(f_col_dir, fg_color="transparent", height=40)
+        self.frame_data_container.pack(fill="x", pady=(0, 5))
+        self.frame_data_container.pack_propagate(False)
+
+        self.frame_chips_datas = ctk.CTkFrame(f_col_dir, fg_color="transparent")
+        self.frame_chips_datas.pack(fill="x", expand=True)
+
+        # --- LINHA 4: Decisão ---
+        f_decisao = ctk.CTkFrame(form_frame, fg_color="#F9FAFB", corner_radius=8, border_width=1, border_color="#E5E7EB")
+        f_decisao.grid(row=4, column=0, columnspan=2, pady=(10, 20), sticky="ew", ipadx=10, ipady=10)
+        ctk.CTkLabel(f_decisao, text="Decisão do Parecer:", font=("Arial Bold", 14), text_color="#374151").pack(pady=(10, 5))
         
-        self.evento_combo = self._criar_autocomplete_grid(grid_master, "Evento (Deixe em branco se for apenas Linha)", 280, self.lista_eventos, 0, 2)
-        self.evento_combo.set("")
-        self.evento_combo.bind("<KeyRelease>", self._aplicar_regras_negocio, add="+")
-        self.evento_combo.configure(command=self._aplicar_regras_negocio)
+        self.tipo_parecer_var = ctk.StringVar(value="DEFERIDO")
+        seg_tipo = ctk.CTkSegmentedButton(f_decisao, values=["DEFERIDO", "INDEFERIDO"], variable=self.tipo_parecer_var, 
+                                          font=("Arial Bold", 13), selected_color="#0F8C75", selected_hover_color="#0B6B59", 
+                                          height=40, width=300, command=self._on_tipo_change)
+        seg_tipo.pack(pady=(0, 10))
 
-        # --- LINHA 1: Solicitante e Assunto ---
-        self.solicitante_combo = self._criar_autocomplete_grid(grid_master, "Solicitante", 280, self.lista_solicitantes, 1, 0)
-        self.assunto_combo = self._criar_autocomplete_grid(grid_master, "Assunto", 280, self.lista_assuntos, 1, 1)
+        # --- LINHA 5: Motivo Indeferimento ---
+        self.frame_indeferido = ctk.CTkFrame(form_frame, fg_color="transparent")
+        self.frame_indeferido.grid(row=5, column=0, columnspan=2, pady=(0, 20), sticky="ew")
+        ctk.CTkLabel(self.frame_indeferido, text="Motivo do Indeferimento:", font=("Arial Bold", 13), text_color="#D32F2F").pack(anchor="w", pady=(0, 5))
+        self.motivo_text = ctk.CTkTextbox(self.frame_indeferido, height=100, border_width=1, border_color="#D1D5DB", font=("Arial", 13))
+        self.motivo_text.pack(fill="x")
 
-        # --- LINHA 2: Datas (Modo de Seleção + Inputs + Chips) ---
-        self.modo_data_var = ctk.StringVar(value="Período (Início-Fim)")
-        self.modo_combo = self._criar_combo_grid(grid_master, "Seleção de Datas", 280, ["Período (Início-Fim)", "Dias Isolados"], 2, 0)
-        self.modo_combo.configure(variable=self.modo_data_var, command=self._on_modo_data_change)
+        # --- LINHA 6: Botão Gerar ---
+        f_btn = ctk.CTkFrame(form_frame, fg_color="transparent")
+        f_btn.grid(row=6, column=0, columnspan=2, pady=10)
+        self.btn_gerar = ctk.CTkButton(f_btn, text="Gerar Documento de Parecer", font=("Arial Bold", 15), 
+                                       fg_color="#0F8C75", hover_color="#0B6B59", height=50, width=350, command=self._acao_gerar)
+        self.btn_gerar.pack()
 
-        self.master_datas_frame = ctk.CTkFrame(grid_master, fg_color="transparent")
-        self.master_datas_frame.grid(row=2, column=1, sticky="nw", padx=10, pady=10)
-        
-        self.container_datas_input = ctk.CTkFrame(self.master_datas_frame, fg_color="transparent")
-        self.container_datas_input.pack(fill="x")
-        
-        self.frame_chips_datas = ctk.CTkFrame(self.master_datas_frame, fg_color="transparent")
-        self.frame_chips_datas.pack(fill="x", pady=(5,0))
-
-        # Removido _on_modo_data_change() daqui!
-
-        # --- LINHA 3: Linhas (Input + Botão + Chips) ---
-        self.master_linhas_frame = ctk.CTkFrame(grid_master, fg_color="transparent")
-        self.master_linhas_frame.grid(row=1, column=2, columnspan=2, sticky="nw", padx=10, pady=10)
-
-        ctk.CTkLabel(self.master_linhas_frame, text="Linha afetada", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        row_linha = ctk.CTkFrame(self.master_linhas_frame, fg_color="transparent")
-        row_linha.pack(fill="x", pady=(2,0))
-
-        self.lista_linhas_banco = self.service.buscar_sugestoes_linhas()
-        self.linha_combo = ctk.CTkComboBox(row_linha, width=300, height=35, values=self.lista_linhas_banco, font=("Arial", 12))
-        self.linha_combo.set("")
-        self.linha_combo.pack(side="left")
-        
-        def on_key_linha(event):
-            val = self.linha_combo.get().lower()
-            if not val: self.linha_combo.configure(values=self.lista_linhas_banco)
-            else:
-                filt = [v for v in self.lista_linhas_banco if val in v.lower()]
-                self.linha_combo.configure(values=filt if filt else ["- Sem resultados -"])
-        self.linha_combo.bind("<KeyRelease>", on_key_linha)
-
-        self.btn_add_linha = ctk.CTkButton(row_linha, text="➕ Add Linha", width=110, height=35, fg_color="#0F8C75", font=("Arial Bold", 12), command=self._add_linha)
-        self.btn_add_linha.pack(side="left", padx=(10,0))
-
-        self.frame_chips_linhas = ctk.CTkFrame(self.master_linhas_frame, fg_color="transparent")
-        self.frame_chips_linhas.pack(fill="x", pady=(10,0))
-
-        # =====================================================================
-        # GATILHO DE INICIALIZAÇÃO E CONTAINER DINÂMICO
-        # (Agora sim, todos os elementos visuais já foram criados na memória)
-        # =====================================================================
         self._on_modo_data_change()
-        self._aplicar_regras_negocio()
-
-        self.container_dinamico = ctk.CTkFrame(form_frame, fg_color="transparent")
-        self.container_dinamico.pack(fill="x", pady=(0, 15), padx=15)
         self._on_tipo_change()
 
-        # --- RODAPÉ ---
-        footer_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
-        footer_frame.pack(fill="x", pady=20)
-        ctk.CTkLabel(footer_frame, text=f"Responsável pelo Documento: {self.usuario_logado}", font=("Arial Bold", 12), text_color="#777").pack(side="left", padx=10)
-        ctk.CTkButton(footer_frame, text="✅ GERAR PARECER TÉCNICO", fg_color="#0F8C75", hover_color="#0B6B59", font=("Arial Black", 16), height=50, width=320, command=self.acao_gerar).pack(side="right", padx=10)
+    def _formatar_processo(self, event):
+        v = re.sub(r'[^a-zA-Z0-9]', '', self.processo_entry.get())
+        if len(v) > 5: v = f"{v[:-4]}/{v[-4:]}"
+        self.processo_entry.delete(0, "end")
+        self.processo_entry.insert(0, v)
 
-    # --- REGRAS DE NEGÓCIO BLINDADAS (Evento vs Linha) ---
-    def _aplicar_regras_negocio(self, *args):
-        evento_val = self.evento_combo.get().strip()
-        has_linhas = len(self.linhas_add) > 0
-
-        if has_linhas:
-            self.evento_combo.set("")
-            self.evento_combo.configure(state="disabled")
-            self.modo_combo.configure(state="disabled")
-            if hasattr(self, 'data_inicio') and self.data_inicio.winfo_exists(): self.data_inicio.configure(state="disabled")
-            if hasattr(self, 'data_fim') and self.data_fim.winfo_exists(): self.data_fim.configure(state="disabled")
-            if hasattr(self, 'data_isolada') and self.data_isolada.winfo_exists(): self.data_isolada.configure(state="disabled")
-            if hasattr(self, 'btn_add_data') and self.btn_add_data.winfo_exists(): self.btn_add_data.configure(state="disabled")
-        else:
-            self.evento_combo.configure(state="normal")
-            self.modo_combo.configure(state="readonly")
-            if hasattr(self, 'data_inicio') and self.data_inicio.winfo_exists(): self.data_inicio.configure(state="normal")
-            if hasattr(self, 'data_fim') and self.data_fim.winfo_exists(): self.data_fim.configure(state="normal")
-            if hasattr(self, 'data_isolada') and self.data_isolada.winfo_exists(): self.data_isolada.configure(state="normal")
-            if hasattr(self, 'btn_add_data') and self.btn_add_data.winfo_exists(): self.btn_add_data.configure(state="normal")
-
-            if evento_val != "" and evento_val != "- Sem resultados -":
-                self.linha_combo.set("")
-                self.linha_combo.configure(state="disabled")
-                self.btn_add_linha.configure(state="disabled")
-            else:
-                self.linha_combo.configure(state="normal")
-                self.btn_add_linha.configure(state="normal")
-
-    # --- HELPERS DE GRID UI/UX (CORRIGIDOS COM STICKY 'nw') ---
-    def _criar_campo_grid(self, parent, label, width, row, col, columnspan=1):
-        frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
-        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        entry = ctk.CTkEntry(frame, width=width, height=35, font=("Arial", 12))
-        entry.pack(anchor="w", pady=(2,0))
-        return entry
-        
-    def _criar_combo_grid(self, parent, label, width, values, row, col, columnspan=1, state="readonly"):
-        frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
-        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), state=state)
-        combo.pack(anchor="w", pady=(2,0))
-        return combo
-
-    def _criar_autocomplete_grid(self, parent, label, width, values, row, col, columnspan=1):
-        combo = self._criar_combo_grid(parent, label, width, values, row, col, columnspan, state="normal")
-        combo._valores_originais = values
-        def on_key(event):
-            valor_digitado = combo.get().lower()
-            if not valor_digitado: combo.configure(values=combo._valores_originais)
-            else:
-                filtrados = [v for v in combo._valores_originais if valor_digitado in v.lower()]
-                combo.configure(values=filtrados if filtrados else ["- Sem resultados -"])
-        combo.bind("<KeyRelease>", on_key)
-        return combo
-
-    def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
-        container.pack_propagate(False) 
-        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
-        date_entry.pack(fill="both", expand=True, padx=2, pady=2)
-        return container, date_entry
-
-    # --- MÓDULO DE DATAS ---
-    def _on_modo_data_change(self, *args):
-        for w in self.container_datas_input.winfo_children(): w.destroy()
-        modo = self.modo_data_var.get()
-
-        if "Período" in modo:
-            f_ini = ctk.CTkFrame(self.container_datas_input, fg_color="transparent")
-            f_ini.pack(side="left", padx=(0, 10))
-            ctk.CTkLabel(f_ini, text="Data Inicial:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-            wrapper_ini, self.data_inicio = self._criar_date_wrapper(f_ini, 140)
-            wrapper_ini.pack(anchor="w", pady=(2,0))
-
-            f_fim = ctk.CTkFrame(self.container_datas_input, fg_color="transparent")
-            f_fim.pack(side="left")
-            ctk.CTkLabel(f_fim, text="Data Final:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-            wrapper_fim, self.data_fim = self._criar_date_wrapper(f_fim, 140)
-            wrapper_fim.pack(anchor="w", pady=(2,0))
-            
-            for w in self.frame_chips_datas.winfo_children(): w.destroy()
-        else:
-            f_iso = ctk.CTkFrame(self.container_datas_input, fg_color="transparent")
-            f_iso.pack(side="left", fill="both", expand=True)
-            
-            input_row = ctk.CTkFrame(f_iso, fg_color="transparent")
-            input_row.pack(side="top", fill="x")
-
-            col1 = ctk.CTkFrame(input_row, fg_color="transparent")
-            col1.pack(side="left", padx=(0, 10))
-            ctk.CTkLabel(col1, text="Selecionar Dia:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-            wrapper_iso, self.data_isolada = self._criar_date_wrapper(col1, 150)
-            wrapper_iso.pack(anchor="w", pady=(2,0))
-
-            self.btn_add_data = ctk.CTkButton(input_row, text="➕ Add Data", width=100, height=35, fg_color="#0F8C75", font=("Arial Bold", 12), command=self._add_data_isolada)
-            self.btn_add_data.pack(side="left", anchor="s", pady=(0,0))
-
-            self._render_datas_chips()
-            
-        self._aplicar_regras_negocio() 
-
-    def _add_data_isolada(self):
-        d = self.data_isolada.get()
-        if d and d not in self.datas_isoladas_add:
-            self.datas_isoladas_add.append(d)
-            self._render_datas_chips()
-
-    def _remove_data_isolada(self, dt):
-        if dt in self.datas_isoladas_add:
-            self.datas_isoladas_add.remove(dt)
-            self._render_datas_chips()
-
-    def _render_datas_chips(self):
-        for w in self.frame_chips_datas.winfo_children(): w.destroy()
-        if not self.datas_isoladas_add:
-            if "Isolados" in self.modo_data_var.get():
-                ctk.CTkLabel(self.frame_chips_datas, text="Nenhuma data isolada adicionada.", text_color="gray", font=("Arial", 11)).pack(anchor="w", padx=10)
-            return
-            
-        for d in self.datas_isoladas_add:
-            chip = ctk.CTkFrame(self.frame_chips_datas, fg_color="#F1F3F5", corner_radius=6, height=32)
-            chip.pack(side="top", fill="x", pady=3)
-            chip.pack_propagate(False)
-            ctk.CTkLabel(chip, text=d, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
-            ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda date=d: self._remove_data_isolada(date)).pack(side="right", padx=5)
-
-    # --- MÓDULO DE LINHAS ---
-    def _add_linha(self):
-        lin = self.linha_combo.get().strip()
-        if lin and lin != "- Sem resultados -" and lin not in self.linhas_add:
-            self.linhas_add.append(lin)
-            self.linha_combo.set("") 
+    def _adicionar_linha(self, event=None):
+        linha = self.linha_combo.get().strip()
+        if linha and linha not in self.linhas_add:
+            self.linhas_add.append(linha)
             self._render_linhas_chips()
+            self.linha_combo.set("")
             self._aplicar_regras_negocio()
 
-    def _remove_linha(self, lin):
-        if lin in self.linhas_add:
-            self.linhas_add.remove(lin)
+    def _remover_linha(self, linha):
+        if linha in self.linhas_add:
+            self.linhas_add.remove(linha)
             self._render_linhas_chips()
             self._aplicar_regras_negocio()
 
     def _render_linhas_chips(self):
-        for w in self.frame_chips_linhas.winfo_children(): w.destroy()
-        if not self.linhas_add: return
-        
-        for lin in self.linhas_add:
-            chip = ctk.CTkFrame(self.frame_chips_linhas, fg_color="#F1F3F5", corner_radius=6, height=32)
-            chip.pack(side="left", padx=5, pady=3) # Chips lado a lado
-            chip.pack_propagate(False)
-            ctk.CTkLabel(chip, text=lin, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
-            ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda l=lin: self._remove_linha(l)).pack(side="right", padx=5)
-
-    # --- DINAMISMO (DEFERIDO vs INDEFERIDO) ---
-    def _on_tipo_change(self, *args):
-        for w in self.container_dinamico.winfo_children(): w.destroy()
-        tipo = self.tipo_var.get()
-        
-        if tipo == "INDEFERIDO":
-            frame_motivo = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
-            frame_motivo.pack(fill="x", padx=10, pady=5)
-            ctk.CTkLabel(frame_motivo, text="Motivo do Indeferimento:", font=("Arial Bold", 12), text_color="#D32F2F").pack(anchor="w")
-            self.motivo_text = ctk.CTkTextbox(frame_motivo, height=80, border_width=2)
-            self.motivo_text.pack(fill="x", pady=(2,0))
-
-    # --- AÇÃO PRINCIPAL ---
-    def acao_gerar(self):
-        tipo = self.tipo_var.get()
-        
-        # Processa Datas Selecionadas (Apenas se for Evento)
-        datas_selecionadas = []
-        if not self.linhas_add: 
-            if "Período" in self.modo_data_var.get():
-                d_ini = self.data_inicio.get()
-                d_fim = self.data_fim.get()
-                datas_selecionadas = [d_ini] if d_ini == d_fim else [d_ini, d_fim]
-            else:
-                datas_selecionadas = sorted(self.datas_isoladas_add.copy())
+        for widget in self.frame_chips_linhas.winfo_children(): widget.destroy()
+        # MÁGICA DO ALINHAMENTO: Cria 3 chips por linha usando divisão e resto (i//3 e i%3)
+        for i, linha in enumerate(self.linhas_add):
+            chip = ctk.CTkFrame(self.frame_chips_linhas, fg_color="#E5E7EB", corner_radius=10)
+            chip.grid(row=i//3, column=i%3, padx=(0, 5), pady=(0, 5), sticky="w")
             
+            linha_text = linha if len(linha) < 18 else linha[:15] + "..."
+            ctk.CTkLabel(chip, text=linha_text, text_color="#374151", font=("Arial", 11)).pack(side="left", padx=(8, 4), pady=2)
+            btn = ctk.CTkButton(chip, text="✕", width=20, height=20, fg_color="transparent", text_color="#EF4444", hover_color="#D1D5DB", command=lambda l=linha: self._remover_linha(l))
+            btn.pack(side="left", padx=(0, 5))
+
+    def _on_modo_data_change(self, *args):
+        for widget in self.frame_data_container.winfo_children(): widget.destroy()
+        modo = self.modo_data_var.get()
+        
+        inner = ctk.CTkFrame(self.frame_data_container, fg_color="transparent")
+        inner.pack(fill="both", expand=True)
+
+        if modo == "Isolada":
+            self.data_isolada_entry = DateEntry(inner, background='#0F8C75', foreground='white', borderwidth=0, font=("Arial", 12))
+            self.data_isolada_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+            self.btn_add_data = ctk.CTkButton(inner, text="➕", fg_color="#10B981", hover_color="#059669", height=40, width=40, command=self._adicionar_data_isolada)
+            self.btn_add_data.pack(side="right")
+            self.frame_chips_datas.grid() 
+        else:
+            self.data_ini_entry = DateEntry(inner, background='#0F8C75', foreground='white', borderwidth=0, font=("Arial", 12))
+            self.data_ini_entry.pack(side="left", fill="x", expand=True)
+            ctk.CTkLabel(inner, text="até", text_color="#6B7280", font=("Arial Bold", 12)).pack(side="left", padx=10)
+            self.data_fim_entry = DateEntry(inner, background='#0F8C75', foreground='white', borderwidth=0, font=("Arial", 12))
+            self.data_fim_entry.pack(side="left", fill="x", expand=True)
+            self.frame_chips_datas.grid_remove() 
+
+        self._aplicar_regras_negocio()
+
+    def _adicionar_data_isolada(self):
+        dt = self.data_isolada_entry.get()
+        if dt and dt not in self.datas_isoladas_add:
+            self.datas_isoladas_add.append(dt)
+            self._render_datas_chips()
+            self._aplicar_regras_negocio()
+
+    def _remover_data(self, dt):
+        if dt in self.datas_isoladas_add:
+            self.datas_isoladas_add.remove(dt)
+            self._render_datas_chips()
+            self._aplicar_regras_negocio()
+
+    def _render_datas_chips(self):
+        for widget in self.frame_chips_datas.winfo_children(): widget.destroy()
+        # MÁGICA DO ALINHAMENTO: Cria 3 chips por linha
+        for i, dt in enumerate(self.datas_isoladas_add):
+            chip = ctk.CTkFrame(self.frame_chips_datas, fg_color="#D1FAE5", corner_radius=10)
+            chip.grid(row=i//3, column=i%3, padx=(0, 5), pady=(0, 5), sticky="w")
+            
+            ctk.CTkLabel(chip, text=dt, text_color="#065F46", font=("Arial", 11)).pack(side="left", padx=(10, 5), pady=2)
+            btn = ctk.CTkButton(chip, text="✕", width=20, height=20, fg_color="transparent", text_color="#EF4444", hover_color="#A7F3D0", command=lambda d=dt: self._remover_data(d))
+            btn.pack(side="left", padx=(0, 5))
+
+    def _on_tipo_change(self, *args):
+        tipo = self.tipo_parecer_var.get()
+        if tipo == "INDEFERIDO":
+            self.frame_indeferido.grid() 
+            self.btn_gerar.configure(fg_color="#D32F2F", hover_color="#B71C1C")
+        else:
+            self.frame_indeferido.grid_remove() 
+            self.btn_gerar.configure(fg_color="#0F8C75", hover_color="#0B6B59")
+
+    def _aplicar_regras_negocio(self):
+        modo_data = self.modo_data_var.get()
+        has_linhas = len(self.linhas_add) > 0
+        
+        # REGRA ATUALIZADA: Se adicionar linha, bloqueia Evento e Data
+        if has_linhas:
+            self.evento_combo.set("")
+            self.evento_combo.configure(state="disabled")
+            
+            self.lbl_modo_data.configure(text_color="#9CA3AF")
+            self.seg_modo_data.configure(state="disabled")
+            
+            if modo_data == "Isolada": 
+                self.data_isolada_entry.configure(state="disabled")
+                if hasattr(self, 'btn_add_data'): self.btn_add_data.configure(state="disabled")
+            else: 
+                self.data_ini_entry.configure(state="disabled")
+                self.data_fim_entry.configure(state="disabled")
+        else:
+            self.evento_combo.configure(state="normal")
+            self.lbl_modo_data.configure(text_color="#4B5563")
+            self.seg_modo_data.configure(state="normal")
+            
+            if modo_data == "Isolada": 
+                self.data_isolada_entry.configure(state="normal")
+                if hasattr(self, 'btn_add_data'): self.btn_add_data.configure(state="normal")
+            else: 
+                self.data_ini_entry.configure(state="normal")
+                self.data_fim_entry.configure(state="normal")
+
+    def _acao_gerar(self):
+        tipo = self.tipo_parecer_var.get()
+        modo_data = self.modo_data_var.get()
+
+        datas_selecionadas = []
+        if modo_data == "Isolada": datas_selecionadas = self.datas_isoladas_add.copy()
+        else: datas_selecionadas = [self.data_ini_entry.get(), self.data_fim_entry.get()]
+
         dados_form = {
             "processo": self.processo_entry.get().strip(),
             "solicitante": self.solicitante_combo.get().strip(),
             "assunto": self.assunto_combo.get().strip(),
             "evento": self.evento_combo.get().strip(),
             "datas": datas_selecionadas,
-            "modo_data": "PERIODO" if "Período" in self.modo_data_var.get() else "ISOLADOS",
             "motivo": self.motivo_text.get("1.0", "end").strip() if tipo == "INDEFERIDO" else ""
         }
 
         if not all([dados_form["processo"], dados_form["solicitante"], dados_form["assunto"]]):
-            messagebox.showerror("Erro", "Preencha Processo, Solicitante e Assunto.")
-            return
+            return messagebox.showerror("Erro", "Preencha Processo, Solicitante e Assunto.")
 
         if not self.linhas_add and not dados_form["evento"]:
-            messagebox.showerror("Erro", "Informe um Evento ou adicione ao menos uma Linha afetada.")
-            return
+            return messagebox.showerror("Erro", "Informe um Evento ou adicione ao menos uma Linha afetada.")
 
         if dados_form["evento"] and not datas_selecionadas:
-            messagebox.showwarning("Aviso", "Como você informou um Evento, adicione ao menos uma Data (Período ou Isolada).")
-            return
+            return messagebox.showwarning("Aviso", "Como você informou um Evento, adicione ao menos uma Data (Período ou Isolada).")
 
         if tipo == "INDEFERIDO" and len(dados_form["motivo"]) < 5:
-            messagebox.showerror("Erro", "Forneça um motivo claro para o indeferimento.")
-            return
+            return messagebox.showerror("Erro", "Forneça um motivo claro para o indeferimento.")
 
         sucesso, msg = self.service.processar_parecer(tipo, dados_form, self.linhas_add, self.usuario_logado)
 
