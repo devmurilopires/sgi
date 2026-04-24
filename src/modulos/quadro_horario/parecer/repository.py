@@ -5,7 +5,6 @@ class ParecerQuadroHorarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # MÁGICA: Retorna Código + Nome concatenados!
                     cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas ORDER BY codigo;")
                     return [r[0] for r in cur.fetchall()]
         except Exception as e:
@@ -34,13 +33,14 @@ class ParecerQuadroHorarioRepository:
             (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1))
             RETURNING id;
         """
+        # NOVO: 'origem' adicionada ao final da query específica
         query_especifica = """
             INSERT INTO quadro_horario.pareceres (
                 id, processo, assunto, evento, data_evento, 
-                solicitante, linhas_afetadas, motivo_indeferimento, caminho_arquivo
+                solicitante, linhas_afetadas, motivo_indeferimento, caminho_arquivo, origem
             ) VALUES (
                 %(id_base)s, %(processo)s, %(assunto)s, %(evento)s, %(data_evento)s,
-                %(solicitante)s, %(linhas)s, %(motivo)s, %(caminho_arquivo)s
+                %(solicitante)s, %(linhas)s, %(motivo)s, %(caminho_arquivo)s, %(origem)s
             );
         """
         try:

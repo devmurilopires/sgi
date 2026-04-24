@@ -120,12 +120,12 @@ class ParecerQuadroHorarioService:
             os.chmod(caminho_destino, stat.S_IWRITE)
         except Exception as e: return False, f"Erro de permissão no arquivo: {e}"
 
-        # Substituição de Tags no Documento
+        # Substituição de Tags no Documento (Voltou ao normal, sem a Origem)
         mapeamento = {
             "{{NUM_PARECER}}": f"{numero:03d}",
             "{{NUMERO_PARECER}}": f"{numero:03d}",
             "{{DATA}}": data_str,
-            "{{PROCESSO}}": dados_form["processo"],
+            "{{PROCESSO}}": dados_form["processo"], # Apenas o número limpo vai pro Word
             "{{ASSUNTO}}": dados_form["assunto"],
             "{{SOLICITANTE}}": dados_form["solicitante"],
             "{{EVENTO_OU_LINHA}}": evento_ou_linha_text,
@@ -137,9 +137,10 @@ class ParecerQuadroHorarioService:
 
         self._substituir_tags_xml(caminho_destino, mapeamento)
 
-        # Salva no Banco de Dados
+        # Salva no Banco de Dados (Aqui sim a Origem é gravada!)
         dados_db = {
             "numero_parecer": numero, "tipo": tipo, "processo": dados_form["processo"],
+            "origem": dados_form.get("origem", ""), # Vai direto e apenas para o banco
             "assunto": dados_form["assunto"],
             "evento": evento, "data_evento": data_text,
             "solicitante": dados_form["solicitante"], "linhas": ", ".join(linhas),
@@ -150,4 +151,4 @@ class ParecerQuadroHorarioService:
         sucesso, msg = self.repo.salvar_parecer_no_banco(dados_db)
         if not sucesso: return False, msg
 
-        return True, f"Parecer Técnico (Quadro de Horário) gerado com sucesso!\nSalvo em: {nome_arquivo}"
+        return True, f"Parecer Técnico gerado com sucesso!\nSalvo em: {nome_arquivo}"
