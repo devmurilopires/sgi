@@ -17,109 +17,109 @@ MODERN_STYLE = {
 }
 
 # =====================================================================
-# COMPONENTE BLINDADO: AUTOCOMPLETE MODERNO COM POPUP (WEB-LIKE)
+# COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
 # =====================================================================
-class ModernAutocomplete(ctk.CTkFrame):
-    def __init__(self, master, values, width=250, **kwargs):
-        super().__init__(master, fg_color="transparent", width=width, height=35, **kwargs)
-        self.pack_propagate(False)
-        self.values = values
-        
-        self.entry = ctk.CTkEntry(self, width=width, height=35, fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
-        self.entry.pack(fill="both", expand=True)
-        self.entry.insert(0, "")
-
+class Autocomplete(ctk.CTkEntry):
+    def __init__(self, master, values, **kwargs):
+        super().__init__(master, **kwargs)
+        self.lista_sugestoes = values
         self.listbox_frame = None
+        self.listbox_widget = None
+        self.selecao_idx = -1
 
-        self.entry.bind("<KeyRelease>", self._on_keyrelease)
-        self.entry.bind("<FocusOut>", self._on_focusout)
-        self.entry.bind("<FocusIn>", self._on_keyrelease) 
-        self.entry.bind("<Button-1>", self._on_keyrelease) 
+        self.bind("<KeyRelease>", self.on_keyrelease)
+        self.bind("<Down>", self.navegar_para_baixo)
+        self.bind("<Up>", self.navegar_para_cima)
+        self.bind("<Return>", self.selecionar_com_enter)
+        self.bind("<FocusOut>", self.esconder_lista_com_atraso)
+        self.bind("<Destroy>", lambda e: self.esconder_lista())
+
+    def on_keyrelease(self, event):
+        if self.cget("state") == "disabled": return
+        if event.keysym in ["Up", "Down", "Return", "Escape", "Tab"]: return  
         
-        # PROTEÇÃO: Se o frame pai for destruído, limpa a lista fantasma
-        self.bind("<Destroy>", self._on_destroy)
+        texto = self.get().strip().lower()
+        if not texto:
+            self.esconder_lista(); return
+            
+        filtradas = [linha for linha in self.lista_sugestoes if texto in linha.lower()][:15]
+        if filtradas: self.mostrar_lista(filtradas)
+        else: self.esconder_lista()
 
-    def _on_destroy(self, event):
-        self._hide_listbox()
-
-    def _on_keyrelease(self, event):
-        # PROTEÇÃO: Verifica se o widget ainda existe antes de agir
-        if not self.winfo_exists() or not self.entry.winfo_exists(): return
-        if event and getattr(event, 'keysym', '') in ['Up', 'Down', 'Return', 'Escape', 'Tab']: return
-        
-        val = self.entry.get().lower()
-        hits = [item for item in self.values if val in item.lower()] if val else self.values
-        self._show_listbox(hits)
-
-    def _show_listbox(self, hits):
-        self._hide_listbox()
-        if not hits or not self.entry.winfo_exists(): return
-
+    def mostrar_lista(self, filtradas):
+        self.esconder_lista()
         toplevel = self.winfo_toplevel()
         if not toplevel.winfo_exists(): return
-
-        x = self.entry.winfo_rootx() - toplevel.winfo_rootx()
-        y = self.entry.winfo_rooty() - toplevel.winfo_rooty() + self.entry.winfo_height()
-
-        w = self.entry.winfo_width()
-        h = min(150, len(hits)*25 + 5)
-
-        self.listbox_frame = ctk.CTkFrame(toplevel, width=w, height=h, fg_color="#FFFFFF", border_width=1, border_color="#0F8C75", corner_radius=4)
-        self.listbox_frame.pack_propagate(False)
+        
+        x = self.winfo_rootx() - toplevel.winfo_rootx()
+        y = self.winfo_rooty() - toplevel.winfo_rooty() + self.winfo_height() + 2
+        w = self.winfo_width()
+        h = min(180, len(filtradas) * 26 + 5)
+        
+        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color="#FFFFFF", border_width=1, border_color="#10B981", corner_radius=6, width=w, height=h)
         self.listbox_frame.place(x=x, y=y)
-
-        self.listbox = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#0F8C75", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
-        self.listbox.pack(side="left", fill="both", expand=True, padx=2, pady=2)
-
-        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox.yview)
+        self.listbox_frame.pack_propagate(False)
+        
+        self.listbox_widget = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#10B981", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox_widget.pack(side="left", fill="both", expand=True, padx=3, pady=3)
+        
+        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox_widget.yview)
         scrollbar.pack(side="right", fill="y")
-        self.listbox.config(yscrollcommand=scrollbar.set)
-
-        for hit in hits: 
-            self.listbox.insert("end", hit)
+        self.listbox_widget.config(yscrollcommand=scrollbar.set)
+        
+        for item in filtradas: self.listbox_widget.insert(tk.END, item)
             
-        self.listbox.bind("<<ListboxSelect>>", self._on_select)
+        self.selecao_idx = -1
+        self.listbox_widget.bind("<<ListboxSelect>>", self.on_listbox_click)
+        self.listbox_frame.lift()
 
-    def _on_select(self, event):
-        if not self.listbox: return
-        selection = self.listbox.curselection()
-        if selection:
-            item = self.listbox.get(selection[0])
-            # PROTEÇÃO: Só tenta inserir se o campo ainda existir na tela
-            if self.entry.winfo_exists():
-                self.entry.delete(0, "end")
-                self.entry.insert(0, item)
-                self.entry.event_generate("<KeyRelease>")
-        self._hide_listbox()
-
-    def _hide_listbox(self):
-        if hasattr(self, 'listbox_frame') and self.listbox_frame and self.listbox_frame.winfo_exists():
-            self.listbox_frame.destroy()
+    def esconder_lista(self, event=None):
+        if self.listbox_frame and self.listbox_frame.winfo_exists(): self.listbox_frame.destroy()
         self.listbox_frame = None
 
-    def _on_focusout(self, event):
-        if self.winfo_exists():
-            self.after(150, self._hide_listbox)
-        else:
-            self._hide_listbox()
+    def esconder_lista_com_atraso(self, event):
+        self.after(200, self.esconder_lista)
 
-    def get(self): 
-        return self.entry.get() if self.entry.winfo_exists() else ""
-        
+    def navegar_para_baixo(self, event):
+        if self.listbox_widget:
+            total = self.listbox_widget.size()
+            if self.selecao_idx < total - 1:
+                self.selecao_idx += 1
+                self.listbox_widget.selection_clear(0, tk.END)
+                self.listbox_widget.selection_set(self.selecao_idx)
+                self.listbox_widget.see(self.selecao_idx)
+
+    def navegar_para_cima(self, event):
+        if self.listbox_widget and self.selecao_idx > 0:
+            self.selecao_idx -= 1
+            self.listbox_widget.selection_clear(0, tk.END)
+            self.listbox_widget.selection_set(self.selecao_idx)
+            self.listbox_widget.see(self.selecao_idx)
+
+    def selecionar_com_enter(self, event):
+        if self.listbox_widget and self.selecao_idx >= 0:
+            selecionado = self.listbox_widget.get(self.selecao_idx)
+            self.delete(0, tk.END)
+            self.insert(0, selecionado)
+            self.esconder_lista()
+            self.event_generate("<<AutocompleteSelected>>")
+            return "break"
+        return None
+
+    def on_listbox_click(self, event):
+        if not self.listbox_widget: return
+        selecao = self.listbox_widget.curselection()
+        if selecao:
+            item = self.listbox_widget.get(selecao[0])
+            self.delete(0, tk.END)
+            self.insert(0, item)
+            self.esconder_lista()
+            self.event_generate("<<AutocompleteSelected>>")
+
     def set(self, value):
-        if self.entry.winfo_exists():
-            self.entry.delete(0, "end")
-            if value: self.entry.insert(0, value)
+        self.delete(0, "end")
+        if value: self.insert(0, value)
 
-    def configure(self, **kwargs):
-        if "state" in kwargs and self.entry.winfo_exists(): 
-            self.entry.configure(state=kwargs["state"])
-        if "values" in kwargs: 
-            self.values = kwargs["values"]
-
-    def bind(self, sequence, func, add="+"):
-        if self.entry.winfo_exists():
-            self.entry.bind(sequence, func, add=add)
 
 class ParecerItinerarioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -164,7 +164,6 @@ class ParecerItinerarioView(ctk.CTkFrame):
         
         self.processo_entry = self._criar_campo_grid(grid_master, "Nº Processo", 250, 0, 1)
 
-        # --- CORREÇÃO DO BUG AQUI (Lê, Converte, Mantém Posição do Cursor) ---
         def upper_processo_par(event):
             if getattr(event, 'keysym', '') in ['Up', 'Down', 'Left', 'Right', 'Home', 'End']: return
             texto = self.processo_entry.get()
@@ -175,7 +174,6 @@ class ParecerItinerarioView(ctk.CTkFrame):
                 self.processo_entry.icursor(pos)
                 
         self.processo_entry.bind("<KeyRelease>", upper_processo_par)
-        # ---------------------------------------------------------------------
 
         self.solicitante_combo = self._criar_autocomplete_grid(grid_master, "Solicitante", 250, self.lista_solicitantes, 0, 2)
 
@@ -251,7 +249,8 @@ class ParecerItinerarioView(ctk.CTkFrame):
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
         
-        autocomplete = ModernAutocomplete(frame, values=values, width=width)
+        # Integração do novo Autocomplete
+        autocomplete = Autocomplete(frame, values=values, width=width, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
         autocomplete.pack(anchor="w", pady=(2,0))
         return autocomplete
 
@@ -361,6 +360,11 @@ class ParecerItinerarioView(ctk.CTkFrame):
             add_lin_row.pack(fill="x", anchor="w")
             
             self.linha_combo = self._criar_autocomplete_grid(add_lin_row, "Pesquise a Linha Afetada", 250, self.lista_linhas_banco, 0, 0)
+            self.linha_combo.configure(placeholder_text="Código ou Nome...")
+            
+            # Gatilho Mágico: O 'Enter' na linha adiciona ela direto!
+            self.linha_combo.bind("<<AutocompleteSelected>>", lambda e: self._add_linha())
+            
             ctk.CTkButton(add_lin_row, text="➕ Add Linha", width=100, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_linha).grid(row=0, column=1, sticky="s", pady=(0,10), padx=10)
             
             self.frame_chips_linhas = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
@@ -420,7 +424,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
             "origem": self.origem_combo.get().strip(),
             "solicitante": self.solicitante_combo.get().strip(),
             "assunto": self.assunto_combo.get().strip(),
-            "evento": self.evento_combo.get() if not self.no_evento_var.get() else "",
+            "evento": self.evento_combo.get().strip() if not self.no_evento_var.get() else "",
             "datas": datas_selecionadas,
             "modo_data": "PERIODO" if "Período" in self.modo_data_var.get() else "ISOLADOS",
             "periodo": periodo_hora,

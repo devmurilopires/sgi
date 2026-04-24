@@ -1,9 +1,115 @@
 import customtkinter as ctk
+import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tkcalendar import DateEntry
 from datetime import date
 import math
 from src.modulos.itinerario.relatorios.service import RelatoriosItinerarioService
+
+# =====================================================================
+# COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
+# =====================================================================
+class Autocomplete(ctk.CTkEntry):
+    def __init__(self, master, values, **kwargs):
+        super().__init__(master, **kwargs)
+        self.lista_sugestoes = values
+        self.listbox_frame = None
+        self.listbox_widget = None
+        self.selecao_idx = -1
+
+        self.bind("<KeyRelease>", self.on_keyrelease)
+        self.bind("<Down>", self.navegar_para_baixo)
+        self.bind("<Up>", self.navegar_para_cima)
+        self.bind("<Return>", self.selecionar_com_enter)
+        self.bind("<FocusOut>", self.esconder_lista_com_atraso)
+        self.bind("<Destroy>", lambda e: self.esconder_lista())
+
+    def on_keyrelease(self, event):
+        if self.cget("state") == "disabled": return
+        if event.keysym in ["Up", "Down", "Return", "Escape", "Tab"]: return  
+        
+        texto = self.get().strip().lower()
+        if not texto:
+            self.esconder_lista(); return
+            
+        filtradas = [linha for linha in self.lista_sugestoes if texto in linha.lower()][:15]
+        if filtradas: self.mostrar_lista(filtradas)
+        else: self.esconder_lista()
+
+    def mostrar_lista(self, filtradas):
+        self.esconder_lista()
+        toplevel = self.winfo_toplevel()
+        if not toplevel.winfo_exists(): return
+        
+        x = self.winfo_rootx() - toplevel.winfo_rootx()
+        y = self.winfo_rooty() - toplevel.winfo_rooty() + self.winfo_height() + 2
+        w = self.winfo_width()
+        h = min(180, len(filtradas) * 26 + 5)
+        
+        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color="#FFFFFF", border_width=1, border_color="#10B981", corner_radius=6, width=w, height=h)
+        self.listbox_frame.place(x=x, y=y)
+        self.listbox_frame.pack_propagate(False)
+        
+        self.listbox_widget = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#10B981", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox_widget.pack(side="left", fill="both", expand=True, padx=3, pady=3)
+        
+        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox_widget.yview)
+        scrollbar.pack(side="right", fill="y")
+        self.listbox_widget.config(yscrollcommand=scrollbar.set)
+        
+        for item in filtradas: self.listbox_widget.insert(tk.END, item)
+            
+        self.selecao_idx = -1
+        self.listbox_widget.bind("<<ListboxSelect>>", self.on_listbox_click)
+        self.listbox_frame.lift()
+
+    def esconder_lista(self, event=None):
+        if self.listbox_frame and self.listbox_frame.winfo_exists(): self.listbox_frame.destroy()
+        self.listbox_frame = None
+
+    def esconder_lista_com_atraso(self, event):
+        self.after(200, self.esconder_lista)
+
+    def navegar_para_baixo(self, event):
+        if self.listbox_widget:
+            total = self.listbox_widget.size()
+            if self.selecao_idx < total - 1:
+                self.selecao_idx += 1
+                self.listbox_widget.selection_clear(0, tk.END)
+                self.listbox_widget.selection_set(self.selecao_idx)
+                self.listbox_widget.see(self.selecao_idx)
+
+    def navegar_para_cima(self, event):
+        if self.listbox_widget and self.selecao_idx > 0:
+            self.selecao_idx -= 1
+            self.listbox_widget.selection_clear(0, tk.END)
+            self.listbox_widget.selection_set(self.selecao_idx)
+            self.listbox_widget.see(self.selecao_idx)
+
+    def selecionar_com_enter(self, event):
+        if self.listbox_widget and self.selecao_idx >= 0:
+            selecionado = self.listbox_widget.get(self.selecao_idx)
+            self.delete(0, tk.END)
+            self.insert(0, selecionado)
+            self.esconder_lista()
+            self.event_generate("<<AutocompleteSelected>>")
+            return "break"
+        return None
+
+    def on_listbox_click(self, event):
+        if not self.listbox_widget: return
+        selecao = self.listbox_widget.curselection()
+        if selecao:
+            item = self.listbox_widget.get(selecao[0])
+            self.delete(0, tk.END)
+            self.insert(0, item)
+            self.esconder_lista()
+            self.event_generate("<<AutocompleteSelected>>")
+
+    def set(self, value):
+        self.delete(0, "end")
+        if value: self.insert(0, value)
+
 
 class RelatoriosItinerarioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado, tipo_doc):
@@ -25,7 +131,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         self.lista_empresas = self.service.obter_empresas()
         self.lista_linhas = self.service.obter_linhas()
 
-        # Configuração Atualizada de Colunas (Solicitante adicionado na OS)
+        # Configuração de Colunas
         if self.tipo_doc == "OS":
             self.colunas_config = {
                 "id": "ID", "numero_os": "N° OS", "processo": "Processo", "solicitante": "Solicitante",
@@ -73,7 +179,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         campos_ignorar = ["id", "data_criacao"]
         row, col = 0, 0
         
-        # Geração Inteligente dos Filtros (Dropdown vs Entry)
+        # Geração Inteligente dos Filtros
         for key, label in self.colunas_config.items():
             if key in campos_ignorar: continue
             
@@ -82,7 +188,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            # --- LÓGICA DOS COMBOS E AUTOCOMPLETES ---
             if key == "tipo":
                 widget = ctk.CTkComboBox(f, values=["Todos", "Eventos", "Corrida", "Obras"], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
                 widget.set("Todos")
@@ -93,19 +198,12 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
                 widget.set("Todos")
             elif key == "empresa":
-                widget = ctk.CTkComboBox(f, values=["Todos"] + self.lista_empresas, height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
-                widget.set("Todos")
+                # NOVA INTEGRAÇÃO: Autocomplete para Empresas!
+                widget = Autocomplete(f, values=self.lista_empresas, height=35, border_color="#D1D5DB", fg_color="#F9FAFB", placeholder_text="Pesquise o nome...")
             elif key == "linhas":
-                # Autocomplete nativo adaptado no Combobox
-                widget = ctk.CTkComboBox(f, values=self.lista_linhas[:20], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
-                widget.set("") # Campo começa vazio
-                def on_key_linha(event, cb=widget):
-                    txt = cb.get().lower()
-                    sugestoes = [l for l in self.lista_linhas if txt in l.lower()][:20]
-                    cb.configure(values=sugestoes)
-                widget.bind("<KeyRelease>", on_key_linha)
+                # NOVA INTEGRAÇÃO: Autocomplete para Linhas!
+                widget = Autocomplete(f, values=self.lista_linhas, height=35, border_color="#D1D5DB", fg_color="#F9FAFB", placeholder_text="Código ou Nome...")
             else:
-                # Todos os outros campos (incluindo Solicitante) ficam como texto livre
                 widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color="#D1D5DB", fg_color="#F9FAFB")
             
             widget.pack(fill="x")
@@ -132,7 +230,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         ctk.CTkButton(btn_busca, text="🔍 Buscar Registros", font=("Arial Bold", 13), width=150, height=35, fg_color="#0F8C75", command=self.acao_buscar).pack(side="left", padx=(5, 10))
         ctk.CTkButton(btn_busca, text="Limpar Filtros", font=("Arial", 13), width=120, height=35, fg_color="transparent", text_color="#666666", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", command=self._limpar_filtros).pack(side="left")
 
-
         # --- 2. RODAPÉ (AÇÕES E PAGINAÇÃO) ---
         self.frame_bottom = ctk.CTkFrame(self, fg_color="transparent")
         self.frame_bottom.pack(side="bottom", fill="x", padx=20, pady=(5, 20))
@@ -153,7 +250,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         ctk.CTkButton(self.frame_acoes, text="📂 Abrir Documento", font=("Arial Bold", 13), width=160, height=35, fg_color="#0F8C75", hover_color="#0B6B59", command=self.acao_abrir).pack(side="left", padx=5)
         if self.is_admin:
             ctk.CTkButton(self.frame_acoes, text="🗑️ Excluir", font=("Arial Bold", 13), width=120, height=35, fg_color="transparent", border_width=1, border_color="#D32F2F", text_color="#D32F2F", hover_color="#FEE2E2", command=self.acao_excluir).pack(side="left", padx=(5, 0))
-
 
         # --- 3. TABELA ---
         self.frame_tabela = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
@@ -194,7 +290,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         filtros = {}
         for k, v in self.entradas_filtros.items():
             val = v.get().strip()
-            # Ignora a palavra "Todos" para a busca no banco
             if val == "Todos": val = "" 
             filtros[k] = val
         filtros["data_inicio"] = self.date_ini.get_date()
@@ -303,9 +398,9 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
             if isinstance(widget, ctk.CTkComboBox):
-                if key == "linhas": widget.set("")
-                else: widget.set("Todos")
+                widget.set("Todos")
             else:
+                # O Autocomplete agora entra nesta regra por ser um CTkEntry, ficando vazio perfeitamente!
                 widget.delete(0, 'end')
         self.date_ini.set_date(date(date.today().year, 1, 1))
         self.date_fim.set_date(date.today())

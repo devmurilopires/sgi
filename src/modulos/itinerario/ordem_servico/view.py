@@ -17,109 +17,108 @@ MODERN_STYLE = {
 }
 
 # =====================================================================
-# COMPONENTE BLINDADO: AUTOCOMPLETE MODERNO COM POPUP (WEB-LIKE)
+# COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
 # =====================================================================
-class ModernAutocomplete(ctk.CTkFrame):
-    def __init__(self, master, values, width=250, **kwargs):
-        super().__init__(master, fg_color="transparent", width=width, height=35, **kwargs)
-        self.pack_propagate(False)
-        self.values = values
-        
-        self.entry = ctk.CTkEntry(self, width=width, height=35, fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
-        self.entry.pack(fill="both", expand=True)
-        self.entry.insert(0, "")
-
+class Autocomplete(ctk.CTkEntry):
+    def __init__(self, master, values, **kwargs):
+        super().__init__(master, **kwargs)
+        self.lista_sugestoes = values
         self.listbox_frame = None
+        self.listbox_widget = None
+        self.selecao_idx = -1
 
-        self.entry.bind("<KeyRelease>", self._on_keyrelease)
-        self.entry.bind("<FocusOut>", self._on_focusout)
-        self.entry.bind("<FocusIn>", self._on_keyrelease) 
-        self.entry.bind("<Button-1>", self._on_keyrelease) 
+        self.bind("<KeyRelease>", self.on_keyrelease)
+        self.bind("<Down>", self.navegar_para_baixo)
+        self.bind("<Up>", self.navegar_para_cima)
+        self.bind("<Return>", self.selecionar_com_enter)
+        self.bind("<FocusOut>", self.esconder_lista_com_atraso)
+        self.bind("<Destroy>", lambda e: self.esconder_lista())
+
+    def on_keyrelease(self, event):
+        if self.cget("state") == "disabled": return
+        if event.keysym in ["Up", "Down", "Return", "Escape", "Tab"]: return  
         
-        # PROTEÇÃO: Se o frame pai for destruído, limpa a lista fantasma
-        self.bind("<Destroy>", self._on_destroy)
+        texto = self.get().strip().lower()
+        if not texto:
+            self.esconder_lista(); return
+            
+        filtradas = [linha for linha in self.lista_sugestoes if texto in linha.lower()][:15]
+        if filtradas: self.mostrar_lista(filtradas)
+        else: self.esconder_lista()
 
-    def _on_destroy(self, event):
-        self._hide_listbox()
-
-    def _on_keyrelease(self, event):
-        # PROTEÇÃO: Verifica se o widget ainda existe antes de agir
-        if not self.winfo_exists() or not self.entry.winfo_exists(): return
-        if event and getattr(event, 'keysym', '') in ['Up', 'Down', 'Return', 'Escape', 'Tab']: return
-        
-        val = self.entry.get().lower()
-        hits = [item for item in self.values if val in item.lower()] if val else self.values
-        self._show_listbox(hits)
-
-    def _show_listbox(self, hits):
-        self._hide_listbox()
-        if not hits or not self.entry.winfo_exists(): return
-
+    def mostrar_lista(self, filtradas):
+        self.esconder_lista()
         toplevel = self.winfo_toplevel()
         if not toplevel.winfo_exists(): return
-
-        x = self.entry.winfo_rootx() - toplevel.winfo_rootx()
-        y = self.entry.winfo_rooty() - toplevel.winfo_rooty() + self.entry.winfo_height()
-
-        w = self.entry.winfo_width()
-        h = min(150, len(hits)*25 + 5)
-
-        self.listbox_frame = ctk.CTkFrame(toplevel, width=w, height=h, fg_color="#FFFFFF", border_width=1, border_color="#0F8C75", corner_radius=4)
-        self.listbox_frame.pack_propagate(False)
+        
+        x = self.winfo_rootx() - toplevel.winfo_rootx()
+        y = self.winfo_rooty() - toplevel.winfo_rooty() + self.winfo_height() + 2
+        w = self.winfo_width()
+        h = min(180, len(filtradas) * 26 + 5)
+        
+        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color="#FFFFFF", border_width=1, border_color="#10B981", corner_radius=6, width=w, height=h)
         self.listbox_frame.place(x=x, y=y)
-
-        self.listbox = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#0F8C75", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
-        self.listbox.pack(side="left", fill="both", expand=True, padx=2, pady=2)
-
-        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox.yview)
+        self.listbox_frame.pack_propagate(False)
+        
+        self.listbox_widget = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#10B981", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox_widget.pack(side="left", fill="both", expand=True, padx=3, pady=3)
+        
+        scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox_widget.yview)
         scrollbar.pack(side="right", fill="y")
-        self.listbox.config(yscrollcommand=scrollbar.set)
-
-        for hit in hits: 
-            self.listbox.insert("end", hit)
+        self.listbox_widget.config(yscrollcommand=scrollbar.set)
+        
+        for item in filtradas: self.listbox_widget.insert(tk.END, item)
             
-        self.listbox.bind("<<ListboxSelect>>", self._on_select)
+        self.selecao_idx = -1
+        self.listbox_widget.bind("<<ListboxSelect>>", self.on_listbox_click)
+        self.listbox_frame.lift()
 
-    def _on_select(self, event):
-        if not self.listbox: return
-        selection = self.listbox.curselection()
-        if selection:
-            item = self.listbox.get(selection[0])
-            # PROTEÇÃO: Só tenta inserir se o campo ainda existir na tela
-            if self.entry.winfo_exists():
-                self.entry.delete(0, "end")
-                self.entry.insert(0, item)
-                self.entry.event_generate("<KeyRelease>")
-        self._hide_listbox()
-
-    def _hide_listbox(self):
-        if hasattr(self, 'listbox_frame') and self.listbox_frame and self.listbox_frame.winfo_exists():
-            self.listbox_frame.destroy()
+    def esconder_lista(self, event=None):
+        if self.listbox_frame and self.listbox_frame.winfo_exists(): self.listbox_frame.destroy()
         self.listbox_frame = None
 
-    def _on_focusout(self, event):
-        if self.winfo_exists():
-            self.after(150, self._hide_listbox)
-        else:
-            self._hide_listbox()
+    def esconder_lista_com_atraso(self, event):
+        self.after(200, self.esconder_lista)
 
-    def get(self): 
-        return self.entry.get() if self.entry.winfo_exists() else ""
-        
+    def navegar_para_baixo(self, event):
+        if self.listbox_widget:
+            total = self.listbox_widget.size()
+            if self.selecao_idx < total - 1:
+                self.selecao_idx += 1
+                self.listbox_widget.selection_clear(0, tk.END)
+                self.listbox_widget.selection_set(self.selecao_idx)
+                self.listbox_widget.see(self.selecao_idx)
+
+    def navegar_para_cima(self, event):
+        if self.listbox_widget and self.selecao_idx > 0:
+            self.selecao_idx -= 1
+            self.listbox_widget.selection_clear(0, tk.END)
+            self.listbox_widget.selection_set(self.selecao_idx)
+            self.listbox_widget.see(self.selecao_idx)
+
+    def selecionar_com_enter(self, event):
+        if self.listbox_widget and self.selecao_idx >= 0:
+            selecionado = self.listbox_widget.get(self.selecao_idx)
+            self.delete(0, tk.END)
+            self.insert(0, selecionado)
+            self.esconder_lista()
+            self.event_generate("<<AutocompleteSelected>>")
+            return "break"
+        return None
+
+    def on_listbox_click(self, event):
+        if not self.listbox_widget: return
+        selecao = self.listbox_widget.curselection()
+        if selecao:
+            item = self.listbox_widget.get(selecao[0])
+            self.delete(0, tk.END)
+            self.insert(0, item)
+            self.esconder_lista()
+            self.event_generate("<<AutocompleteSelected>>")
+
     def set(self, value):
-        if self.entry.winfo_exists():
-            self.entry.delete(0, "end")
-            if value: self.entry.insert(0, value)
-
-    def configure(self, **kwargs):
-        if "state" in kwargs and self.entry.winfo_exists(): 
-            self.entry.configure(state=kwargs["state"])
-        if "values" in kwargs: 
-            self.values = kwargs["values"]
-
-    def bind(self, sequence, func, add="+"):
-        if self.entry.winfo_exists():
-            self.entry.bind(sequence, func, add=add)
+        self.delete(0, "end")
+        if value: self.insert(0, value)
 
 
 class OSItinerarioView(ctk.CTkFrame):
@@ -134,6 +133,12 @@ class OSItinerarioView(ctk.CTkFrame):
         self.linhas_add = []
         self.anexos_add = []
         self.datas_isoladas_add = [] 
+
+        # --- CORREÇÃO AQUI: Inicializando as variáveis de estado ---
+        self.no_evento_var = ctk.BooleanVar(value=False)
+        self.no_data_var = ctk.BooleanVar(value=False)
+        self.no_hora_var = ctk.BooleanVar(value=False)
+        # -----------------------------------------------------------
 
         self._construir_interface()
 
@@ -157,7 +162,6 @@ class OSItinerarioView(ctk.CTkFrame):
         
         self.processo_entry = self._criar_campo_grid(linha_fixa, "Nº Processo (Opcional)", 250, 0, 1)
         
-        # --- CORREÇÃO DO BUG AQUI (Lê, Converte, Mantém Posição do Cursor) ---
         def upper_processo_os(event):
             if getattr(event, 'keysym', '') in ['Up', 'Down', 'Left', 'Right', 'Home', 'End']: return
             texto = self.processo_entry.get()
@@ -168,7 +172,6 @@ class OSItinerarioView(ctk.CTkFrame):
                 self.processo_entry.icursor(pos)
                 
         self.processo_entry.bind("<KeyRelease>", upper_processo_os)
-        # ---------------------------------------------------------------------
 
         self.origem_combo = self._criar_combo_grid(linha_fixa, "Origem", 250, ["SISGEP", "SPU"], 0, 2)
 
@@ -187,8 +190,10 @@ class OSItinerarioView(ctk.CTkFrame):
         self.lista_linhas = self.service.buscar_sugestoes("LINHAS")
         ctk.CTkLabel(add_lin_row, text="Pesquise a Linha de Ônibus", font=("Arial Bold", 12), text_color="#555").grid(row=0, column=0, padx=10, pady=(10,0), sticky="w")
         
-        self.linha_combo = ModernAutocomplete(add_lin_row, values=self.lista_linhas, width=350)
+        # === INTEGRAÇÃO DO NOVO AUTOCOMPLETE ===
+        self.linha_combo = Autocomplete(add_lin_row, values=self.lista_linhas, width=350, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC", placeholder_text="Código ou Nome...")
         self.linha_combo.grid(row=1, column=0, padx=10, pady=(2, 10), sticky="w")
+        self.linha_combo.bind("<<AutocompleteSelected>>", lambda e: self._add_linha()) # Gatilho Mágico
         
         ctk.CTkButton(add_lin_row, text="➕ Add", width=80, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_linha).grid(row=1, column=1, sticky="w", pady=(2, 10))
         
@@ -235,7 +240,8 @@ class OSItinerarioView(ctk.CTkFrame):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        autocomplete = ModernAutocomplete(frame, values=values, width=width)
+        # Integrado com o novo Autocomplete
+        autocomplete = Autocomplete(frame, values=values, width=width, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
         autocomplete.pack(anchor="w", pady=(2,0))
         return autocomplete
 
@@ -245,6 +251,32 @@ class OSItinerarioView(ctk.CTkFrame):
         date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
+
+    def _toggle_evento(self):
+        estado = "disabled" if self.no_evento_var.get() else "normal"
+        self.evento_combo.configure(state=estado)
+        if self.no_evento_var.get(): self.evento_combo.set("")
+
+    def _toggle_data(self):
+        estado = "disabled" if self.no_data_var.get() else "normal"
+        self.modo_combo.configure(state=estado)
+        
+        if hasattr(self, 'data_inicio') and self.data_inicio.winfo_exists(): self.data_inicio.configure(state=estado)
+        if hasattr(self, 'data_fim') and self.data_fim.winfo_exists(): self.data_fim.configure(state=estado)
+        if hasattr(self, 'data_isolada') and self.data_isolada.winfo_exists(): self.data_isolada.configure(state=estado)
+        if hasattr(self, 'btn_add_data') and self.btn_add_data.winfo_exists(): self.btn_add_data.configure(state=estado)
+
+        if self.no_data_var.get():
+            self.datas_isoladas_add.clear()
+            self._render_datas_chips()
+
+    def _toggle_hora(self):
+        estado = "disabled" if self.no_hora_var.get() else "readonly"
+        self.hr_inicio.configure(state=estado)
+        self.hr_fim.configure(state=estado)
+        if self.no_hora_var.get():
+            self.hr_inicio.set("")
+            self.hr_fim.set("")
 
     def _on_tipo_change(self, *args):
         for w in self.container_dinamico.winfo_children(): w.destroy()
@@ -268,8 +300,8 @@ class OSItinerarioView(ctk.CTkFrame):
         HORARIOS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
 
         self.modo_data_var = ctk.StringVar(value="Período (Início-Fim)")
-        modo_combo = self._criar_combo_grid(self.container_dinamico, "Seleção de Datas", 250, ["Período (Início-Fim)", "Dias Isolados"], 1, 0)
-        modo_combo.configure(variable=self.modo_data_var, command=self._on_modo_data_change)
+        self.modo_combo = self._criar_combo_grid(self.container_dinamico, "Seleção de Datas", 250, ["Período (Início-Fim)", "Dias Isolados"], 1, 0)
+        self.modo_combo.configure(variable=self.modo_data_var, command=self._on_modo_data_change)
 
         self.campos_dinamicos['hr_inicio'] = self._criar_combo_grid(self.container_dinamico, "Hora Início", 250, HORARIOS, 1, 1)
         self.campos_dinamicos['hr_fim'] = self._criar_combo_grid(self.container_dinamico, "Hora Fim", 250, HORARIOS, 1, 2)
@@ -283,6 +315,10 @@ class OSItinerarioView(ctk.CTkFrame):
         
         self.lista_empresas = self.service.buscar_sugestoes("EMPRESAS")
         self.empresa_combo = self._criar_autocomplete_grid(self.frame_empresas, "Pesquise a Empresa", 250, self.lista_empresas, 0, 0)
+        self.empresa_combo.configure(placeholder_text="Nome da Empresa...")
+        
+        # Gatilho Mágico: O 'Enter' na empresa adiciona ela direto!
+        self.empresa_combo.bind("<<AutocompleteSelected>>", lambda e: self._add_empresa())
         
         ctk.CTkButton(self.frame_empresas, text="➕ Add", width=50, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_empresa).grid(row=0, column=1, sticky="sw", pady=(10, 10), padx=(0, 10))
         
@@ -320,12 +356,14 @@ class OSItinerarioView(ctk.CTkFrame):
             wrapper_iso, self.data_isolada = self._criar_date_wrapper(col1, 250)
             wrapper_iso.pack(anchor="w", pady=(2,0))
 
-            btn_add = ctk.CTkButton(input_row, text="➕ Add Data", width=80, height=35, fg_color="#0F8C75", font=("Arial Bold", 12), command=self._add_data_isolada)
-            btn_add.pack(side="left", anchor="s", pady=(0,2))
+            self.btn_add_data = ctk.CTkButton(input_row, text="➕ Add Data", width=80, height=35, fg_color="#0F8C75", font=("Arial Bold", 12), command=self._add_data_isolada)
+            self.btn_add_data.pack(side="left", anchor="s", pady=(0,2))
 
             self.frame_chips_datas = ctk.CTkFrame(f_iso, fg_color="transparent")
             self.frame_chips_datas.pack(side="top", fill="both", expand=True, pady=(15,0))
             self._render_datas_chips()
+            
+        self._toggle_data()
 
     def _add_data_isolada(self):
         d = self.data_isolada.get()
