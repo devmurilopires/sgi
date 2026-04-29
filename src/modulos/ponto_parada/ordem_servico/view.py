@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from src.modulos.ponto_parada.ordem_servico.service import OSService
+from src.core.shared.components.parameters_combo import CtkParametrosComboBox
 
 class OSView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -10,9 +11,6 @@ class OSView(ctk.CTkFrame):
         self.service = OSService()
         self.usuario_logado = usuario_logado.get('nome') if isinstance(usuario_logado, dict) else usuario_logado
         self.descricoes_acumuladas = []
-
-        self.itens_mcmensagem = ["Abrigo Metálico", "Parada Segura", "Abrigo Concreto"]
-        self.itens_proximaparada = ["Placa/Barrote", "Placa/Poste"]
 
         self._construir_interface()
 
@@ -41,20 +39,14 @@ class OSView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        # ---> NOVO CAMPO: Origem da Demanda
-        self.origem_var = self._criar_combobox(row1, "Origem da Demanda", width=250, values=["SPU", "SISGEP"], side="left")
-        self.origem_var.set("SPU")
+        # ---> CAMPOS PADRONIZADOS (Vinculados ao Admin)
+        self.origem_combo = self._criar_param_combo(row1, "Origem da Demanda", "Ponto de Parada", "ORIGEM_DEMANDA", width=250, side="left")
+        self.tipo_os_combo = self._criar_param_combo(row1, "Ação da OS", "Ponto de Parada", "ACAO_OS", width=250, side="left")
+        
+        # O Tipo de Item depende do modelo, mas vamos carregar do Admin também
+        self.tipo_item_combo = self._criar_param_combo(row1, "Tipo de Item", "Ponto de Parada", "TIPO_ITEM", width=250, side="left")
 
-        self.tipo_os_var = self._criar_combobox(row1, "Ação da OS", width=250, values=["Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"], side="left")
-        self.tipo_os_var.set("Implantação")
-
-        self.tipo_item_var = self._criar_combobox(row1, "Tipo de Item", width=250, values=self.itens_mcmensagem, side="left")
-        self.tipo_item_var.set(self.itens_mcmensagem[0])
-
-        # Linha 2: ID do Ponto (Sozinho na linha, abaixo das opções)
-        # row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        # row2.pack(fill="x", pady=5, padx=15)
-
+        # Linha 2: ID do Ponto e Botões de Pesquisa
         self.id_entry = self._criar_campo(row1, "ID do Ponto", width=250, side="left")
         self.id_entry.bind("<FocusOut>", self.ao_sair_do_id)
 
