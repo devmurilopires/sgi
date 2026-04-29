@@ -132,9 +132,10 @@ class DashboardGeralView(ctk.CTkFrame):
 
         # LINHA 1: Evolução Global vs Distribuição por Módulo
         ax = axs[0, 0]
-        s1 = self.df_os_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0) if not self.df_os_f.empty else pd.Series(0, index=meses_en)
-        s2 = self.df_par_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0) if not self.df_par_f.empty else pd.Series(0, index=meses_en)
-        s3 = self.df_pesq_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0) if not self.df_pesq_f.empty else pd.Series(0, index=meses_en)
+        # Garantir que a coluna data_dt existe antes de processar
+        s1 = self.df_os_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0) if not self.df_os_f.empty and 'data_dt' in self.df_os_f.columns else pd.Series(0, index=meses_en)
+        s2 = self.df_par_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0) if not self.df_par_f.empty and 'data_dt' in self.df_par_f.columns else pd.Series(0, index=meses_en)
+        s3 = self.df_pesq_f['data_dt'].dt.month_name().value_counts().reindex(meses_en, fill_value=0) if not self.df_pesq_f.empty and 'data_dt' in self.df_pesq_f.columns else pd.Series(0, index=meses_en)
         
         ax.plot(meses_pt, s1.values, marker='o', color=COLOR_PRIMARY, label='OS', linewidth=2)
         ax.plot(meses_pt, s2.values, marker='s', color="#14B5D9", label='Pareceres', linewidth=2)
@@ -143,17 +144,36 @@ class DashboardGeralView(ctk.CTkFrame):
         self._configurar_eixo(ax, f"Evolução de Produção da DIPLA ({ano_sel})", grid_axis='y')
 
         ax = axs[0, 1]
-        modulos = ["Ponto de Parada (SIGP)", "Itinerário (SIGA)", "Horários (SPR)"]
-        vol_sigp = len(self.df_os_f[self.df_os_f['modulo'] == 'Ponto de Parada']) + len(self.df_par_f[self.df_par_f['modulo'] == 'sigp'])
-        vol_siga = len(self.df_os_f[self.df_os_f['modulo'] == 'Itinerário']) + len(self.df_par_f[self.df_par_f['modulo'] == 'siga'])
-        vol_spr = len(self.df_par_f[self.df_par_f['modulo'] == 'spr']) + len(self.df_pesq_f)
+        modulos = ["Ponto de Parada", "Itinerário", "Quadro de Horário"]
         
-        if sum([vol_sigp, vol_siga, vol_spr]) > 0:
-            ax.pie([vol_sigp, vol_siga, vol_spr], labels=modulos, autopct='%1.1f%%', startangle=140, colors=[COLOR_PRIMARY, COLOR_SECONDARY, "#14B5D9"], textprops={'fontweight': 'bold'})
+        # Ajustado para os novos nomes padronizados no Repository
+        vol_sigp = 0
+        if not self.df_os_f.empty and 'modulo' in self.df_os_f.columns:
+            vol_sigp += len(self.df_os_f[self.df_os_f['modulo'] == 'Ponto de Parada'])
+        if not self.df_par_f.empty and 'modulo' in self.df_par_f.columns:
+            vol_sigp += len(self.df_par_f[self.df_par_f['modulo'] == 'PONTO_PARADA'])
+
+        vol_siga = 0
+        if not self.df_os_f.empty and 'modulo' in self.df_os_f.columns:
+            vol_siga += len(self.df_os_f[self.df_os_f['modulo'] == 'Itinerário'])
+        if not self.df_par_f.empty and 'modulo' in self.df_par_f.columns:
+            vol_siga += len(self.df_par_f[self.df_par_f['modulo'] == 'ITINERARIO'])
+
+        vol_spr = 0
+        if not self.df_par_f.empty and 'modulo' in self.df_par_f.columns:
+            vol_spr += len(self.df_par_f[self.df_par_f['modulo'] == 'QUADRO_HORARIO'])
+        vol_spr += len(self.df_pesq_f)
+        
+        vols = [vol_sigp, vol_siga, vol_spr]
+        if sum(vols) > 0:
+            # Filtra apenas módulos com volume > 0 para o gráfico de pizza
+            labels_plot = [m for m, v in zip(modulos, vols) if v > 0]
+            vols_plot = [v for v in vols if v > 0]
+            ax.pie(vols_plot, labels=labels_plot, autopct='%1.1f%%', startangle=140, colors=[COLOR_PRIMARY, COLOR_SECONDARY, "#14B5D9"], textprops={'fontweight': 'bold'})
             ax.set_title("Volume de Trabalho por Setor", fontsize=13, fontweight='bold', pad=15)
         else:
             self._configurar_eixo(ax, "Volume de Trabalho por Setor")
-            ax.text(0.5, 0.5, "Sem dados", ha='center')
+            ax.text(0.5, 0.5, "Sem dados no período", ha='center')
 
         # LINHA 2: Produtividade Setorial
         ax = axs[1, 0]
