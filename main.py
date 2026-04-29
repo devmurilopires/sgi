@@ -25,6 +25,7 @@ try:
     from src.modulos.quadro_horario.parecer.view import renderizar as renderizar_parecer_qh
     from src.modulos.quadro_horario.pesquisas.view import renderizar as renderizar_pesquisas_qh
     from src.modulos.quadro_horario.relatorios.view import renderizar as renderizar_relatorios_qh
+    from src.modulos.admin.view import renderizar as renderizar_admin_central
     from src.core.shared.utils import resource_path
 except ImportError:
     print("Core modules ou shared utils não encontrados. Fallback para resource_path básico.")
@@ -226,11 +227,13 @@ def iniciar_sistema(usuario_dados):
         "PONTO DE PARADA": [],
         "ITINERÁRIO": [],
         "QUADRO DE HORÁRIO": [],
-        "SISTEMA": []
+        "SISTEMA": [],
+        "ADMIN": []
     }
 
     if is_admin:
         categorias_menu["DASHBOARDS"].append({"nome": "Visão Global", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_geral(a, u)})
+        categorias_menu["ADMIN"].append({"nome": "Configurações", "img_icon": loaded_imgs_items["Menu"], "render": lambda a, u: renderizar_admin_central(a, u)})
         categorias_menu["PONTO DE PARADA"].extend([
             {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios_Os"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "OS")},
             {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "PARECER")},

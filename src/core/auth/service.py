@@ -54,9 +54,9 @@ class AuthService:
         if not username or not senha:
             return False, "Por favor, preencha a Matrícula e a senha.", None
 
-        # CORREÇÃO: Adicionado o 'is_admin' nativo da base de dados na query
+        # CORREÇÃO: Adicionado o 'is_admin' e 'is_ativo' nativo da base de dados na query
         query_busca = """
-            SELECT password_hash, tipo_perfil, nome_completo, username, is_admin
+            SELECT password_hash, tipo_perfil, nome_completo, username, is_admin, is_ativo
             FROM common.usuarios 
             WHERE email = %s OR username = %s
         """
@@ -68,8 +68,11 @@ class AuthService:
         if not resultado: 
             return False, "Matrícula não encontrada.", None
 
-        # CORREÇÃO: Desempacotar as 5 variáveis
-        senha_hash_banco, tipo_perfil, nome_completo, user_real, is_admin = resultado
+        # CORREÇÃO: Desempacotar as 6 variáveis
+        senha_hash_banco, tipo_perfil, nome_completo, user_real, is_admin, is_ativo = resultado
+
+        if not is_ativo:
+            return False, "Esta conta está inativada. Contacte o administrador.", None
 
         try:
             # Compara a senha digitada com o Hash seguro da base de dados
