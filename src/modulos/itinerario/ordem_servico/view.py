@@ -173,7 +173,7 @@ class OSItinerarioView(ctk.CTkFrame):
                 
         self.processo_entry.bind("<KeyRelease>", upper_processo_os)
 
-        self.origem_combo = self._criar_combo_grid(linha_fixa, "Origem", 250, ["SISGEP", "SPU"], 0, 2)
+        self.origem_combo = self._criar_param_combo(linha_fixa, "Origem", "Itinerário", "ORIGEM", 250, 0, 2)
 
         self.container_dinamico = ctk.CTkFrame(form_frame, fg_color="transparent")
         self.container_dinamico.pack(fill="x", pady=0, padx=15)
@@ -228,13 +228,25 @@ class OSItinerarioView(ctk.CTkFrame):
         entry.pack(anchor="w", pady=(2,0))
         return entry
         
-    def _criar_combo_grid(self, parent, label, width, values, row, col, columnspan=1, state="readonly"):
+    def _criar_combo_grid(self, parent, label, width, values, row, col, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), state=state, **MODERN_STYLE)
+        combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), **MODERN_STYLE)
         combo.pack(anchor="w", pady=(2,0))
         return combo
+        
+    def _criar_param_combo_grid(self, parent, label, setor, campo, width, row, col, columnspan=1):
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        from src.core.shared.components.parameters_combo import CtkParametrosComboBox
+        combo = CtkParametrosComboBox(frame, setor=setor, campo=campo, width=width, height=35, **MODERN_STYLE)
+        combo.pack(anchor="w", pady=(2,0))
+        return combo
+
+    def _criar_param_combo(self, parent, label, setor, campo, width, row, col, columnspan=1):
+        return self._criar_param_combo_grid(parent, label, setor, campo, width, row, col, columnspan)
 
     def _criar_autocomplete_grid(self, parent, label, width, values, row, col, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
@@ -284,13 +296,13 @@ class OSItinerarioView(ctk.CTkFrame):
         self.campos_dinamicos = {}
 
         if tipo == "EVENTOS":
-            self.campos_dinamicos['evento'] = self._criar_combo_grid(self.container_dinamico, "Nome do Evento", 250, ["Obras", "Corrida", "Pré Carnaval", "Outros"], 0, 0, state="normal")
+            self.campos_dinamicos['evento'] = self._criar_param_combo_grid(self.container_dinamico, "Nome do Evento", "Itinerário", "EVENTO", 250, 0, 0)
             self.campos_dinamicos['endereco'] = self._criar_campo_grid(self.container_dinamico, "Endereço/Logradouro", 520, 0, 1, columnspan=2)
             self.container_listas.pack(fill="x", pady=(0, 15), padx=15)
         elif tipo == "CORRIDA":
             self.campos_dinamicos['nome_corrida'] = self._criar_campo_grid(self.container_dinamico, "Nome da Corrida", 250, 0, 0)
             self.campos_dinamicos['km'] = self._criar_campo_grid(self.container_dinamico, "Quilometragem (KM)", 250, 0, 1)
-            self.campos_dinamicos['solicitante'] = self._criar_campo_grid(self.container_dinamico, "Solicitante", 250, 0, 2)
+            self.campos_dinamicos['solicitante'] = self._criar_param_combo_grid(self.container_dinamico, "Solicitante", "Itinerário", "SOLICITANTE", 250, 0, 2)
             self.container_listas.pack_forget() 
         elif tipo == "OBRAS":
             self.campos_dinamicos['tipo_obra'] = self._criar_campo_grid(self.container_dinamico, "Tipo de Obra", 250, 0, 0)

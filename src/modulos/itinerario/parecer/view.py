@@ -131,17 +131,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
         
         self.linhas_add = []
         self.datas_isoladas_add = []
-        self._construir_listas_padrao()
         self._construir_interface()
-
-    def _construir_listas_padrao(self):
-        self.lista_solicitantes = [
-            "AGEFIS", "AMC", "Ceará Sporting Club", "Cidadão", "CMF", "Comunidade", "Construtoras", 
-            "Fortaleza Esporte Clube", "GMF", "Ministério Público", "Ouvidoria Etufor", "Ouvidoria Geral", 
-            "Polícia Militar do Ceará", "SER 1", "SER 2", "SER 3", "SER 4", "SER 5", "SER 6", "Sindiônibus", "Outros"
-        ]
-        self.lista_assuntos = ["Alteração de itinerário", "Desvio temporário de itinerário para Obra" , "Desvio temporário de itinerário para Evento", "Desvio temporário de itinerário para Corrida", "Implantação de linha", "Outros"]
-        self.lista_eventos = ["07 de Setembro", "Carnaval Domingos Olimpio", "Pré Carnaval", "Obras", "Corrida", "Esportivo", "Religioso", "Outros"]
 
     def _construir_interface(self):
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#F8F9FA")
@@ -175,14 +165,17 @@ class ParecerItinerarioView(ctk.CTkFrame):
                 
         self.processo_entry.bind("<KeyRelease>", upper_processo_par)
 
-        self.solicitante_combo = self._criar_autocomplete_grid(grid_master, "Solicitante", 250, self.lista_solicitantes, 0, 2)
+        # Solicitante DINÂMICO
+        self.solicitante_combo = self._criar_param_combo_grid(grid_master, "Solicitante", "Itinerário", "SOLICITANTE", 250, 0, 2)
 
         # --- LINHA 1 ---
-        self.assunto_combo = self._criar_autocomplete_grid(grid_master, "Assunto", 250, self.lista_assuntos, 1, 0)
+        # Assunto DINÂMICO
+        self.assunto_combo = self._criar_param_combo_grid(grid_master, "Assunto", "Itinerário", "ASSUNTO", 250, 1, 0)
         self.endereco_entry = self._criar_campo_grid(grid_master, "Endereço / Logradouro", 520, 1, 1, columnspan=2)
 
         # --- LINHA 2 ---
-        self.evento_combo = self._criar_autocomplete_grid(grid_master, "Evento", 250, self.lista_eventos, 2, 0)
+        # Evento DINÂMICO
+        self.evento_combo = self._criar_param_combo_grid(grid_master, "Evento", "Itinerário", "EVENTO", 250, 2, 0)
         
         cb_evento_frame = ctk.CTkFrame(grid_master, fg_color="transparent")
         cb_evento_frame.grid(row=2, column=1, sticky="w", padx=10, pady=10)
@@ -212,7 +205,8 @@ class ParecerItinerarioView(ctk.CTkFrame):
         self.container_datas.grid(row=4, column=0, columnspan=2, sticky="w", padx=0, pady=5)
         self._on_modo_data_change()
 
-        self.origem_combo = self._criar_combo_grid(grid_master, "Origem", 250, ["SISGEP", "SPU"], 4, 2)
+        # Origem DINÂMICA
+        self.origem_combo = self._criar_param_combo_grid(grid_master, "Origem", "Itinerário", "ORIGEM", 250, 4, 2)
 
         # =====================================================================
         # CONTAINER DINÂMICO
@@ -241,6 +235,15 @@ class ParecerItinerarioView(ctk.CTkFrame):
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
         combo = ctk.CTkComboBox(frame, width=width, height=35, values=values, font=("Arial", 12), state=state, **MODERN_STYLE)
+        combo.pack(anchor="w", pady=(2,0))
+        return combo
+
+    def _criar_param_combo_grid(self, parent, label, setor, campo, width, row, col, columnspan=1):
+        frame = ctk.CTkFrame(parent, fg_color="transparent")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="w")
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        from src.core.shared.components.parameters_combo import CtkParametrosComboBox
+        combo = CtkParametrosComboBox(frame, setor=setor, campo=campo, width=width, height=35, **MODERN_STYLE)
         combo.pack(anchor="w", pady=(2,0))
         return combo
 

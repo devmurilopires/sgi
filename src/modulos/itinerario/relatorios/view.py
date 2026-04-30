@@ -189,13 +189,30 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
             if key == "tipo":
-                widget = ctk.CTkComboBox(f, values=["Todos", "Eventos", "Corrida", "Obras"], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
+                widget = ctk.CTkComboBox(f, values=["Todos", "EVENTOS", "CORRIDA", "OBRAS"], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
                 widget.set("Todos")
             elif key == "origem":
-                widget = ctk.CTkComboBox(f, values=["Todos", "SISGEP", "SPU"], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
+                from src.core.shared.components.parameters_combo import CtkParametrosComboBox
+                widget = CtkParametrosComboBox(f, setor="Itinerário", campo="ORIGEM", height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
+                # Adiciona "Todos" no início das opções
+                vals = list(widget.cget("values"))
+                if "Todos" not in vals:
+                    vals.insert(0, "Todos")
+                    widget.configure(values=vals)
                 widget.set("Todos")
             elif key == "decisao":
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
+                widget.set("Todos")
+            elif key in ["solicitante", "assunto", "evento"]:
+                from src.core.shared.components.parameters_combo import CtkParametrosComboBox
+                # Mapeia a key para o nome do campo esperado pelo get_slug
+                campo_map = {"solicitante": "SOLICITANTE", "assunto": "ASSUNTO", "evento": "EVENTO"}
+                widget = CtkParametrosComboBox(f, setor="Itinerário", campo=campo_map[key], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
+                # Adiciona "Todos" no início das opções
+                vals = list(widget.cget("values"))
+                if "Todos" not in vals:
+                    vals.insert(0, "Todos")
+                    widget.configure(values=vals)
                 widget.set("Todos")
             elif key == "empresa":
                 # NOVA INTEGRAÇÃO: Autocomplete para Empresas!
