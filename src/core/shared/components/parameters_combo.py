@@ -8,8 +8,8 @@ class CtkParametrosComboBox(ctk.CTkComboBox):
     """
     def __init__(self, master, setor, campo, **kwargs):
         # Gera o slug da categoria seguindo o padrão definido no Admin
-        self.categoria_slug = f"{setor.upper().replace(' ', '_')}_{campo.upper()}"
         self.service = ParametrosService()
+        self.categoria_slug = self.service.get_slug(setor, campo)
         
         # Inicializa com lista vazia, os dados serão carregados no reload
         super().__init__(master, values=[], **kwargs)

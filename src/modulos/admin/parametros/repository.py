@@ -28,6 +28,17 @@ class ParametrosRepository:
             print(f"Erro ao inativar parâmetro {parametro_id}: {e}")
             raise e
 
+    def atualizar_valor(self, parametro_id, novo_valor):
+        """Atualiza o valor de um parâmetro existente."""
+        query = "UPDATE common.parametros_sistema SET valor = %s WHERE id = %s;"
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query, (novo_valor, parametro_id))
+        except Exception as e:
+            print(f"Erro ao atualizar valor do parâmetro {parametro_id}: {e}")
+            raise e
+
     def get_parametros_by_categoria(self, categoria):
         """Busca todos os parâmetros ativos de uma determinada categoria."""
         query = """
