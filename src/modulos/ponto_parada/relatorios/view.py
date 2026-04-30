@@ -4,6 +4,7 @@ from tkcalendar import DateEntry
 from datetime import date
 import math
 from src.modulos.ponto_parada.relatorios.service import RelatorioService
+from src.core.shared.components.parameters_combo import CtkParametrosComboBox
 
 class RelatorioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado, tipo_relatorio):
@@ -80,17 +81,32 @@ class RelatorioView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            # COMBOS - OS
-            if key == "origem" and self.tipo_doc == "OS":
-                widget = ctk.CTkComboBox(f, values=["Todos", "SPU", "SISGEP", "OFÍCIO", "PROCESSO INTERNO"], height=35, fg_color="#F9FAFB")
+            # COMBOS DINÂMICOS
+            if key == "origem":
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", height=35, fg_color="#F9FAFB")
+                vals = ["Todos"] + [v for v in widget.cget("values") if v != "Nenhuma opção cadastrada"]
+                widget.configure(values=vals)
                 widget.set("Todos")
+                
             elif key == "acao":
-                widget = ctk.CTkComboBox(f, values=["Todos", "IMPLANTAÇÃO", "TRANSFERÊNCIA", "RECOLHIMENTO", "MANUTENÇÃO"], height=35, fg_color="#F9FAFB")
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", height=35, fg_color="#F9FAFB")
+                vals = ["Todos"] + [v for v in widget.cget("values") if v != "Nenhuma opção cadastrada"]
+                widget.configure(values=vals)
                 widget.set("Todos")
+                
             elif key == "item":
-                widget = ctk.CTkComboBox(f, values=["Todos", "ABRIGO METÁLICO", "ABRIGO DE CONCRETO", "PLACA/BARROTE", "PLACA/POSTE", "PARADA SEGURA"], height=35, fg_color="#F9FAFB")
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="TIPO_ITEM", height=35, fg_color="#F9FAFB")
+                vals = ["Todos"] + [v for v in widget.cget("values") if v != "Nenhuma opção cadastrada"]
+                widget.configure(values=vals)
                 widget.set("Todos")
-            elif key == "status":
+                
+            elif key == "solicitante":
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE", height=35, fg_color="#F9FAFB")
+                vals = ["Todos"] + [v for v in widget.cget("values") if v != "Nenhuma opção cadastrada"]
+                widget.configure(values=vals)
+                widget.set("Todos")
+
+            elif key == "status" and self.tipo_doc == "OS":
                 widget = ctk.CTkComboBox(f, values=["Todos", "PENDENTE", "CONCLUÍDO", "CANCELADO"], height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
             elif key == "bairro":
@@ -103,13 +119,10 @@ class RelatorioView(ctk.CTkFrame):
                 widget.bind("<KeyRelease>", on_key_bairro)
             
             # COMBOS - PARECER
-            elif key == "origem" and self.tipo_doc == "PARECER":
-                widget = ctk.CTkComboBox(f, values=["Todos", "SPU", "SISGEP"], height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
             elif key == "decisao":
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
-            elif key == "assunto":
+            elif key == "assunto" and self.tipo_doc == "PARECER":
                 assuntos = ["Todos", "Solicitação de Implantação de Abrigo Metálico", "Solicitação de Implantação de Placa/Barrote", "Solicitação de Implantação de Placa/Poste", "Solicitação de Implantação de Parada Segura", "Solicitação de Implantação de Abrigo Concreto", "Solicitação de Transferência de Abrigo Metálico", "Solicitação de Transferência de Placa/Barrote", "Solicitação de Recolhimento de Abrigo Metálico"]
                 widget = ctk.CTkComboBox(f, values=assuntos, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")

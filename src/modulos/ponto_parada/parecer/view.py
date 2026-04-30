@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from src.modulos.ponto_parada.parecer.service import ParecerService
+from src.core.shared.components.parameters_combo import CtkParametrosComboBox
 
 class ParecerView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -11,7 +12,7 @@ class ParecerView(ctk.CTkFrame):
         self.usuario_logado = usuario_logado.get('nome') if isinstance(usuario_logado, dict) else usuario_logado
         self.ids_list = []
 
-        # Listas Padrões
+        # Listas Padrões (Assunto permanece estático pois não está no mapeamento do banco para este módulo)
         self._assuntos_padrao = [
             "Solicitação de Implantação de Abrigo Metálico",
             "Solicitação de Implantação de Placa/Barrote",
@@ -41,37 +42,6 @@ class ParecerView(ctk.CTkFrame):
             "Outros"
         ]
 
-
-        self._solicitantes_padrao = [
-        "AGEFIS - Agência de Fiscalização de Fortaleza", "ALECE - Assembléia Legislativa do Ceará", "AMC - Autarquia Municipal de Trânsito e Cidadania",
-        "Assessoria Esportiva", "Ceará Sporting Club", "CGM - Controladoria e Ouvidoria Geral do Município",
-        "Cidadão", "CITINOVA - fundação da Ciência, Tecnologia e Inovação de Fortaleza", "CMF - Câmara Municipal de Fortaleza",
-        "Comunidade", "Construtoras", "Cootraps",
-        "Empreendimento Comercial", "Empreendimento Residencial", "Empresas Operadoras",
-        "Fortaleza Esporte Clube", "FUNCI - Fundação da Criança e da Família Cidadã", "GMF - Guarda Municipal de Fortaleza",
-        "HABITAFOR - Secretaria Municipal de Desenvolvimento Habitacional de Fortaleza", "IMPARH - Instituto Municipal de Desenvolvimento de Recursos Humanos", "Imprensa",
-        "Instituição de Ensino", "Instituição Religiosa", "Instituições Particulares",
-        "IPEM - Instituro de Pesos e Medidas", "IPLANFOR - Instituto de Planejamento de Fortaleza", "IPM - Instituto de Previdência do Município",
-        "Ministério Público", "Ouvidoria Etufor", "Ouvidoria Geral do Município de Fortaleza",
-        "PGM - Procuradoria Geral do Município", "Polícia Militar do Ceará", "PROCON - Departamento Municipal de Proteção e Defesa dos Direitos do Consumidor",
-        "SCDH - Secretaria Municipal de Cidadania e Direitos Humanos", "SCSP - Secretaria Municipal de Conservação e Serviços Públicos", "SDE - Secretaria Municipal de Desenvolvimento Econômico",
-        "SECEL - Secretaria Municipal de Esporte e Lazer", "SECULTFOR - Secretaria Municipal de Cultura de Fortaleza", "SEFIN - Secretaria de Finanças",
-        "SEGER - Secretaria Municipal de Gestão Regional", "SEINF - Secretaria Municipal de Infraestrutura", "SEJUV - Secretaria Municipal da Juventude",
-        "SEPOG - Secretaria de Planejamento, Orçamento e Gestão", "SEPOG - Secretaria Municipal de Governo", "SER 1 - Secretaria Regional 1",
-        "SER 2 - Secretaria Regional 2", "SER 3 - Secretaria Regional 3", "SER 4 - Secretaria Regional 4",
-        "SER 5 - Secretaria Regional 5", "SER 6 - Secretaria Regional 6", "SER 7 - Secretaria Regional 7",
-        "SER 8 - Secretaria Regional 8", "SER 9 - Secretaria Regional 9", "SER 10 - Secretaria Regional 10",
-        "SER 11 - Secretaria Regional 11", "SER 12 - Secretaria Regional 12", "SERCE - Secretaria Regional Centro",
-        "SESEC - Secretaria Municipal de Segurança Cidadã", "SETFOR - Secretaria Municipal de Turismo de Fortaleza", "SETRA - Secretaria Municipal de Trabalho, Desenvolvimento Social e Combate a fome",
-        "SEUMA - Secretaria Municipal de Urbanismo e Meio Ambiente", "Sindiônibus", "SME - Secretaria Municipal de Educação",
-        "SMS - Secretaria Municipal de Saúde", "TRANSITAR", "TRE - Tribunal Regional Eleitoral",
-        "TRE - Tribunal Regional Eleitoral do Ceará", "URBFOR - Autarquia de Urbanismo e Paisagismo de Fortaleza",
-        "DIARH", "DIASIS", "DICUSTO", "DIFIS", "DIMON", "DIOPE", "DIPRE", "DITEC", "DITRAN", "Ouvidoria", "Protocolo", "Vice Presidência", "Outros"
-        ]
-        
-        self._tipos_padrao = ["Implantação", "Transferência", "Remoção", "Substituição", "Manutenção"]
-        self._itens_padrao = ["Abrigo Metálico", "Placa/Barrote", "Placa/Poste","Parada Segura", "Abrigo Concreto"]
-
         self._construir_interface()
 
     def _construir_interface(self):
@@ -91,9 +61,8 @@ class ParecerView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        # Origem da Demanda
-        self.origem_var = ctk.StringVar(value="SPU")
-        self._criar_combobox(row1, "Origem", self.origem_var, ["SPU", "SISGEP"], width=130, state="readonly")
+        # Origem da Demanda (DINÂMICO)
+        self.origem_combo = self._criar_param_combo(row1, "Origem", "Ponto de Parada", "ORIGEM", width=130)
 
         self.tipo_parecer_var = ctk.StringVar(value="Deferido")
         self.tipo_parecer_var.trace_add("write", self._atualizar_campos) 
@@ -108,8 +77,8 @@ class ParecerView(ctk.CTkFrame):
         row2 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row2.pack(fill="x", pady=(5, 15), padx=15)
 
-        self.solicitante_var = ctk.StringVar()
-        self._criar_combobox(row2, "Solicitante", self.solicitante_var, self._solicitantes_padrao, width=350)
+        # Solicitante (DINÂMICO)
+        self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Ponto de Parada", "SOLICITANTE", width=350)
 
         self.assunto_var = ctk.StringVar()
         self._criar_combobox(row2, "Assunto", self.assunto_var, self._assuntos_padrao, width=450)
@@ -122,11 +91,11 @@ class ParecerView(ctk.CTkFrame):
         row3 = ctk.CTkFrame(bloco2, fg_color="transparent")
         row3.pack(fill="x", pady=(15, 5), padx=15)
 
-        self.tipo_exec_var = ctk.StringVar(value=self._tipos_padrao[0])
-        self._criar_combobox(row3, "Ação", self.tipo_exec_var, self._tipos_padrao, width=500, state="readonly")
+        # Ação (DINÂMICO - Mapeia para ponto_parada_acao)
+        self.acao_combo = self._criar_param_combo(row3, "Ação", "Ponto de Parada", "ACAO_OS", width=500)
 
-        self.item_var = ctk.StringVar(value=self._itens_padrao[0])
-        self._criar_combobox(row3, "Tipo de Item", self.item_var, self._itens_padrao, width=300, state="readonly")
+        # Tipo de Item (DINÂMICO)
+        self.item_combo = self._criar_param_combo(row3, "Tipo de Item", "Ponto de Parada", "TIPO_ITEM", width=300)
 
         # Endereço e Quantidade
         row4 = ctk.CTkFrame(bloco2, fg_color="transparent")
@@ -183,6 +152,14 @@ class ParecerView(ctk.CTkFrame):
         combo = ctk.CTkComboBox(container, variable=variable, values=values, width=width, height=35, state=state)
         combo.pack(anchor="w", pady=(2,0))
 
+    def _criar_param_combo(self, parent, label_text, setor, campo, width):
+        container = ctk.CTkFrame(parent, fg_color="transparent")
+        container.pack(side="left", padx=10, fill="x")
+        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=35)
+        combo.pack(anchor="w", pady=(2,0))
+        return combo
+
     # --- LÓGICA DE INTERFACE ---
     def _atualizar_campos(self, *args):
         if self.tipo_parecer_var.get() == "Indeferido":
@@ -236,13 +213,13 @@ class ParecerView(ctk.CTkFrame):
     # --- AÇÃO PRINCIPAL ---
     def _acao_gerar_parecer(self):
         dados_form = {
-            'origem': self.origem_var.get(),
+            'origem': self.origem_combo.get(),
             'tipo': self.tipo_parecer_var.get(),
             'processo': self.processo_var.get().strip(),
             'assunto': self.assunto_var.get().strip(),
-            'solicitante': self.solicitante_var.get().strip(),
-            'tipo_execucao': self.tipo_exec_var.get().strip(),
-            'item': self.item_var.get().strip(),
+            'solicitante': self.solicitante_combo.get().strip(),
+            'tipo_execucao': self.acao_combo.get().strip(),
+            'item': self.item_combo.get().strip(),
             'endereco': self.endereco_var.get().strip(),
             'motivo': self.entry_motivo.get("1.0", "end").strip(),
             'quantidade': self.quantidade_var.get().strip()

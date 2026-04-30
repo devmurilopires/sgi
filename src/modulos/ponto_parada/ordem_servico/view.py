@@ -102,13 +102,18 @@ class OSView(ctk.CTkFrame):
         combo.pack(anchor="w", pady=(2,0))
         return combo
 
+    def _criar_param_combo(self, parent, label_text, setor, campo, width, side="top"):
+        container = ctk.CTkFrame(parent, fg_color="transparent")
+        container.pack(side=side, padx=10, fill="x")
+        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=35)
+        combo.pack(anchor="w", pady=(2,0))
+        return combo
+
     def _atualizar_opcoes_item(self, *args):
-        if self.pasta_escolhida_var.get() == "MC MENSAGEM":
-            self.tipo_item_var.configure(values=self.itens_mcmensagem)
-            self.tipo_item_var.set(self.itens_mcmensagem[0])
-        else:
-            self.tipo_item_var.configure(values=self.itens_proximaparada)
-            self.tipo_item_var.set(self.itens_proximaparada[0])
+        # Agora o tipo de item vem do banco, então essa lógica de itens estáticos pode ser removida
+        # ou mantida se houver necessidade de filtro, mas a instrução diz para usar o banco.
+        pass
 
     # --- AÇÕES ---
     def ao_sair_do_id(self, event=None):
@@ -142,8 +147,8 @@ class OSView(ctk.CTkFrame):
             messagebox.showerror("Atenção", "Preencha Logradouro, Número e Bairro.")
             return
 
-        tipo_os = self.tipo_os_var.get().upper()
-        tipo_item = self.tipo_item_var.get().upper()
+        tipo_os = self.tipo_os_combo.get().upper()
+        tipo_item = self.tipo_item_combo.get().upper()
         complemento = self.complemento_entry.get().upper()
 
         endereco_formatado = f"{endereco}, Nº {numero} - BAIRRO {bairro}"
@@ -200,11 +205,11 @@ class OSView(ctk.CTkFrame):
             descricoes_acumuladas=self.descricoes_acumuladas,
             pasta_escolhida=self.pasta_escolhida_var.get(),
             modelo_escolhido=modelo,
-            tipo_os=self.tipo_os_var.get(),
-            tipo_item=self.tipo_item_var.get(),
+            tipo_os=self.tipo_os_combo.get(),
+            tipo_item=self.tipo_item_combo.get(),
             form_dados=form_dados,
             usuario_logado=self.usuario_logado,
-            origem_demanda=self.origem_var.get() 
+            origem_demanda=self.origem_combo.get() 
         )
 
         if sucesso:
