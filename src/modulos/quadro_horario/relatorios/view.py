@@ -308,6 +308,15 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         self.lista_linhas = self.service.obter_linhas()
         self.lista_tipos_pesq = ["Todos", "tempo", "demanda"]
 
+        # Carrega os dados do banco para Assunto e Solicitante
+        assuntos_banco = self.service.buscar_opcoes_dropdown('qh_assunto')
+        solicitantes_banco = self.service.buscar_opcoes_dropdown('qh_solicitante')
+
+        # Constrói as listas de filtros. 
+        # A opção "Todos" DEVE ser sempre a primeira numa tela de pesquisa.
+        self.lista_assuntos = ["Todos"] + assuntos_banco if assuntos_banco else ["Todos", "Outros"]
+        self.lista_solicitantes = ["Todos"] + solicitantes_banco if solicitantes_banco else ["Todos", "Outros"]
+
         if self.tipo_doc == "PESQUISA":
             self.colunas_config = {
                 "id": "ID", 
@@ -367,10 +376,14 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35)
                 widget.set("Todos")
             elif key == "assunto":
-                widget = ctk.CTkComboBox(f, values=["Todos", "Aumento de frota", "Alteração de itinerário", "Criação de linha", "Desativação de linha", "Extensão de itinerário", "Mudança de ponto final/retorno", "Redução de frota", "Substituição de veículo", "Outros"], height=35)
+                # Antes: widget = ctk.CTkComboBox(f, values=["Todos", "Aumento de frota", ...], height=35)
+                # AGORA: Usa a lista dinâmica carregada do banco
+                widget = ctk.CTkComboBox(f, values=self.lista_assuntos, height=35)
                 widget.set("Todos")
             elif key == "solicitante":
-                widget = ctk.CTkComboBox(f, values=["Todos", "AGEFIS", "AMC", "Cidadão", "CMF", "Comunidade", "Construtoras", "Empresas Operadoras", "Sindiônibus", "Outros"], height=35)
+                # Antes: widget = ctk.CTkComboBox(f, values=["Todos", "AGEFIS", ...], height=35)
+                # AGORA: Usa a lista dinâmica carregada do banco
+                widget = ctk.CTkComboBox(f, values=self.lista_solicitantes, height=35)
                 widget.set("Todos")
                 
             # --- A MÁGICA ACONTECE AQUI ---

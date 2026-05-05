@@ -19,6 +19,12 @@ class ParecerQuadroHorarioService:
 
     def buscar_sugestoes_linhas(self):
         return self.repo.buscar_linhas()
+    
+    def buscar_opcoes_dropdown(self, tipo_opcao):
+        """
+        Solicita ao repositório a lista de opções para um determinado tipo de dropdown.
+        """
+        return self.repo.buscar_opcoes_dropdown(tipo_opcao)
 
     def _limpar_nome_arquivo(self, nome):
         return re.sub(r'[\\/:*?"<>|]', '', nome)

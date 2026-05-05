@@ -121,10 +121,25 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         self._construir_interface()
 
     def _construir_listas_padrao(self):
-        self.lista_solicitantes = ["AGEFIS", "AMC", "Cidadão", "CMF", "Comunidade", "Construtoras", "Empresas Operadoras", "Sindiônibus", "Outros"]
-        self.lista_assuntos = ["Aumento de frota para concurso", "Aumento de frota", "Redução de frota", "Execesso de demanda", "Remoção de empresas", "Retorno de Linha", "Mudança de frota", "Intervalo irregular", "Diversos--Requerimentos", "Inclusão de viagens", "Outros"]
-        self.lista_eventos = ["Carnaval", "Réveillon", "Enem", "Eleições", "Concurso", "Festival Halleluya", "Fortal", "Manifestação", "Obras", "Outros"]
+        """
+        Constrói as listas que alimentarão os Comboboxes (dropdowns) da tela,
+        buscando os dados atualizados diretamente do banco de dados.
+        """
+        # Busca dinâmica via banco de dados
+        self.lista_solicitantes = self.service.buscar_opcoes_dropdown('qh_solicitante')
+        self.lista_assuntos = self.service.buscar_opcoes_dropdown('qh_assunto')
+        self.lista_eventos = self.service.buscar_opcoes_dropdown('qh_evento')
         self.linhas_disponiveis = self.service.buscar_sugestoes_linhas()
+
+        # Fallback (Plano B) de Segurança: 
+        # Caso o banco esteja vazio ou ocorra um erro de conexão, 
+        # garantimos que o sistema não quebre e tenha ao menos a opção "Outros".
+        if not self.lista_solicitantes:
+            self.lista_solicitantes = ["Outros"]
+        if not self.lista_assuntos:
+            self.lista_assuntos = ["Outros"]
+        if not self.lista_eventos:
+            self.lista_eventos = ["Outros"]
 
     def _construir_interface(self):
         top_bar = ctk.CTkFrame(self, fg_color="#FFFFFF", height=70, corner_radius=0)
