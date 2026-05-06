@@ -75,7 +75,7 @@ def iniciar_sistema(usuario_dados):
     
     try:
         app.state("zoomed") 
-        app.iconbitmap(resource_path("assets/sigp_logo.ico"))
+        app.iconbitmap(resource_path("assets/sgi_logo.ico"))
     except:
         app.geometry("1400x800")
 
@@ -89,7 +89,7 @@ def iniciar_sistema(usuario_dados):
     tela_carregamento.pack(fill="both", expand=True)
     
     try:
-        caminho_logo = resource_path("assets/sigp_logo.png")
+        caminho_logo = resource_path("assets/sgi_logo.png")
         img_logo_splash = ctk.CTkImage(Image.open(caminho_logo), size=(250, 250))
         ctk.CTkLabel(tela_carregamento, image=img_logo_splash, text="").pack(expand=True, pady=(120, 10))
     except:
@@ -173,7 +173,7 @@ def iniciar_sistema(usuario_dados):
     logo_center_container.pack(fill="x", expand=True, padx=(0, 40)) 
 
     try:
-        caminho_logo = resource_path("assets/sigp_logo.png")
+        caminho_logo = resource_path("assets/sgi_logo.png")
         img_logo = ctk.CTkImage(Image.open(caminho_logo), size=(70, 70))
         lbl_logo = ctk.CTkLabel(logo_center_container, image=img_logo, text="")
         lbl_logo.pack(anchor="center")

@@ -24,13 +24,13 @@ class SideMenu(ctk.CTkFrame):
 
         # --- LOGO / TÍTULO ---
         try:
-            img_path = resource_path("assets/sigp_logo.png")
+            img_path = resource_path("assets/sgi_logo.png")
             pil_img = Image.open(img_path)
             self.logo_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(40, 40))
-            self.lbl_logo = ctk.CTkLabel(self, text=" SIGP", image=self.logo_img, compound="left", 
+            self.lbl_logo = ctk.CTkLabel(self, text=" SGI - DIPLA", image=self.logo_img, compound="left", 
                                         font=("Century Gothic bold", 20), text_color=COLOR_PRIMARY)
         except:
-            self.lbl_logo = ctk.CTkLabel(self, text="SIGP", font=("Century Gothic bold", 24), text_color=COLOR_PRIMARY)
+            self.lbl_logo = ctk.CTkLabel(self, text="SGI - DIPLA", font=("Century Gothic bold", 24), text_color=COLOR_PRIMARY)
         
         self.lbl_logo.grid(row=0, column=0, padx=20, pady=30)
 
