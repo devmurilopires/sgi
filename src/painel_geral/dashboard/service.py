@@ -16,15 +16,14 @@ class DashboardGeralService:
 
         return df_os, df_par, df_pesq
 
-    def filtrar_dados(self, df_os, df_par, df_pesq, ano_sel, mes_sel=None):
-        df_os_f = df_os[df_os['data_dt'].dt.year == ano_sel] if not df_os.empty else df_os
-        df_par_f = df_par[df_par['data_dt'].dt.year == ano_sel] if not df_par.empty else df_par
-        df_pesq_f = df_pesq[df_pesq['data_dt'].dt.year == ano_sel] if not df_pesq.empty else df_pesq
+    def filtrar_dados(self, df_os, df_par, df_pesq, data_inicio, data_fim):
+        # Converte as strings/dates do Tkinter para o tipo datetime do Pandas (incluindo até o último segundo do dia)
+        dt_ini = pd.to_datetime(data_inicio)
+        dt_fim = pd.to_datetime(data_fim) + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
 
-        if mes_sel:
-            if not df_os_f.empty: df_os_f = df_os_f[df_os_f['data_dt'].dt.month == mes_sel]
-            if not df_par_f.empty: df_par_f = df_par_f[df_par_f['data_dt'].dt.month == mes_sel]
-            if not df_pesq_f.empty: df_pesq_f = df_pesq_f[df_pesq_f['data_dt'].dt.month == mes_sel]
+        df_os_f = df_os[(df_os['data_dt'] >= dt_ini) & (df_os['data_dt'] <= dt_fim)] if not df_os.empty else df_os
+        df_par_f = df_par[(df_par['data_dt'] >= dt_ini) & (df_par['data_dt'] <= dt_fim)] if not df_par.empty else df_par
+        df_pesq_f = df_pesq[(df_pesq['data_dt'] >= dt_ini) & (df_pesq['data_dt'] <= dt_fim)] if not df_pesq.empty else df_pesq
 
         return df_os_f, df_par_f, df_pesq_f
 
