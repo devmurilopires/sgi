@@ -72,7 +72,6 @@ class RelatorioView(ctk.CTkFrame):
         campos_ignorar = ["id", "data_criacao"]
         row, col = 0, 0
         
-        # Filtros Inteligentes Específicos para Ponto de Parada
         for key, label in self.colunas_config.items():
             if key in campos_ignorar: continue
             
@@ -81,23 +80,18 @@ class RelatorioView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            # COMBOS DINÂMICOS (Agora 100% limpos e delegados ao componente)
             if key == "origem":
                 widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
-                
             elif key == "acao":
                 widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
-                
             elif key == "item":
                 widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="TIPO_ITEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
-                
             elif key == "solicitante":
                 widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
-
             elif key == "status" and self.tipo_doc == "OS":
                 widget = ctk.CTkComboBox(f, values=["Todos", "PENDENTE", "CONCLUÍDO", "CANCELADO"], height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
@@ -109,8 +103,6 @@ class RelatorioView(ctk.CTkFrame):
                     sugestoes = [b for b in self.lista_bairros if txt in b.lower()][:20]
                     cb.configure(values=sugestoes)
                 widget.bind("<KeyRelease>", on_key_bairro)
-            
-            # COMBOS - PARECER
             elif key == "decisao":
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
@@ -118,8 +110,6 @@ class RelatorioView(ctk.CTkFrame):
                 assuntos = ["Todos", "Solicitação de Implantação de Abrigo Metálico", "Solicitação de Implantação de Placa/Barrote", "Solicitação de Implantação de Placa/Poste", "Solicitação de Implantação de Parada Segura", "Solicitação de Implantação de Abrigo Concreto", "Solicitação de Transferência de Abrigo Metálico", "Solicitação de Transferência de Placa/Barrote", "Solicitação de Recolhimento de Abrigo Metálico"]
                 widget = ctk.CTkComboBox(f, values=assuntos, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
-            
-            # ENTRADAS DE TEXTO
             else:
                 widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color="#D1D5DB", fg_color="#F9FAFB")
             
@@ -227,11 +217,31 @@ class RelatorioView(ctk.CTkFrame):
         for i, d in enumerate(self.dados_atuais):
             if d.get("data_criacao"): d["data_criacao"] = d["data_criacao"].strftime("%d/%m/%Y")
             
-            # Tratamento visual especial para OS Ponto (Ponto Principal vs Adicionais)
+            # =========================================================
+            # CORREÇÃO: Limpeza visual de IDs duplicados na Tabela
+            # =========================================================
             if self.tipo_doc == "OS":
-                d["id_ponto"] = str(d.get("ponto_principal_id") or "")
-                if d.get("pontos_adicionais"):
-                    d["id_ponto"] += f" (+{str(d.get('pontos_adicionais'))})"
+                p_principal = str(d.get("ponto_principal_id") or "").strip()
+                p_adicionais = str(d.get("pontos_adicionais") or "").strip()
+
+                if p_adicionais and p_principal:
+                    # Remove o ID principal da string de adicionais
+                    p_adicionais = p_adicionais.replace(f"-{p_principal}", "")
+                    p_adicionais = p_adicionais.replace(f"{p_principal}-", "")
+                    
+                    # Se após limpar sobrar apenas o próprio ID, esvazia
+                    if p_adicionais == p_principal:
+                        p_adicionais = ""
+                        
+                    # Remove resíduos de formatação (hífens ou vírgulas soltas)
+                    p_adicionais = p_adicionais.strip(' -,.')
+
+                # Define a string final para aparecer na coluna "ID Ponto"
+                if p_adicionais:
+                    d["id_ponto"] = f"{p_principal} (+{p_adicionais})"
+                else:
+                    d["id_ponto"] = p_principal
+            # =========================================================
 
             valores = [d.get(k, "") for k in self.colunas_config.keys()]
             tag = 'par' if i % 2 == 0 else 'impar'
@@ -247,8 +257,28 @@ class RelatorioView(ctk.CTkFrame):
         sel = self.tree.selection()
         if not sel: return messagebox.showwarning("Aviso", "Por favor, selecione um registro na tabela.")
         
-        dado = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
-        if not dado: return
+        dado_bruto = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
+        if not dado_bruto: return
+        
+        dado = dado_bruto.copy()
+
+        # ==============================================================
+        # CORREÇÃO: Limpeza visual de IDs duplicados no Modal
+        # ==============================================================
+        if self.tipo_doc == "OS":
+            p_principal = str(dado.get("ponto_principal_id", "")).strip()
+            p_adicionais = str(dado.get("pontos_adicionais", "")).strip()
+
+            if p_adicionais and p_principal:
+                p_adicionais = p_adicionais.replace(f"-{p_principal}", "")
+                p_adicionais = p_adicionais.replace(f"{p_principal}-", "")
+                if p_adicionais == p_principal: p_adicionais = ""
+                p_adicionais = p_adicionais.strip(' -,.')
+                
+                dado['pontos_adicionais'] = p_adicionais
+            
+            if "id_ponto" in dado: dado['id_ponto'] = p_principal
+        # ==============================================================
 
         modal = ctk.CTkToplevel(self)
         titulo_num = dado.get('numero_os') if self.tipo_doc == "OS" else dado.get('numero_parecer_ano')
@@ -270,7 +300,7 @@ class RelatorioView(ctk.CTkFrame):
         grid = ctk.CTkFrame(info_frame, fg_color="transparent")
         grid.pack(fill="x", padx=15, pady=15)
         
-        campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo'] and v]
+        campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo', 'id_ponto'] and v]
         
         for i in range(0, len(campos_exibir), 2):
             lbl_key1 = str(campos_exibir[i][0]).replace("_", " ").title()
