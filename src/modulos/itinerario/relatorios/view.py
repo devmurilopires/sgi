@@ -193,7 +193,8 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
                 widget.set("Todos")
             elif key == "origem":
                 from src.core.shared.components.parameters_combo import CtkParametrosComboBox
-                widget = CtkParametrosComboBox(f, setor="Itinerário", campo="ORIGEM", height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
+                # Basta adicionar 'incluir_todos=True'. Não precisas de reconfigurar os 'values'!
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 # Adiciona "Todos" no início das opções
                 vals = list(widget.cget("values"))
                 if "Todos" not in vals:
@@ -207,7 +208,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
                 from src.core.shared.components.parameters_combo import CtkParametrosComboBox
                 # Mapeia a key para o nome do campo esperado pelo get_slug
                 campo_map = {"solicitante": "SOLICITANTE", "assunto": "ASSUNTO", "evento": "EVENTO"}
-                widget = CtkParametrosComboBox(f, setor="Itinerário", campo=campo_map[key], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
+                widget = CtkParametrosComboBox(f, setor="Itinerário", campo=campo_map[key], incluir_todos=True, height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
                 # Adiciona "Todos" no início das opções
                 vals = list(widget.cget("values"))
                 if "Todos" not in vals:

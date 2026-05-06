@@ -232,25 +232,39 @@ def iniciar_sistema(usuario_dados):
     }
 
     if is_admin:
+        # MENU DO ADMINISTRADOR AGORA COM ACESSO TOTAL
         categorias_menu["DASHBOARDS"].append({"nome": "Visão Global", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_geral(a, u)})
         categorias_menu["ADMIN"].append({"nome": "Configurações", "img_icon": loaded_imgs_items["Menu"], "render": lambda a, u: renderizar_admin_central(a, u)})
+        
         categorias_menu["PONTO DE PARADA"].extend([
+            {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_pp(a, u)},
+            {"nome": "Gerar OS", "img_icon": loaded_imgs_items["OS"], "render": lambda a, u: renderizar_os_pp(a, u)},
+            {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_pp(a, u)},
             {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios_Os"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "OS")},
             {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_pp(a, u, "PARECER")},
             {"nome": "Gestão Endereços", "img_icon": loaded_imgs_items["Enderecos"], "render": lambda a, u: renderizar_enderecos_pp(a, u)}
         ])
+        
         categorias_menu["ITINERÁRIO"].extend([
+            {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_iti(a, u)},
+            {"nome": "Gerar OS", "img_icon": loaded_imgs_items["OS"], "render": lambda a, u: renderizar_os_iti(a, u)},
+            {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_iti(a, u)},
             {"nome": "Relatórios OS", "img_icon": loaded_imgs_items["Relatorios_Os"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "OS")},
             {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_iti(a, u, "PARECER")}
         ])
+        
         categorias_menu["QUADRO DE HORÁRIO"].extend([
             {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_qh(a, u)},
+            {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_qh(a, u)},
+            {"nome": "Pesquisas de Campo", "img_icon": loaded_imgs_items["Pesquisas"], "render": lambda a, u: renderizar_pesquisas_qh(a, u)},
             {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
             {"nome": "Relatórios Pesquisas", "img_icon": loaded_imgs_items["Relatorio_Pesquisas"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")}
         ])
+        
         categorias_menu["SISTEMA"].append({"nome": "Histórico Global", "img_icon": loaded_imgs_items["Historico"], "render": lambda a, u: renderizar_historico(a, u)})
 
     else:
+        # MENU DE UTILIZADOR COMUM
         if "PONTO DE PARADA" in tipo_perfil:
             categorias_menu["PONTO DE PARADA"].extend([
                 {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_pp(a, u)},
@@ -414,17 +428,14 @@ def iniciar_sistema(usuario_dados):
 
             botoes_ui.append((master_btn_frame, lbl_icon, lbl_text))
 
-            # Guarda o primeiro item do menu como "Plano B" (Caso o usuário seja Admin e não tenha 'Gerar OS')
             if not aba_inicial_chave:
                 aba_inicial_chave = chave_unica
                 primeiro_master_frame = master_btn_frame
 
-            # A MÁGICA: Se encontrar "Gerar OS", esta passa a ser a aba prioritária de inicialização!
             if item["nome"] == "Gerar OS" and not aba_preferida_chave:
                 aba_preferida_chave = chave_unica
                 master_frame_preferido = master_btn_frame
 
-    # Inicialização inteligente: Tenta a aba preferida (Gerar OS). Se não existir (ex: perfil Admin), abre a primeira do menu.
     if aba_preferida_chave and master_frame_preferido:
         selecionar_aba(aba_preferida_chave, master_frame_preferido)
     elif aba_inicial_chave and primeiro_master_frame:

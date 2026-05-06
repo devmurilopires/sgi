@@ -25,7 +25,6 @@ class OSView(ctk.CTkFrame):
         ctk.CTkLabel(header_frame, text="Gerador de Ordem de Serviço", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
         
         self.pasta_escolhida_var = ctk.StringVar(value="MC MENSAGEM")
-        self.pasta_escolhida_var.trace_add("write", self._atualizar_opcoes_item)
 
         ctk.CTkRadioButton(header_frame, text="PROXIMA PARADA", variable=self.pasta_escolhida_var, value="PROXIMAPARADA", fg_color="#0F8C75").pack(side="right", padx=10)
         ctk.CTkRadioButton(header_frame, text="MC MENSAGEM", variable=self.pasta_escolhida_var, value="MC MENSAGEM", fg_color="#0F8C75").pack(side="right", padx=10)
@@ -39,28 +38,21 @@ class OSView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        # ---> CAMPOS PADRONIZADOS (Vinculados ao Admin)
+        # ---> CAMPOS PADRONIZADOS (Vinculados ao Admin de forma inteligente)
         self.origem_combo = self._criar_param_combo(row1, "Origem da Demanda", "Ponto de Parada", "ORIGEM_DEMANDA", width=250, side="left")
         self.tipo_os_combo = self._criar_param_combo(row1, "Ação da OS", "Ponto de Parada", "ACAO_OS", width=250, side="left")
-        
-        # O Tipo de Item depende do modelo, mas vamos carregar do Admin também
         self.tipo_item_combo = self._criar_param_combo(row1, "Tipo de Item", "Ponto de Parada", "TIPO_ITEM", width=250, side="left")
 
         # Linha 2: ID do Ponto e Botões de Pesquisa
         self.id_entry = self._criar_campo(row1, "ID do Ponto", width=250, side="left")
         self.id_entry.bind("<FocusOut>", self.ao_sair_do_id)
 
-        # Linha 2: Endereço, Número
+        # Linha 2 cont. (Agrupei aqui Bairro e Complemento para melhor preenchimento horizontal)
         row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row2.pack(fill="x", pady=5, padx=15)
         
         self.endereco_entry = self._criar_campo(row2, "Endereço", width=250, side="left")
         self.numero_entry = self._criar_campo(row2, "Número", width=250, side="left")
-
-        # Linha 3: Bairro, Complemento
-        # row3 = ctk.CTkFrame(form_frame, fg_color="transparent")
-        # row3.pack(fill="x", pady=(5, 15), padx=15)
-
         self.bairro_entry = self._criar_campo(row2, "Bairro", width=250, side="left")
         self.complemento_entry = self._criar_campo(row2, "Complemento", width=250, side="left")
 
@@ -106,14 +98,11 @@ class OSView(ctk.CTkFrame):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side=side, padx=10, fill="x")
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        
+        # Não enviamos 'incluir_todos=True' porque num formulário não faz sentido criar uma Ordem de Serviço com origem "Todos"
         combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=35)
         combo.pack(anchor="w", pady=(2,0))
         return combo
-
-    def _atualizar_opcoes_item(self, *args):
-        # Agora o tipo de item vem do banco, então essa lógica de itens estáticos pode ser removida
-        # ou mantida se houver necessidade de filtro, mas a instrução diz para usar o banco.
-        pass
 
     # --- AÇÕES ---
     def ao_sair_do_id(self, event=None):
@@ -200,7 +189,7 @@ class OSView(ctk.CTkFrame):
         
         modelo = "dados/modelo_etufor_mcmensagem_pp.docx" if self.pasta_escolhida_var.get() == "MC MENSAGEM" else "dados/modelo_etufor_prxparada_pp.docx"
 
-        # ---> NOVO: Passando a Origem selecionada para o Service
+        # Passando a Origem selecionada para o Service
         sucesso, mensagem = self.service.processar_criacao_os(
             descricoes_acumuladas=self.descricoes_acumuladas,
             pasta_escolhida=self.pasta_escolhida_var.get(),

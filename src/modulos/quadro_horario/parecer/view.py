@@ -4,6 +4,7 @@ from tkinter import ttk, messagebox
 from tkcalendar import DateEntry
 import re
 from src.modulos.quadro_horario.parecer.service import ParecerQuadroHorarioService
+from src.core.shared.components.parameters_combo import CtkParametrosComboBox
 
 # =====================================================================
 # COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
@@ -117,29 +118,11 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         
         self.linhas_add = []
         self.datas_isoladas_add = []
-        self._construir_listas_padrao()
-        self._construir_interface()
-
-    def _construir_listas_padrao(self):
-        """
-        Constrói as listas que alimentarão os Comboboxes (dropdowns) da tela,
-        buscando os dados atualizados diretamente do banco de dados.
-        """
-        # Busca dinâmica via banco de dados
-        self.lista_solicitantes = self.service.buscar_opcoes_dropdown('qh_solicitante')
-        self.lista_assuntos = self.service.buscar_opcoes_dropdown('qh_assunto')
-        self.lista_eventos = self.service.buscar_opcoes_dropdown('qh_evento')
+        
+        # A única lista manual que sobrou foi a das linhas para o Autocomplete
         self.linhas_disponiveis = self.service.buscar_sugestoes_linhas()
-
-        # Fallback (Plano B) de Segurança: 
-        # Caso o banco esteja vazio ou ocorra um erro de conexão, 
-        # garantimos que o sistema não quebre e tenha ao menos a opção "Outros".
-        if not self.lista_solicitantes:
-            self.lista_solicitantes = ["Outros"]
-        if not self.lista_assuntos:
-            self.lista_assuntos = ["Outros"]
-        if not self.lista_eventos:
-            self.lista_eventos = ["Outros"]
+        
+        self._construir_interface()
 
     def _construir_interface(self):
         top_bar = ctk.CTkFrame(self, fg_color="#FFFFFF", height=70, corner_radius=0)
@@ -176,14 +159,16 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         f_sol = ctk.CTkFrame(self.form_frame, fg_color="transparent")
         f_sol.grid(row=1, column=0, padx=(0, 15), pady=(0, 20), sticky="ew")
         ctk.CTkLabel(f_sol, text="Solicitante:", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
-        self.solicitante_combo = ctk.CTkComboBox(f_sol, values=self.lista_solicitantes, height=40, font=("Arial", 13))
+        # Utilizando o novo componente dinâmico
+        self.solicitante_combo = CtkParametrosComboBox(f_sol, setor="Quadro de Horário", campo="SOLICITANTE", height=40, font=("Arial", 13))
         self.solicitante_combo.pack(fill="x")
 
         f_ass = ctk.CTkFrame(self.form_frame, fg_color="transparent")
         f_ass.grid(row=1, column=1, padx=(15, 0), pady=(0, 20), sticky="ew")
         ctk.CTkLabel(f_ass, text="Assunto:", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
-        self.assunto_combo = ctk.CTkComboBox(self.form_frame, values=self.lista_assuntos, height=40, font=("Arial", 13))
-        self.assunto_combo.grid(row=1, column=1, padx=(15, 0), pady=(0, 20), sticky="ew")
+        # Utilizando o novo componente dinâmico
+        self.assunto_combo = CtkParametrosComboBox(f_ass, setor="Quadro de Horário", campo="ASSUNTO", height=40, font=("Arial", 13))
+        self.assunto_combo.pack(fill="x")
 
         # --- LINHA 2: Linha Afetada (Esquerda) e Evento (Direita) ---
         f_linha_section = ctk.CTkFrame(self.form_frame, fg_color="transparent")
@@ -203,9 +188,10 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         f_evento_section = ctk.CTkFrame(self.form_frame, fg_color="transparent")
         f_evento_section.grid(row=2, column=1, padx=(15, 0), pady=(0, 20), sticky="new")
         ctk.CTkLabel(f_evento_section, text="Evento (Opcional):", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
-        self.evento_combo = ctk.CTkComboBox(f_evento_section, values=[""] + self.lista_eventos, height=40, font=("Arial", 13), 
-                                            command=lambda _: self._on_evento_change())
+        # Utilizando o novo componente dinâmico (inclui "Todos" para servir como opção neutra)
+        self.evento_combo = CtkParametrosComboBox(f_evento_section, setor="Quadro de Horário", campo="EVENTO", incluir_todos=True, height=40, font=("Arial", 13), command=lambda _: self._on_evento_change())
         self.evento_combo.pack(fill="x")
+        self.evento_combo.set("") # Como é opcional, inicia em branco
 
         # --- LINHA 3: Seção de Datas (Só aparece se houver Evento) ---
         self.f_data_full_section = ctk.CTkFrame(self.form_frame, fg_color="transparent")
@@ -257,7 +243,8 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
 
     def _on_evento_change(self):
         val = self.evento_combo.get().strip()
-        if val:
+        # Tratamento especial: se for vazio, Todos ou o erro do banco, ignora a abertura de datas
+        if val and val != "Todos" and val != "Nenhuma opção cadastrada":
             # Mostra seção de datas na linha 3
             self.f_data_full_section.grid(row=3, column=0, columnspan=2, sticky="ew")
             self._on_modo_data_change()
@@ -362,7 +349,8 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
             self.f_data_full_section.grid_remove()
         else:
             self.evento_combo.configure(state="normal")
-            if evento_val or has_datas:
+            # Ignora a string "Todos" ou valor vazio ao aplicar as regras
+            if (evento_val and evento_val != "Todos") or has_datas:
                 self.linha_combo.set("")
                 self.linha_combo.configure(state="disabled")
                 self.btn_add_linha.configure(state="disabled")
@@ -375,12 +363,16 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         modo_data = self.modo_data_var.get()
         datas_selecionadas = self.datas_isoladas_add.copy() if modo_data == "Isolada" else [self.data_ini_entry.get(), self.data_fim_entry.get()]
 
+        # Pega os valores, limpando a palavra "Todos" caso tenha sido deixada no evento
+        evento_selecionado = self.evento_combo.get().strip()
+        if evento_selecionado == "Todos": evento_selecionado = ""
+
         dados_form = {
             "processo": self.processo_entry.get().strip(),
             "origem": self.origem_combo.get().strip(),
             "solicitante": self.solicitante_combo.get().strip(),
             "assunto": self.assunto_combo.get().strip(),
-            "evento": self.evento_combo.get().strip(),
+            "evento": evento_selecionado,
             "datas": datas_selecionadas,
             "motivo": self.motivo_text.get("1.0", "end").strip() if tipo == "INDEFERIDO" else ""
         }

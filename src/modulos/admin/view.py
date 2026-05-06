@@ -198,14 +198,11 @@ class AdminCentralView:
         # Adicionando Abas
         self.tabview.add("Configurações")
         self.tabview.add("Usuários")
-        self.tabview.add("Auditoria") # Placeholder para Etapa 6
 
         # Renderizando Sub-Views
         AdminParametrosView(self.tabview.tab("Configurações"), self.usuario_dados)
         AdminUsuariosView(self.tabview.tab("Usuários"), self.usuario_dados)
         
-        # Placeholder Auditoria
-        ctk.CTkLabel(self.tabview.tab("Auditoria"), text="Módulo de Auditoria em desenvolvimento (Etapa 6)", font=("Arial", 16)).pack(pady=50)
 
 def renderizar(container, usuario_dados):
     return AdminCentralView(container, usuario_dados)

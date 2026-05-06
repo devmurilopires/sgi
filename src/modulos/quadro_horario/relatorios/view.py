@@ -11,10 +11,8 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from src.modulos.quadro_horario.relatorios.service import RelatorioQuadroHorarioService, ensure_payload_list, safe_float
+from src.core.shared.components.parameters_combo import CtkParametrosComboBox
 
-# =====================================================================
-# COMPONENTE PREMIUM: AUTOCOMPLETE FLUIDO E MODERNO
-# =====================================================================
 # =====================================================================
 # COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
 # =====================================================================
@@ -26,7 +24,6 @@ class Autocomplete(ctk.CTkEntry):
         self.listbox_widget = None
         self.selecao_idx = -1
 
-        # Eventos baseados na lógica do seu ficheiro original
         self.bind("<KeyRelease>", self.on_keyrelease)
         self.bind("<Down>", self.navegar_para_baixo)
         self.bind("<Up>", self.navegar_para_cima)
@@ -60,7 +57,6 @@ class Autocomplete(ctk.CTkEntry):
         w = self.winfo_width()
         h = min(180, len(filtradas) * 26 + 5)
         
-        # Correção do ValueError: width e height no construtor do CTkFrame!
         self.listbox_frame = ctk.CTkFrame(
             toplevel, fg_color="#FFFFFF", border_width=1, 
             border_color="#10B981", corner_radius=6, width=w, height=h
@@ -68,7 +64,6 @@ class Autocomplete(ctk.CTkEntry):
         self.listbox_frame.place(x=x, y=y)
         self.listbox_frame.pack_propagate(False)
         
-        # Usando o tk.Listbox do seu código para garantir navegação rápida
         self.listbox_widget = tk.Listbox(
             self.listbox_frame, bg="#FFFFFF", fg="#333333",
             selectbackground="#10B981", selectforeground="#FFFFFF",
@@ -308,15 +303,6 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         self.lista_linhas = self.service.obter_linhas()
         self.lista_tipos_pesq = ["Todos", "tempo", "demanda"]
 
-        # Carrega os dados do banco para Assunto e Solicitante
-        assuntos_banco = self.service.buscar_opcoes_dropdown('qh_assunto')
-        solicitantes_banco = self.service.buscar_opcoes_dropdown('qh_solicitante')
-
-        # Constrói as listas de filtros. 
-        # A opção "Todos" DEVE ser sempre a primeira numa tela de pesquisa.
-        self.lista_assuntos = ["Todos"] + assuntos_banco if assuntos_banco else ["Todos", "Outros"]
-        self.lista_solicitantes = ["Todos"] + solicitantes_banco if solicitantes_banco else ["Todos", "Outros"]
-
         if self.tipo_doc == "PESQUISA":
             self.colunas_config = {
                 "id": "ID", 
@@ -375,27 +361,20 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             elif key == "decisao":
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35)
                 widget.set("Todos")
+                
+            # --- INTEGRAÇÃO DO CtkParametrosComboBox AQUI ---
             elif key == "assunto":
-                # Antes: widget = ctk.CTkComboBox(f, values=["Todos", "Aumento de frota", ...], height=35)
-                # AGORA: Usa a lista dinâmica carregada do banco
-                widget = ctk.CTkComboBox(f, values=self.lista_assuntos, height=35)
+                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="ASSUNTO", incluir_todos=True, height=35)
                 widget.set("Todos")
             elif key == "solicitante":
-                # Antes: widget = ctk.CTkComboBox(f, values=["Todos", "AGEFIS", ...], height=35)
-                # AGORA: Usa a lista dinâmica carregada do banco
-                widget = ctk.CTkComboBox(f, values=self.lista_solicitantes, height=35)
+                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="SOLICITANTE", incluir_todos=True, height=35)
                 widget.set("Todos")
+            # ------------------------------------------------
                 
-            # --- A MÁGICA ACONTECE AQUI ---
             elif key in ["titulo", "linhas"]: 
-                # Instanciando o Autocomplete tanto para Pesquisa (titulo) quanto para Parecer (linhas)
                 widget = Autocomplete(f, values=self.lista_linhas, width=250)
-                # Inicia a busca automática se clicar na lista
                 widget.bind("<<AutocompleteSelected>>", lambda e: self.acao_buscar())
-                # Inicia a busca se digitar um código na mão e der Enter
                 widget.bind("<Return>", lambda e: self.acao_buscar())
-            # ------------------------------
-            
             else:
                 widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Filtrar {label.lower()}...")
             
@@ -506,7 +485,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
 
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
-            if isinstance(widget, Autocomplete):  # <-- Garanta que está 'Autocomplete' aqui
+            if isinstance(widget, Autocomplete):  
                 widget.set("")
             elif isinstance(widget, ctk.CTkComboBox): 
                 widget.set("Todos")

@@ -81,29 +81,21 @@ class RelatorioView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            # COMBOS DINÂMICOS
+            # COMBOS DINÂMICOS (Agora 100% limpos e delegados ao componente)
             if key == "origem":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", height=35, fg_color="#F9FAFB")
-                vals = ["Todos"] + [v for v in widget.cget("values") if v != "Nenhuma opção cadastrada"]
-                widget.configure(values=vals)
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
                 
             elif key == "acao":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", height=35, fg_color="#F9FAFB")
-                vals = ["Todos"] + [v for v in widget.cget("values") if v != "Nenhuma opção cadastrada"]
-                widget.configure(values=vals)
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
                 
             elif key == "item":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="TIPO_ITEM", height=35, fg_color="#F9FAFB")
-                vals = ["Todos"] + [v for v in widget.cget("values") if v != "Nenhuma opção cadastrada"]
-                widget.configure(values=vals)
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="TIPO_ITEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
                 
             elif key == "solicitante":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE", height=35, fg_color="#F9FAFB")
-                vals = ["Todos"] + [v for v in widget.cget("values") if v != "Nenhuma opção cadastrada"]
-                widget.configure(values=vals)
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
 
             elif key == "status" and self.tipo_doc == "OS":
@@ -155,7 +147,6 @@ class RelatorioView(ctk.CTkFrame):
         ctk.CTkButton(btn_busca, text="🔍 Buscar Registros", font=("Arial Bold", 13), width=150, height=35, fg_color="#0F8C75", command=self.acao_buscar).pack(side="left", padx=(5, 10))
         ctk.CTkButton(btn_busca, text="Limpar Filtros", font=("Arial", 13), width=120, height=35, fg_color="transparent", text_color="#666666", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", command=self._limpar_filtros).pack(side="left")
 
-
         # --- 2. RODAPÉ ---
         self.frame_bottom = ctk.CTkFrame(self, fg_color="transparent")
         self.frame_bottom.pack(side="bottom", fill="x", padx=20, pady=(5, 20))
@@ -177,7 +168,6 @@ class RelatorioView(ctk.CTkFrame):
         if self.is_admin:
             ctk.CTkButton(self.frame_acoes, text="🗑️ Excluir", font=("Arial Bold", 13), width=120, height=35, fg_color="transparent", border_width=1, border_color="#D32F2F", text_color="#D32F2F", hover_color="#FEE2E2", command=self.acao_excluir).pack(side="left", padx=(5, 0))
 
-
         # --- 3. TABELA ---
         self.frame_tabela = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
         self.frame_tabela.pack(side="top", fill="both", expand=True, padx=20, pady=5)
@@ -190,7 +180,7 @@ class RelatorioView(ctk.CTkFrame):
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
             if k == "assunto":
-                self.tree.column(k, width=250, anchor="w") # Mais largo para Assunto longo
+                self.tree.column(k, width=250, anchor="w") 
             else:
                 self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 

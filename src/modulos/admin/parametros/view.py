@@ -39,6 +39,12 @@ class AdminParametrosView:
         self.setup_ui()
         self.atualizar_lista()
 
+    def _notificar_mudancas_globais(self):
+        """Dispara um evento global avisando que as listas de opções mudaram."""
+        # A janela principal (toplevel) ouve os eventos globais
+        toplevel = self.master.winfo_toplevel()
+        toplevel.event_generate("<<ParametrosAtualizados>>")
+
     def setup_ui(self):
         # Container Principal
         self.main_container = ctk.CTkFrame(self.master, fg_color="transparent")
@@ -218,6 +224,7 @@ class AdminParametrosView:
                 self.service.editar_parametro(param['id'], novo_valor)
                 modal.destroy()
                 self.atualizar_lista()
+                self._notificar_mudancas_globais()
             except Exception as e:
                 messagebox.showerror("Erro", str(e))
 
@@ -234,6 +241,7 @@ class AdminParametrosView:
             self.service.adicionar_parametro(categoria_slug, valor)
             self.entry_valor.delete(0, 'end')
             self.atualizar_lista()
+            self._notificar_mudancas_globais()
         except Exception as e:
             messagebox.showerror("Erro", str(e))
 
@@ -242,6 +250,7 @@ class AdminParametrosView:
             try:
                 self.service.inativar_parametro(pid)
                 self.atualizar_lista()
+                self._notificar_mudancas_globais()
             except Exception as e:
                 messagebox.showerror("Erro", str(e))
 

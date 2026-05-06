@@ -61,8 +61,8 @@ class ParecerView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        # Origem da Demanda (DINÂMICO)
-        self.origem_combo = self._criar_param_combo(row1, "Origem", "Ponto de Parada", "ORIGEM", width=130)
+        # Origem da Demanda (INTEGRADO - Busca no banco sem opção 'Todos')
+        self.origem_combo = self._criar_param_combo(row1, "Origem", "Ponto de Parada", "ORIGEM_DEMANDA", width=130)
 
         self.tipo_parecer_var = ctk.StringVar(value="Deferido")
         self.tipo_parecer_var.trace_add("write", self._atualizar_campos) 
@@ -77,7 +77,7 @@ class ParecerView(ctk.CTkFrame):
         row2 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row2.pack(fill="x", pady=(5, 15), padx=15)
 
-        # Solicitante (DINÂMICO)
+        # Solicitante (INTEGRADO - Busca no banco sem opção 'Todos')
         self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Ponto de Parada", "SOLICITANTE", width=350)
 
         self.assunto_var = ctk.StringVar()
@@ -91,10 +91,10 @@ class ParecerView(ctk.CTkFrame):
         row3 = ctk.CTkFrame(bloco2, fg_color="transparent")
         row3.pack(fill="x", pady=(15, 5), padx=15)
 
-        # Ação (DINÂMICO - Mapeia para ponto_parada_acao)
+        # Ação (INTEGRADO - Busca no banco sem opção 'Todos')
         self.acao_combo = self._criar_param_combo(row3, "Ação", "Ponto de Parada", "ACAO_OS", width=500)
 
-        # Tipo de Item (DINÂMICO)
+        # Tipo de Item (INTEGRADO - Busca no banco sem opção 'Todos')
         self.item_combo = self._criar_param_combo(row3, "Tipo de Item", "Ponto de Parada", "TIPO_ITEM", width=300)
 
         # Endereço e Quantidade
@@ -156,6 +156,9 @@ class ParecerView(ctk.CTkFrame):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side="left", padx=10, fill="x")
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        
+        # Sendo este um formulário de Parecer (onde se requer um campo exato escolhido pelo usuário), 
+        # garantimos que não inserimos "incluir_todos=True".
         combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=35)
         combo.pack(anchor="w", pady=(2,0))
         return combo
