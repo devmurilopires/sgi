@@ -16,13 +16,13 @@ class RelatorioRepository:
                 WHERE 1=1
             """
         else: # ORDEM DE SERVIÇO (ponto_parada)
-            # A tabela ponto_parada.ordens_servico NÃO possui 'caminho_arquivo'. 
-            # Retornamos '' para não quebrar a view.
+            # CORREÇÃO: Removido o bloqueio " '' as caminho_arquivo ".
+            # Agora o sistema puxa a coluna 'o.caminho_arquivo' real do banco de dados!
             query = """
                 SELECT o.id, o.numero as numero_os, o.origem_demanda as origem, o.acao_realizada as acao,
                        o.tipo_item as item, o.ponto_principal_id, o.pontos_adicionais, 
                        o.logradouro_completo as endereco, o.bairro, o.status_conclusao as status,
-                       o.data_criacao, o.responsavel, '' as caminho_arquivo
+                       o.data_criacao, o.responsavel, o.caminho_arquivo
                 FROM ponto_parada.ordens_servico o
                 WHERE 1=1
             """
