@@ -90,7 +90,7 @@ def iniciar_sistema(usuario_dados):
     
     try:
         caminho_logo = resource_path("assets/sgi_logo.png")
-        img_logo_splash = ctk.CTkImage(Image.open(caminho_logo), size=(250, 250))
+        img_logo_splash = ctk.CTkImage(Image.open(caminho_logo), size=(550, 550))
         ctk.CTkLabel(tela_carregamento, image=img_logo_splash, text="").pack(expand=True, pady=(120, 10))
     except:
         ctk.CTkLabel(tela_carregamento, text="SGI | DIPLA", font=("Arial Black", 60), text_color=COLOR_ACCENT).pack(expand=True, pady=(120, 10))

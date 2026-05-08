@@ -26,13 +26,13 @@ class LoginView(ctk.CTk):
         self.active_frame = None
 
         # --- CONFIGURAÇÃO DA JANELA ---
-        self.title("SIGP - Sistema Integrado de Gerenciamento e Produtividade")
+        self.title("SGI - Sistema Integrado de Gerenciamento")
         self.configure(fg_color=COLOR_BG_RIGHT)
         
         # Garante Tela Cheia / Maximizada logo ao abrir
         try:
             self.after(0, lambda: self.state("zoomed")) 
-            self.iconbitmap(resource_path("assets/sigp_logo.ico"))
+            self.iconbitmap(resource_path("assets/sgi_logo.ico"))
         except:
             self.geometry("1366x768")
 
@@ -49,14 +49,14 @@ class LoginView(ctk.CTk):
 
         try:
             # Carrega a Logo Maior
-            img_path = resource_path("assets/sigp_logo.png")
+            img_path = resource_path("assets/sgi_logo.png")
             pil_img = Image.open(img_path)
             # Aumentando a imagem para preencher bem os 60%
             self.logo_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(600, 600))
             ctk.CTkLabel(self.left_panel, text="", image=self.logo_img).grid(row=0, column=0)
         except Exception as e:
             print(f"Aviso - Imagem não encontrada: {e}")
-            ctk.CTkLabel(self.left_panel, text="SIGP", font=("Arial Black", 80), text_color="white").grid(row=0, column=0)
+            ctk.CTkLabel(self.left_panel, text="SGI - DIPLA", font=("Arial Black", 80), text_color="white").grid(row=0, column=0)
 
         # 2. PAINEL DIREITO (Formulários - 40%)
         self.right_panel = ctk.CTkFrame(self, fg_color=COLOR_BG_RIGHT, corner_radius=0)
