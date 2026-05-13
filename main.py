@@ -12,19 +12,29 @@ try:
     from src.core.auth.service import AuthService
     from src.core.historico.view import renderizar as renderizar_historico
     from src.painel_geral.dashboard.view import renderizar as renderizar_dashboard_geral
+    
     from src.modulos.ponto_parada.dashboard.view import renderizar as renderizar_dashboard_pp
     from src.modulos.ponto_parada.ordem_servico.view import renderizar as renderizar_os_pp
     from src.modulos.ponto_parada.parecer.view import renderizar as renderizar_parecer_pp
     from src.modulos.ponto_parada.relatorios.view import renderizar as renderizar_relatorios_pp
     from src.modulos.ponto_parada.enderecos.view import renderizar as renderizar_enderecos_pp
+    
     from src.modulos.itinerario.dashboard.view import renderizar as renderizar_dashboard_iti
     from src.modulos.itinerario.ordem_servico.view import renderizar as renderizar_os_iti
     from src.modulos.itinerario.parecer.view import renderizar as renderizar_parecer_iti
     from src.modulos.itinerario.relatorios.view import renderizar as renderizar_relatorios_iti
+    
     from src.modulos.quadro_horario.dashboard.view import renderizar as renderizar_dashboard_qh
     from src.modulos.quadro_horario.parecer.view import renderizar as renderizar_parecer_qh
     from src.modulos.quadro_horario.pesquisas.view import renderizar as renderizar_pesquisas_qh
     from src.modulos.quadro_horario.relatorios.view import renderizar as renderizar_relatorios_qh
+    
+    # --- NOVOS IMPORTS: PROJETOS DE MOBILIDADE ---
+    from src.modulos.projetos_mobilidade.dashboard.view import renderizar as renderizar_dashboard_pm
+    from src.modulos.projetos_mobilidade.parecer.view import renderizar as renderizar_parecer_pm
+    from src.modulos.projetos_mobilidade.relatorios.view import renderizar as renderizar_relatorios_pm
+    # ---------------------------------------------
+    
     from src.modulos.admin.view import renderizar as renderizar_admin_central
     from src.core.shared.utils import resource_path
 except ImportError:
@@ -45,10 +55,12 @@ SIZE_HEADER = (24, 24)
 SIZE_ITEM = (20, 20)
 
 ICONS_PNG = {
+    "Header_Admin": resource_path(f"{ICONS_PATH}/admin-header.png"),
     "Header_Dashboards": resource_path(f"{ICONS_PATH}/dashboard-header.png"), 
     "Header_PontoParada": resource_path(f"{ICONS_PATH}/ponto-parada-header.png"), 
     "Header_Itinerario": resource_path(f"{ICONS_PATH}/itinerario-header.png"), 
     "Header_QuadroHorario": resource_path(f"{ICONS_PATH}/quadro-horario-header.png"), 
+    "Header_ProjetosMobilidade": resource_path(f"{ICONS_PATH}/projetos-mobilidade-header.png"), # Ícone do novo módulo
     "Header_Sistema": resource_path(f"{ICONS_PATH}/sistema-header.png"),
     
     "Dashboard_Item": resource_path(f"{ICONS_PATH}/dashboard-item.png"), 
@@ -120,7 +132,7 @@ def iniciar_sistema(usuario_dados):
     loaded_imgs_headers = {}
     loaded_imgs_items = {}
 
-    header_keys = ["Header_Dashboards", "Header_PontoParada", "Header_Itinerario", "Header_QuadroHorario", "Header_Sistema"]
+    header_keys = ["Header_Dashboards", "Header_PontoParada", "Header_Itinerario", "Header_QuadroHorario", "Header_ProjetosMobilidade", "Header_Sistema", "Header_Admin"]
     for key in header_keys:
         loaded_imgs_headers[key] = load_icon_png(ICONS_PNG[key], SIZE_HEADER)
 
@@ -222,11 +234,13 @@ def iniciar_sistema(usuario_dados):
     instancias_views = {}
     botoes_ui = [] 
 
+    # Adicionado PROJETOS DE MOBILIDADE no dicionário
     categorias_menu = {
         "DASHBOARDS": [],
         "PONTO DE PARADA": [],
         "ITINERÁRIO": [],
         "QUADRO DE HORÁRIO": [],
+        "PROJETOS DE MOBILIDADE": [],
         "SISTEMA": [],
         "ADMIN": []
     }
@@ -260,6 +274,13 @@ def iniciar_sistema(usuario_dados):
             {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
             {"nome": "Relatórios Pesquisas", "img_icon": loaded_imgs_items["Relatorio_Pesquisas"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")}
         ])
+
+        # --- NOVO BLOCO: PROJETOS DE MOBILIDADE (ADMIN) ---
+        categorias_menu["PROJETOS DE MOBILIDADE"].extend([
+            {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_pm(a, u)},
+            {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_pm(a, u)},
+            {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_pm(a, u)}
+        ])
         
         categorias_menu["SISTEMA"].append({"nome": "Histórico Global", "img_icon": loaded_imgs_items["Historico"], "render": lambda a, u: renderizar_historico(a, u)})
 
@@ -290,6 +311,14 @@ def iniciar_sistema(usuario_dados):
                 {"nome": "Pesquisas de Campo", "img_icon": loaded_imgs_items["Pesquisas"], "render": lambda a, u: renderizar_pesquisas_qh(a, u)},
                 {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PARECER")},
                 {"nome": "Relatórios Pesquisas", "img_icon": loaded_imgs_items["Relatorio_Pesquisas"], "render": lambda a, u: renderizar_relatorios_qh(a, u, "PESQUISA")},
+            ])
+
+        # --- NOVO BLOCO: PROJETOS DE MOBILIDADE (UTILIZADOR) ---
+        if "PROJETOS DE MOBILIDADE" in tipo_perfil:
+            categorias_menu["PROJETOS DE MOBILIDADE"].extend([
+                {"nome": "Dashboard", "img_icon": loaded_imgs_items["Dashboard_Item"], "render": lambda a, u: renderizar_dashboard_pm(a, u)},
+                {"nome": "Gerar Parecer", "img_icon": loaded_imgs_items["Parecer"], "render": lambda a, u: renderizar_parecer_pm(a, u)},
+                {"nome": "Relatórios Parecer", "img_icon": loaded_imgs_items["Relatorios_Parecer"], "render": lambda a, u: renderizar_relatorios_pm(a, u)}
             ])
 
     def selecionar_aba(chave_unica, master_frame):
@@ -375,18 +404,25 @@ def iniciar_sistema(usuario_dados):
         elif "PONTO DE PARADA" in categoria: img_cat_icon = loaded_imgs_headers["Header_PontoParada"]
         elif "ITINERÁRIO" in categoria: img_cat_icon = loaded_imgs_headers["Header_Itinerario"]
         elif "QUADRO DE HORÁRIO" in categoria: img_cat_icon = loaded_imgs_headers["Header_QuadroHorario"]
+        elif "PROJETOS DE MOBILIDADE" in categoria: img_cat_icon = loaded_imgs_headers.get("Header_ProjetosMobilidade") or loaded_imgs_headers["Header_Sistema"]
         elif "SISTEMA" in categoria: img_cat_icon = loaded_imgs_headers["Header_Sistema"]
+        elif "ADMIN" in categoria: img_cat_icon = loaded_imgs_headers["Header_Admin"] # Adicione esta linha aqui
 
         lbl_cat_icon = ctk.CTkLabel(btn_header_frame, image=img_cat_icon, text="")
         lbl_cat_icon.pack(side="left", padx=10)
 
-        lbl_titulo = ctk.CTkLabel(btn_header_frame, text=categoria, font=("Arial Bold", 11), text_color=COLOR_TEXT_MUTED)
-        lbl_titulo.pack(side="left", padx=5) 
-        listas_botoes_texto.append(lbl_titulo) 
-
+        # CORREÇÃO 1: Empacotamos a seta para a direita ANTES do texto.
+        # Assim garantimos que ela não seja expulsa da tela por nomes longos.
         lbl_seta = ctk.CTkLabel(btn_header_frame, image=loaded_imgs_items["Arrow_Down"], text="")
         lbl_seta.pack(side="right", padx=15)
         labels_dropdown.append(lbl_seta)
+
+        # CORREÇÃO 2: Lógica de abreviação para Projetos de Mobilidade
+        texto_exibicao = "PROJ. DE MOBILIDADE" if categoria == "PROJETOS DE MOBILIDADE" else categoria
+
+        lbl_titulo = ctk.CTkLabel(btn_header_frame, text=texto_exibicao, font=("Arial Bold", 11), text_color=COLOR_TEXT_MUTED)
+        lbl_titulo.pack(side="left", padx=5) 
+        listas_botoes_texto.append(lbl_titulo)
 
         sub_itens_frame = ctk.CTkFrame(cat_header_frame, fg_color="transparent")
         sub_itens_frame.pack(fill="x", pady=(2, 10))
