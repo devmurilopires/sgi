@@ -5,34 +5,51 @@ from config.database import get_db_connection
 class RelatorioQuadroHorarioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
+            # MODIFICAÇÃO: Ajuste de JOINs com common.tipos, common.usuarios e concatenação de Linhas (N:M)
             query = """
-                SELECT p.id, b.numero_parecer_ano, p.processo, p.assunto, 
-                       b.tipo_parecer as decisao, p.solicitante, p.evento, 
-                       p.linhas_afetadas as linhas, p.data_evento, 
-                       u.nome_completo as responsavel, b.created_at as data_criacao, 
-                       p.caminho_arquivo, p.motivo_indeferimento
+                SELECT p.id, 
+                       b.numero_parecer_ano::text || '/' || b.ano::text AS numero_completo, 
+                       p.processo, p.assunto, 
+                       t.nome AS decisao, p.solicitante, p.evento, 
+                       (SELECT string_agg(cl.codigo, ', ') 
+                        FROM quadro_horario.pareceres_linhas pl 
+                        JOIN common.linhas cl ON pl.linha_id = cl.id 
+                        WHERE pl.parecer_id = p.id) AS linhas, 
+                       p.data_evento, 
+                       u.nome_completo AS responsavel, b.created_at AS data_criacao, 
+                       b.caminho_arquivo, p.motivo_indeferimento
                 FROM quadro_horario.pareceres p
-                LEFT JOIN common.pareceres_base b ON p.id = b.id
+                JOIN common.pareceres_base b ON p.id = b.id
+                LEFT JOIN common.tipos t ON b.tipo_id = t.id
                 LEFT JOIN common.usuarios u ON b.criado_por_id = u.id 
                 WHERE 1=1
             """
         else: # PESQUISA
+            # MODIFICAÇÃO: Ajuste de JOINs e renomeação de colunas (resultado_payload, data_pesquisa)
             query = """
-                SELECT id, titulo, tipo_pesquisa as tipo, data_inicio, data_fim, 
-                       criado_por as responsavel, created_at as data_criacao, caminho_arquivo,
-                       resultado_json as payload
-                FROM quadro_horario.pesquisas
+                SELECT p.id, 
+                       l.codigo || ' - ' || l.nome AS titulo, 
+                       tp.nome AS tipo, 
+                       p.data_pesquisa_1 AS data_inicio, 
+                       COALESCE(p.data_pesquisa_3, p.data_pesquisa_2, p.data_pesquisa_1) AS data_fim, 
+                       u.nome_completo AS responsavel, p.created_at AS data_criacao, 
+                       NULL AS caminho_arquivo,
+                       p.resultado_payload AS payload
+                FROM quadro_horario.pesquisas p
+                LEFT JOIN common.linhas l ON p.linha_id = l.id
+                LEFT JOIN common.tipos tp ON p.tipo_pesquisa_id = tp.id
+                LEFT JOIN common.usuarios u ON p.criado_por_id = u.id
                 WHERE 1=1
             """
 
         params = []
         mapeamento = {
             "PARECER": {
-                "processo": "p.processo", "assunto": "p.assunto", "decisao": "b.tipo_parecer",
-                "solicitante": "p.solicitante", "linhas": "p.linhas_afetadas", "responsavel": "u.nome_completo"
+                "processo": "p.processo", "assunto": "p.assunto", "decisao": "t.nome",
+                "solicitante": "p.solicitante", "responsavel": "u.nome_completo"
             },
             "PESQUISA": {
-                "titulo": "titulo", "tipo": "tipo_pesquisa", "responsavel": "criado_por"
+                "titulo": "(l.codigo || ' - ' || l.nome)", "tipo": "tp.nome", "responsavel": "u.nome_completo"
             }
         }
 
@@ -42,12 +59,20 @@ class RelatorioQuadroHorarioRepository:
                 query += f" AND COALESCE({doc_map[chave]}::text, '') ILIKE %s"
                 params.append(f"%{valor}%")
 
-        # Filtro para buscar por data específica dentro da lista de relatórios utilizados
+        # Tratamento especial para o filtro de Linhas (Relacionamento N:M)
+        if tipo_doc == "PARECER" and filtros.get("linhas"):
+            query += """ AND EXISTS (
+                SELECT 1 FROM quadro_horario.pareceres_linhas pl 
+                JOIN common.linhas cl ON pl.linha_id = cl.id 
+                WHERE pl.parecer_id = p.id AND cl.codigo ILIKE %s
+            )"""
+            params.append(f"%{filtros['linhas']}%")
+
         if tipo_doc == "PESQUISA" and filtros.get("relatorios"):
-            query += " AND resultado_json::text ILIKE %s"
+            query += " AND p.resultado_payload::text ILIKE %s"
             params.append(f"%{filtros['relatorios']}%")
 
-        col_data = "b.created_at" if tipo_doc == "PARECER" else "created_at"
+        col_data = "b.created_at" if tipo_doc == "PARECER" else "p.created_at"
         if filtros.get("data_inicio"):
             query += f" AND ({col_data} IS NULL OR {col_data}::date >= %s)"
             params.append(filtros["data_inicio"])
@@ -59,31 +84,13 @@ class RelatorioQuadroHorarioRepository:
         return query, params
     
     def buscar_opcoes_dropdown(self, tipo_opcao):
-        """
-        Busca no banco de dados as opções ativas para preencher os dropdowns e filtros.
-        
-        :param tipo_opcao: String identificando a categoria (ex: 'qh_evento', 'qh_assunto')
-        :return: Lista de strings com os valores ordenados alfabeticamente.
-        """
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # A query agora aponta para o schema 'common' e a tabela 'parametros_sistema'
-                    # Filtramos pela 'categoria' e verificamos se 'is_ativo' é verdadeiro
-                    query = """
-                        SELECT valor 
-                        FROM common.parametros_sistema 
-                        WHERE categoria = %s AND is_ativo = true 
-                        ORDER BY valor;
-                    """
-                    # Executamos a query substituindo o '%s' pela categoria desejada
+                    query = "SELECT valor FROM common.parametros_sistema WHERE categoria = %s AND is_ativo = true ORDER BY valor;"
                     cur.execute(query, (tipo_opcao,))
-                    
-                    # Retornamos uma lista simples (array) contendo apenas os valores textuais
                     return [r[0] for r in cur.fetchall()]
-                    
         except Exception as e:
-            print(f"Erro ao buscar opções de filtro para a categoria '{tipo_opcao}': {e}")
             return []
 
     def buscar_dados_paginados(self, tipo_doc, filtros, limit=50, offset=0):
@@ -97,7 +104,7 @@ class RelatorioQuadroHorarioRepository:
                     colunas = [desc[0] for desc in cur.description]
                     return [dict(zip(colunas, row)) for row in cur.fetchall()]
         except Exception as e:
-            print(f"Erro ao buscar dados: {e}")
+            print(f"[LOG DB] Erro ao buscar dados: {e}")
             return []
 
     def contar_total(self, tipo_doc, filtros):
@@ -108,26 +115,29 @@ class RelatorioQuadroHorarioRepository:
                     cur.execute(f"SELECT COUNT(*) FROM ({query}) AS total", params)
                     return cur.fetchone()[0]
         except Exception as e:
-            print(f"Erro ao contar total: {e}")
             return 0
 
     def excluir_registro(self, tipo_doc, registro_id, motivo, excluido_por):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
+                    # Resolve ID do usuário pela string do nome (caso a View passe apenas o nome)
+                    cur.execute("SELECT id FROM common.usuarios WHERE nome_completo = %s LIMIT 1", (excluido_por,))
+                    usr = cur.fetchone()
+                    excluido_por_id = usr[0] if usr else None
+
                     if tipo_doc == "PARECER":
                         cur.execute("SELECT numero_parecer_ano FROM common.pareceres_base WHERE id = %s", (registro_id,))
                         linha = cur.fetchone()
                         numero = linha[0] if linha else registro_id
-                        cur.execute("INSERT INTO common.lixeira (modulo, numero, motivo, excluido_por, data_exclusao) VALUES ('PARECER_quadro_horario', %s, %s, %s, NOW())", (numero, motivo, excluido_por))
-                        cur.execute("DELETE FROM quadro_horario.pareceres WHERE id = %s", (registro_id,))
+                        cur.execute("INSERT INTO common.lixeira (modulo, numero, motivo, excluido_por_id, data_exclusao) VALUES ('PARECER_quadro_horario', %s, %s, %s, NOW())", (numero, motivo, excluido_por_id))
+                        # Deletar da base aciona ON DELETE CASCADE nas filhas
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     else:
                         cur.execute("SELECT row_to_json(p) FROM quadro_horario.pesquisas p WHERE id = %s", (registro_id,))
                         linha = cur.fetchone()
                         if linha:
-                            dados_json = linha[0]
-                            cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por, data_exclusao) VALUES ('PESQUISA_quadro_horario', %s, %s, %s, %s, NOW())", (registro_id, json.dumps(dados_json), motivo, excluido_por))
+                            cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por_id, data_exclusao) VALUES ('PESQUISA_quadro_horario', %s, %s, %s, %s, NOW())", (registro_id, json.dumps(linha[0]), motivo, excluido_por_id))
                         cur.execute("DELETE FROM quadro_horario.pesquisas WHERE id = %s", (registro_id,))
                     conn.commit()
                     return True, "Registro excluído com sucesso."

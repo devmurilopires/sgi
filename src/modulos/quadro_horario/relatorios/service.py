@@ -246,7 +246,8 @@ class RelatorioQuadroHorarioService:
                 dados_tabela = [cabecalho]
                 for d in dados:
                     dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
-                    dados_tabela.append([str(d.get('numero_parecer_ano','')), str(d.get('processo','')), str(d.get('assunto',''))[:35], str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
+                    # MODIFICAÇÃO: Alterado de numero_parecer_ano para numero_completo
+                    dados_tabela.append([str(d.get('numero_completo','')), str(d.get('processo','')), str(d.get('assunto',''))[:35], str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
                 col_widths = [80, 100, 240, 90, 180, 90]
 
             tabela = Table(dados_tabela, colWidths=col_widths)

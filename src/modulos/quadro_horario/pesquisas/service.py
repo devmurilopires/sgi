@@ -1,10 +1,9 @@
 import pandas as pd
 import math
 import unicodedata
-from datetime import datetime
+from datetime import datetime, time
 from numbers import Number
 from src.modulos.quadro_horario.pesquisas.repository import PesquisaQuadroHorarioRepository
-from datetime import datetime, time
 
 class PesquisaQuadroHorarioService:
     def __init__(self):
@@ -14,7 +13,24 @@ class PesquisaQuadroHorarioService:
         return self.repo.buscar_linhas()
 
     def salvar_dados(self, linha, tipo, dados_completos, usuario):
-        return self.repo.salvar_pesquisa(linha, tipo, dados_completos, usuario)
+        # 1. PREPARAÇÃO: Extrair o código da linha ("052 - Grande Circular" -> "052")
+        codigo_linha = linha.split(" - ")[0].strip() if " - " in linha else linha.strip()
+
+        # 2. PREPARAÇÃO: Mapear o tipo ("tempo" / "demanda") para o DB
+        nome_tipo = "TEMPO DE VIAGEM" if tipo == "tempo" else "DEMANDA"
+
+        # 3. PREPARAÇÃO: Extrair as datas e converter para objeto date do Python
+        datas_raw = dados_completos.get("datas", [])
+        datas_formatadas = []
+        for d in datas_raw:
+            try:
+                dt_obj = datetime.strptime(d, "%d/%m/%Y").date()
+                datas_formatadas.append(dt_obj)
+            except Exception:
+                pass
+
+        # Enviamos os dados já mastigados para o banco
+        return self.repo.salvar_pesquisa(codigo_linha, nome_tipo, datas_formatadas, dados_completos, usuario)
 
     # --- Utilitários Internos ---
     def _normalizar_nome(self, s):
@@ -30,7 +46,6 @@ class PesquisaQuadroHorarioService:
 
     def _extrair_hora(self, v):
         if pd.isna(v): return None
-        # CORREÇÃO: Usar apenas 'time' e 'datetime'
         if isinstance(v, (time, datetime)): return v.hour
         try:
             ts = pd.to_datetime(v, errors='coerce')
@@ -40,7 +55,6 @@ class PesquisaQuadroHorarioService:
 
     def _normalizar_tempo(self, v):
         if pd.isna(v): return ""
-        # CORREÇÃO: Usar apenas 'time' e 'datetime'
         if isinstance(v, (time, datetime)): return v.strftime("%H:%M:%S")
         if isinstance(v, Number):
             fv = float(v)
@@ -68,7 +82,6 @@ class PesquisaQuadroHorarioService:
         if not blocos: return False, "Nenhum dado válido."
 
         sentidos = {}
-        # Limite alterado de 4 para a quantidade de sentidos dinâmica
         for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco["Partida Real"].apply(self._extrair_hora)
             bloco["TempoStr"] = bloco["Tempo Viagem"].apply(self._normalizar_tempo)

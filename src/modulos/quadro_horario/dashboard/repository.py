@@ -6,16 +6,24 @@ warnings.filterwarnings('ignore', category=UserWarning)
 
 class DashboardQuadroHorarioRepository:
     def buscar_dados_pareceres(self):
+        # MODIFICAÇÃO: 
+        # 1. 'tipo' agora vem de common.tipos (alias t)
+        # 2. 'linhas_afetadas' agregada via subquery na tabela N:M (pareceres_linhas)
         query = """
-            SELECT b.tipo_parecer AS tipo,
-                   p.solicitante,
-                   p.assunto,
-                   p.evento,
-                   p.linhas_afetadas,
-                   u.nome_completo AS criado_por,
-                   b.created_at AS data_dt
+            SELECT 
+                t.nome AS tipo,
+                p.solicitante,
+                p.assunto,
+                p.evento,
+                (SELECT string_agg(cl.codigo, ', ') 
+                 FROM quadro_horario.pareceres_linhas pl 
+                 JOIN common.linhas cl ON pl.linha_id = cl.id 
+                 WHERE pl.parecer_id = p.id) AS linhas_afetadas,
+                u.nome_completo AS criado_por,
+                b.created_at AS data_dt
             FROM quadro_horario.pareceres p
             JOIN common.pareceres_base b ON p.id = b.id
+            LEFT JOIN common.tipos t ON b.tipo_id = t.id
             LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
             WHERE b.created_at IS NOT NULL
         """
@@ -23,21 +31,30 @@ class DashboardQuadroHorarioRepository:
             with get_db_connection() as conn:
                 return pd.read_sql(query, conn)
         except Exception as e:
-            print(f"Erro Pareceres Quadro de Horário: {e}")
-            return pd.DataFrame()
+            print(f"[LOG DB] Erro Pareceres Quadro de Horário: {e}")
+            # Retorna DataFrame vazio com a estrutura correta para evitar quebra do Dashboard
+            return pd.DataFrame(columns=['tipo', 'solicitante', 'assunto', 'evento', 'linhas_afetadas', 'criado_por', 'data_dt'])
 
     def buscar_dados_pesquisas(self):
+        # MODIFICAÇÃO: 
+        # 1. 'linha' concatenada do codigo e nome da common.linhas
+        # 2. 'tipo' buscando o nome em common.tipos
+        # 3. 'criado_por' buscando em common.usuarios
         query = """
-            SELECT titulo AS linha,
-                   tipo_pesquisa AS tipo,
-                   criado_por,
-                   created_at AS data_dt
-            FROM quadro_horario.pesquisas
-            WHERE created_at IS NOT NULL
+            SELECT 
+                l.codigo || ' - ' || l.nome AS linha,
+                tp.nome AS tipo,
+                u.nome_completo AS criado_por,
+                p.created_at AS data_dt
+            FROM quadro_horario.pesquisas p
+            LEFT JOIN common.linhas l ON p.linha_id = l.id
+            LEFT JOIN common.tipos tp ON p.tipo_pesquisa_id = tp.id
+            LEFT JOIN common.usuarios u ON p.criado_por_id = u.id
+            WHERE p.created_at IS NOT NULL
         """
         try:
             with get_db_connection() as conn:
                 return pd.read_sql(query, conn)
         except Exception as e:
-            print(f"Erro Pesquisas Quadro de Horário: {e}")
-            return pd.DataFrame()
+            print(f"[LOG DB] Erro Pesquisas Quadro de Horário: {e}")
+            return pd.DataFrame(columns=['linha', 'tipo', 'criado_por', 'data_dt'])

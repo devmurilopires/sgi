@@ -21,9 +21,6 @@ class ParecerQuadroHorarioService:
         return self.repo.buscar_linhas()
     
     def buscar_opcoes_dropdown(self, tipo_opcao):
-        """
-        Solicita ao repositório a lista de opções para um determinado tipo de dropdown.
-        """
         return self.repo.buscar_opcoes_dropdown(tipo_opcao)
 
     def _limpar_nome_arquivo(self, nome):
@@ -74,12 +71,13 @@ class ParecerQuadroHorarioService:
         shutil.rmtree(temp_dir)
 
     def processar_parecer(self, tipo, dados_form, linhas, usuario):
-        numero = self.repo.obter_proximo_numero_parecer(tipo)
+        # ATUALIZADO: Remoção do parâmetro 'tipo' na contagem, agora unificada.
+        numero = self.repo.obter_proximo_numero_parecer()
         data_str = datetime.now().strftime("%d/%m/%Y")
         
         evento = dados_form.get("evento", "").strip()
         
-        # --- TRATAMENTO INTELIGENTE DA DATA ---
+        # --- PREPARAÇÃO DE TEXTO PARA O WORD ---
         data_text = ""
         datas_raw = dados_form.get("datas", [])
         modo_data = dados_form.get("modo_data", "PERIODO")
@@ -90,7 +88,23 @@ class ParecerQuadroHorarioService:
             else:
                 data_text = f"no dia {datas_raw[0]}" if len(datas_raw) == 1 else f"do dia {datas_raw[0]} até o dia {datas_raw[1]}"
 
-        # --- TRATAMENTO DE TEXTO (EVENTO vs LINHA) ---
+        # --- PREPARAÇÃO DE DADOS PARA O BANCO DE DADOS ---
+        # 1. Converter primeira data string para objeto Date (Coluna data_evento)
+        data_db = None
+        if datas_raw:
+            try:
+                # O banco aceita 1 única data. Pegamos o primeiro dia do evento.
+                data_db = datetime.strptime(datas_raw[0], "%d/%m/%Y").date()
+            except ValueError:
+                pass
+        
+        # 2. Extrair apenas os Códigos das Linhas (para a tabela pareceres_linhas)
+        codigos_linhas = []
+        for linha in linhas:
+            if " - " in linha:
+                codigos_linhas.append(linha.split(" - ")[0].strip())
+
+        # Configuração de Arquivos
         if evento:
             evento_text = f"ao evento {evento}"
             if data_text: evento_text += f" que ocorrerá {data_text}"
@@ -102,9 +116,8 @@ class ParecerQuadroHorarioService:
             evento_text = ""
 
         evento_ou_linha_text = evento_text or linhas_text
-        identificador = evento if evento else ", ".join(linhas)
+        identificador = evento if evento else ", ".join(codigos_linhas)
 
-        # Configuração de Arquivos
         if tipo == "DEFERIDO":
             nome_arquivo = f"Parecer N°_{numero:03d}_{dados_form['assunto']}_{identificador}_({usuario}).docx"
             pasta_base = self.pasta_deferido
@@ -126,12 +139,11 @@ class ParecerQuadroHorarioService:
             os.chmod(caminho_destino, stat.S_IWRITE)
         except Exception as e: return False, f"Erro de permissão no arquivo: {e}"
 
-        # Substituição de Tags no Documento (Voltou ao normal, sem a Origem)
         mapeamento = {
             "{{NUM_PARECER}}": f"{numero:03d}",
             "{{NUMERO_PARECER}}": f"{numero:03d}",
             "{{DATA}}": data_str,
-            "{{PROCESSO}}": dados_form["processo"], # Apenas o número limpo vai pro Word
+            "{{PROCESSO}}": dados_form["processo"],
             "{{ASSUNTO}}": dados_form["assunto"],
             "{{SOLICITANTE}}": dados_form["solicitante"],
             "{{EVENTO_OU_LINHA}}": evento_ou_linha_text,
@@ -143,18 +155,24 @@ class ParecerQuadroHorarioService:
 
         self._substituir_tags_xml(caminho_destino, mapeamento)
 
-        # Salva no Banco de Dados (Aqui sim a Origem é gravada!)
+        # ATUALIZADO: Payload enviado ao repositório alinhado com a nova estrutura DB
         dados_db = {
-            "numero_parecer": numero, "tipo": tipo, "processo": dados_form["processo"],
-            "origem": dados_form.get("origem", ""), # Vai direto e apenas para o banco
+            "numero_parecer": numero, 
+            "tipo": tipo, 
+            "processo": dados_form["processo"],
+            "origem": dados_form.get("origem", ""),
             "assunto": dados_form["assunto"],
-            "evento": evento, "data_evento": data_text,
-            "solicitante": dados_form["solicitante"], "linhas": ", ".join(linhas),
-            "motivo": dados_form.get("motivo", ""), "caminho_arquivo": caminho_destino,
+            "evento": evento, 
+            "data_db": data_db,  # Enviado como datetime.date para postgres
+            "solicitante": dados_form["solicitante"], 
+            "codigos_linhas": codigos_linhas, # Array de Códigos
+            "motivo": dados_form.get("motivo", ""), 
+            "caminho_arquivo": caminho_destino, # Encaminhado para a base
             "criado_por": f"%{usuario}%"
         }
 
         sucesso, msg = self.repo.salvar_parecer_no_banco(dados_db)
-        if not sucesso: return False, msg
+        if not sucesso: 
+            return False, msg
 
-        return True, f"Parecer Técnico gerado com sucesso!\nSalvo em: {nome_arquivo}"
+        return True, f"Parecer Técnico gerado e salvo no banco com sucesso!\nSalvo em: {nome_arquivo}"
