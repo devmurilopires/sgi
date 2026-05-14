@@ -122,20 +122,34 @@ class OSItinerarioService:
             
             doc.save(filepath)
 
-            # Adicionando a "origem" no pacote de dados pro BD
+            # Tratamento dos Códigos de Linha e Mapeamento do Tipo
+            codigos_linhas = []
+            for linha in linhas:
+                codigos_linhas.append(linha.split(" - ")[0].strip() if " - " in linha else linha.strip())
+
+            # Mapeia para o singular para combinar com a tabela common.tipos
+            tipo_db_map = {"EVENTOS": "EVENTO", "CORRIDA": "CORRIDA", "OBRAS": "OBRA"}
+            tipo_evento_db = tipo_db_map.get(tipo_os, tipo_os)
+
             dados_db = {
-                "num_os": num_os, "ano": self.ano_atual, "tipo": tipo_os.lower(), "processo": form_dados.get("processo", ""),
-                "origem": form_dados.get("origem", ""), # <-- NOVO CAMPO
-                "empresa_principal": empresas[0] if empresas else None, "empresas_text": "; ".join(empresas), "endereco": form_dados.get("endereco", ""),
-                "data_evento_text": data_text if tipo_os == 'EVENTOS' else "", "horario_inicio": form_dados.get("hr_inicio", ""), "horario_final": form_dados.get("hr_fim", ""),
-                "linhas_text": self.formatar_lista_com_e(linhas), "linhas_adicionadas_text": ", ".join(linhas), "linhas_especificas_text": "",
-                "ruas_ida": "", "ruas_volta": "", "evento": form_dados.get("evento", "") if tipo_os == 'EVENTOS' else form_dados.get("tipo_obra", ""),
-                "anexo_filename": os.path.basename(anexos_raw[0].get("image_path", "")) if anexos_raw and anexos_raw[0].get("image_path") else None,
-                "pasta_path": self.output_root, "docx_path": filepath, "criado_por": usuario,
-                "anexos_json": json.dumps(anexos_raw, ensure_ascii=False),
-                "nome_corrida": form_dados.get("nome_corrida", ""), "km": form_dados.get("km", ""), "solicitante": form_dados.get("solicitante", ""),
-                "tipo_obra": form_dados.get("tipo_obra", ""), "data_obra_text": data_text if tipo_os == 'OBRAS' else ""
+                "num_os": num_os, 
+                "ano": self.ano_atual, 
+                "tipo": tipo_evento_db, 
+                "processo": form_dados.get("processo", ""),
+                "origem": form_dados.get("origem", ""), 
+                "endereco": form_dados.get("endereco", ""),
+                "horario_inicio": form_dados.get("hr_inicio", ""), 
+                "horario_final": form_dados.get("hr_fim", ""),
+                "evento": form_dados.get("evento", "") if tipo_os == 'EVENTOS' else None,
+                "nome_corrida": form_dados.get("nome_corrida", ""), 
+                "km": form_dados.get("km", ""), 
+                "tipo_obra": form_dados.get("tipo_obra", ""), 
+                "docx_path": filepath, 
+                "criado_por": f"%{usuario}%",
+                "empresas_lista": empresas,
+                "codigos_linhas": codigos_linhas
             }
+            
             sucesso, msg_db = self.repo.salvar_os_itinerario(dados_db)
             if not sucesso: return False, msg_db
 

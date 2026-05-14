@@ -1,15 +1,13 @@
 import psycopg2
 from config.database import get_db_connection
-import os
-import re
 
 class OSItinerarioRepository:
     def buscar_empresas(self):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # Aponta para o novo schema 'common' e filtra as ativas
-                    cur.execute("SELECT nome FROM common.empresas WHERE ativo = TRUE ORDER BY nome;")
+                    # MODIFICAÇÃO: ativo -> is_ativo
+                    cur.execute("SELECT nome FROM common.empresas WHERE is_ativo = TRUE ORDER BY nome;")
                     return [r[0] for r in cur.fetchall()]
         except Exception as e: 
             print(f"Erro ao buscar empresas: {e}")
@@ -19,8 +17,8 @@ class OSItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # Concatena o código e o nome da linha diretamente na query
-                    cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas WHERE ativo = TRUE ORDER BY codigo;")
+                    # MODIFICAÇÃO: ativo -> is_ativo
+                    cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas WHERE is_ativo = TRUE ORDER BY codigo;")
                     return [r[0] for r in cur.fetchall()]
         except Exception as e:
             print(f"Erro ao buscar linhas: {e}")
@@ -30,30 +28,60 @@ class OSItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT COALESCE(MAX(numero), 0) + 1 FROM siga.ordens_servico WHERE ano = EXTRACT(YEAR FROM CURRENT_DATE)")
+                    # MODIFICAÇÃO: schema iga -> itinerario
+                    cur.execute("SELECT COALESCE(MAX(numero), 0) + 1 FROM itinerario.ordens_servico WHERE ano = EXTRACT(YEAR FROM CURRENT_DATE)")
                     resultado = cur.fetchone()
                     return resultado[0] if resultado else 1
         except Exception as e:
-            print(f"Erro ao buscar próximo número da OS Itinerário no banco: {e}")
+            print(f"Erro ao buscar próximo número da OS: {e}")
             return 1
 
     def salvar_os_itinerario(self, dados_db):
-        query = """
+        # 1. MODIFICAÇÃO: Inserção Base usando Subconsultas para os IDs e NULLIF para as Horas
+        query_os = """
             INSERT INTO itinerario.ordens_servico (
-                numero, ano, tipo_evento, processo_adm, origem, empresas_text, endereco,
-                horario_inicio, horario_fim, linhas_text, ruas_ida, ruas_volta, evento,
-                caminho_arquivo, responsavel, nome_corrida, km_impactado, tipo_obra, data_criacao
+                numero, ano, origem_id, tipo_evento_id, processo_adm, endereco,
+                horario_inicio, horario_fim, evento, nome_corrida, tipo_obra,
+                km_impactado, caminho_arquivo, responsavel_id, data_emissao
             ) VALUES (
-                %(num_os)s, %(ano)s, %(tipo)s, %(processo)s, %(origem)s, %(empresas_text)s, %(endereco)s,
-                %(horario_inicio)s, %(horario_final)s, %(linhas_text)s, %(ruas_ida)s, %(ruas_volta)s, %(evento)s,
-                %(docx_path)s, %(criado_por)s, %(nome_corrida)s, NULLIF(%(km)s, '')::NUMERIC, %(tipo_obra)s, NOW()
+                %(num_os)s, %(ano)s, 
+                (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE nome ILIKE %(tipo)s LIMIT 1),
+                %(processo)s, %(endereco)s,
+                NULLIF(%(horario_inicio)s, '')::TIME, NULLIF(%(horario_final)s, '')::TIME, 
+                %(evento)s, %(nome_corrida)s, %(tipo_obra)s,
+                NULLIF(%(km)s, '')::NUMERIC, %(docx_path)s, 
+                (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1),
+                NOW()
             ) RETURNING id;
         """
+
+        # 2. MODIFICAÇÃO: Inserções nas tabelas de relacionamento N:M
+        query_empresas = """
+            INSERT INTO itinerario.os_empresas (os_id, empresa_id)
+            SELECT %(os_id)s, id FROM common.empresas WHERE nome = %(empresa_nome)s LIMIT 1;
+        """
+
+        query_linhas = """
+            INSERT INTO itinerario.os_linhas (os_id, linha_id, ruas_ida, ruas_volta)
+            SELECT %(os_id)s, id, '', '' FROM common.linhas WHERE codigo = %(codigo_linha)s LIMIT 1;
+        """
+
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute(query, dados_db)
+                    cur.execute(query_os, dados_db)
+                    os_id = cur.fetchone()[0]
+
+                    for emp in dados_db.get("empresas_lista", []):
+                        cur.execute(query_empresas, {"os_id": os_id, "empresa_nome": emp})
+
+                    for cod in dados_db.get("codigos_linhas", []):
+                        cur.execute(query_linhas, {"os_id": os_id, "codigo_linha": cod})
+
                     conn.commit()
-            return True, "Registro salvo no banco com sucesso."
+            return True, "Ordem de Serviço salva no banco com sucesso."
+        except psycopg2.IntegrityError as e:
+            return False, f"Erro de Integridade: Verifique se a Origem ou Tipo estão cadastrados. {e}"
         except Exception as e:
-            return False, f"Erro ao salvar no banco: {e}"
+            return False, f"Erro crítico ao salvar no banco: {e}"
