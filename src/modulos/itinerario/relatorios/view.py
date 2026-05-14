@@ -141,7 +141,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
             }
         else:
             self.colunas_config = {
-                "id": "ID", "numero_parecer_ano": "N° Parecer", "processo": "Processo", 
+                "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
                 "origem": "Origem", "assunto": "Assunto", "decisao": "Decisão", 
                 "solicitante": "Solicitante", "endereco": "Endereço", 
                 "evento": "Evento", "data_criacao": "Data Criação", "responsavel": "Responsável"
@@ -342,7 +342,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         if not dado: return
 
         modal = ctk.CTkToplevel(self)
-        titulo_num = dado.get('numero_os') if self.tipo_doc == "OS" else dado.get('numero_parecer_ano')
+        titulo_num = dado.get('numero_os') if self.tipo_doc == "OS" else dado.get('numero_completo')
         modal.title(f"Visualização Detalhada - {self.tipo_doc} Nº {titulo_num}")
         modal.geometry("800x650")
         modal.grab_set()
