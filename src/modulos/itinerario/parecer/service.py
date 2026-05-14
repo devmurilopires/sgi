@@ -95,7 +95,6 @@ class ParecerItinerarioService:
             else:
                 data_text = f"no dia {datas_raw[0]}" if len(datas_raw) == 1 else f"no período de {datas_raw[0]} a {datas_raw[1]}"
 
-        # Montagem dos Textos Dinâmicos (DEFERIDO vs INDEFERIDO)
         mapeamento = {
             "{{NUMERO_PARECER}}": f"{numero_parecer:03d}",
             "{{DATA}}": data_str,
@@ -123,16 +122,36 @@ class ParecerItinerarioService:
 
         self._substituir_tags_xml(caminho_destino, mapeamento)
 
-        # Adicionando a "origem" no pacote de dados pro BD
+        # --- MODIFICAÇÃO: TRATAMENTO DE DADOS PARA O BANCO (SGI v2.2) ---
+        # 1. Transformar data string em objeto datetime.date
+        data_db = None
+        if datas_raw:
+            try:
+                data_db = datetime.strptime(datas_raw[0], "%d/%m/%Y").date()
+            except ValueError: pass
+
+        # 2. Extrair apenas o código numérico das linhas
+        codigos_linhas = []
+        if tipo == "DEFERIDO":
+            for linha in linhas:
+                if " - " in linha:
+                    codigos_linhas.append(linha.split(" - ")[0].strip())
+
         dados_db = {
-            "numero_parecer": numero_parecer, "tipo": tipo, "processo": dados_form["processo"],
-            "origem": dados_form["origem"], # <-- NOVO CAMPO SENDO ENVIADO AO BANCO
-            "assunto": dados_form["assunto"], "evento": dados_form["evento"],
-            "data_evento": data_text, "periodo": dados_form["periodo"],
-            "endereco": dados_form["endereco"], "solicitante": dados_form["solicitante"],
-            "linhas": ", ".join(linhas) if tipo == "DEFERIDO" else "",
+            "numero_parecer": numero_parecer, 
+            "tipo": tipo, 
+            "processo": dados_form["processo"],
+            "origem": dados_form["origem"], 
+            "assunto": dados_form["assunto"], 
+            "evento": dados_form["evento"],
+            "data_db": data_db, # Enviando tipo Date para a coluna do BD
+            "periodo": dados_form["periodo"],
+            "endereco": dados_form["endereco"], 
+            "solicitante": dados_form["solicitante"],
+            "codigos_linhas": codigos_linhas, # Array para o relacionamento N:M
             "motivo": dados_form["motivo"] if tipo == "INDEFERIDO" else "",
-            "caminho_arquivo": caminho_destino, "criado_por": f"%{usuario}%"
+            "caminho_arquivo": caminho_destino, 
+            "criado_por": f"%{usuario}%"
         }
 
         sucesso, msg = self.repo.salvar_parecer_no_banco(dados_db)
