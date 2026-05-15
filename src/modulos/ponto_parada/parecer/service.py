@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime
 from docx import Document
 from src.modulos.ponto_parada.parecer.repository import ParecerRepository
@@ -13,6 +14,16 @@ class ParecerService:
     def __init__(self):
         self.repo = ParecerRepository()
 
+    # --- FUNÇÃO DE SEGURANÇA PARA EVITAR CRASH NO BANCO (NUMERIC 10,2) ---
+    def _converter_quantidade(self, qtd_str):
+        if not qtd_str or qtd_str == "-": return None
+        # Verifica se tem números na string
+        nums = re.findall(r'\d+', qtd_str)
+        if nums: return float(nums[0])
+        # Mapa de fallback para texto puro
+        map_qtd = {"um": 1, "uma": 1, "dois": 2, "duas": 2, "tres": 3, "três": 3, "quatro": 4, "cinco": 5}
+        return map_qtd.get(qtd_str.lower().strip(), None)
+
     def processar_geracao_parecer(self, dados_form, ids_list, usuario_logado):
         if not ids_list:
             return False, "Adicione ao menos um ID antes de gerar o parecer."
@@ -26,16 +37,16 @@ class ParecerService:
         tipo_exec = dados_form['tipo_execucao'] or "-"
         item = dados_form['item'] or "-"
         endereco = dados_form['endereco'] or "-"
-        motivo = dados_form['motivo'] if tipo_parecer == "Indeferido" else "-"
-        quantidade = dados_form['quantidade'] or "-"
+        motivo = dados_form['motivo'] if tipo_parecer.upper() == "INDEFERIDO" else None
+        quantidade_texto = dados_form['quantidade'] or "-"
         
         ids_joined = ", ".join(ids_list)
         data_atual = datetime.now()
         ano = data_atual.year
         data_str = data_atual.strftime("%d/%m/%Y")
 
-        # Ajusta o Plural do Item
-        quantidade_normalizada = quantidade.lower().strip()
+        # Ajusta o Plural do Item (Apenas pro Word)
+        quantidade_normalizada = quantidade_texto.lower().strip()
         plurais = {
             "Abrigo Metálico": "Abrigos Metálicos",
             "Placa/Barrote": "Placas/Barrote",
@@ -58,7 +69,6 @@ class ParecerService:
         if not os.path.exists(modelo):
             return False, f"Modelo Word não encontrado em: {modelo}"
         
-        # Só bloqueia se o Servidor/Rede estiver fora do ar.
         if not os.path.exists(RAIZ_REDE):
             return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
 
@@ -68,23 +78,33 @@ class ParecerService:
         nome_arquivo = f"Parecer_{numero:03d}_{ano}_{tipo_parecer}.docx"
         caminho_arquivo = os.path.join(pasta_saida, nome_arquivo)
 
-        # Prepara os dados para o banco (Com a ORIGEM no final)
-        dados_banco = (
-            numero, ano, data_atual.date(), tipo_parecer.upper(), processo, 
-            assunto, ids_joined, tipo_exec, item, endereco, 
-            solicitante, motivo if tipo_parecer == "Indeferido" else None, 
-            quantidade, caminho_arquivo, usuario_logado, origem 
-        )
+        # PREPARAÇÃO DE DADOS PARA O BANCO (SGI v2.2)
+        dados_db = {
+            "numero": numero,
+            "ano": ano,
+            "tipo_parecer": tipo_parecer,
+            "processo": processo,
+            "assunto": assunto,
+            "solicitante": solicitante,
+            "tipo_exec": tipo_exec,
+            "item": item,
+            "endereco": endereco,
+            "quantidade": self._converter_quantidade(quantidade_texto), # Enviando numero real pro Postgres
+            "motivo": motivo,
+            "caminho_arquivo": caminho_arquivo,
+            "usuario_logado": f"%{usuario_logado}%",
+            "origem": origem,
+            "ids_list": ids_list # Passamos a lista inteira para o Repository iterar
+        }
 
         # GERAÇÃO SEGURA (BANCO DE DADOS PRIMEIRO)
         try:
-            self.repo.salvar_parecer(dados_banco)
+            self.repo.salvar_parecer(dados_db)
         except Exception as e:
             return False, f"Erro Crítico! O Parecer NÃO foi gerado pois houve falha no Banco de Dados:\n{str(e)}"
 
         # SE O BANCO DEU CERTO -> GERA A PASTA E O WORD
         try:
-            # AQUI VAI CRIAR A PASTA DO ANO CASO NÃO EXISTA
             os.makedirs(pasta_saida, exist_ok=True)
             self._gerar_documento_word(modelo, caminho_arquivo, {
                 "{{NUM_PARECER}}": f"{numero:03d}",
@@ -96,14 +116,14 @@ class ParecerService:
                 "{{TIPO}}": tipo_exec,
                 "{{ITEM}}": item,
                 "{{ENDERECO}}": endereco,
-                "{{MOTIVO}}": motivo,
-                "{{QUANTIDADE}}": quantidade
+                "{{MOTIVO}}": motivo or "-",
+                "{{QUANTIDADE}}": quantidade_texto
             })
             
             return True, f"Parecer {numero:03d}/{ano} criado e registrado com sucesso!\nSalvo em:\n{caminho_arquivo}"
             
         except Exception as e:
-            return False, f"Atenção: O Parecer foi registrado no banco, mas houve falha ao gerar o documento Word:\n{e}"
+            return False, f"Atenção: O Parecer foi registrado no banco, mas falhou ao gerar o Word:\n{e}"
 
     # MANIPULAÇÃO DO WORD (DOCX)
     def _gerar_documento_word(self, modelo_path, destino_path, tags):

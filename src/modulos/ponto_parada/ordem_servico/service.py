@@ -51,17 +51,14 @@ class OSService:
     # =========================================================
     def processar_criacao_os(self, descricoes_acumuladas, pasta_escolhida, modelo_escolhido, tipo_os, tipo_item, form_dados, usuario_logado, origem_demanda):
         
-        # Força o nome oficial com espaço, mesmo que a tela mande junto
         if str(pasta_escolhida).replace(" ", "").upper() == "PROXIMAPARADA":
             pasta_escolhida = "PROXIMA PARADA"
 
         if not descricoes_acumuladas:
             return False, "Adicione pelo menos um item (descrição) na lista antes de gerar a OS."
 
-        # ---> NOVO CAMINHO DINÂMICO E INTELIGENTE DA REDE <---
         ano_atual = datetime.now().strftime('%Y')
         
-        # Só bloqueia se o Servidor/Rede estiver fora do ar. As pastas do ano ele cria sozinho!
         if not os.path.exists(RAIZ_REDE):
             return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
 
@@ -71,9 +68,12 @@ class OSService:
             pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano_atual}\ORDENS DE SERVICO\PROXIMA PARADA"
 
         ids_unicos = list(set([d["id"] for d in descricoes_acumuladas]))
-        ids_formatado = "-".join(ids_unicos)
         id_principal = descricoes_acumuladas[0]["id"]
+        
+        # Filtra os pontos que não são o principal para a tabela N:M
+        pontos_adicionais = [pid for pid in ids_unicos if pid != id_principal]
 
+        # Cadastro/Atualização dos Endereços na tabela base
         for id_atual in ids_unicos:
             dados_id = self.repo.buscar_endereco_por_id(id_atual)
             try:
@@ -91,45 +91,34 @@ class OSService:
             except Exception as e:
                 return False, f"Erro ao gerenciar endereços no banco:\n{str(e)}"
 
-        numero_os = self.repo.obter_proximo_numero_os(pasta_escolhida, ano_atual)
+        # MODIFICAÇÃO: Removido 'pasta_escolhida' da assinatura
+        numero_os = self.repo.obter_proximo_numero_os(ano_atual)
         data_str = datetime.now().strftime("%d/%m/%Y")
-
-        endereco_completo = descricoes_acumuladas[0]["descricao"].split(" NA ")[-1].split(",")[0].strip()
-        bairro_str = form_dados['bairro']
-        complemento_str = form_dados['complemento']
-        
-        try:
-            if "BAIRRO" in descricoes_acumuladas[0]["descricao"]:
-                bairro_str = descricoes_acumuladas[0]["descricao"].split("BAIRRO")[-1].split(",")[0].strip()
-            if "-" in bairro_str:
-                partes = bairro_str.split("-", 1)
-                bairro_str = partes[0].strip()
-                complemento_str = partes[1].strip()
-        except:
-            pass 
 
         tipo_os_up = str(tipo_os).strip().upper() if tipo_os else ""
         tipo_item_up = str(tipo_item).strip().upper() if tipo_item else ""
 
-        # ---> CORREÇÃO: Movemos o cálculo do nome do arquivo para ANTES de salvar no banco
         nome_pasta = f"{numero_os:03d}-{datetime.now().strftime('%m')}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}"
         caminho_pasta = os.path.join(pasta_base, nome_pasta)
         nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
         destino_docx = os.path.join(caminho_pasta, nome_arquivo)
 
-        # ---> Adicionamos o 'destino_docx' no final da tupla
-        dados_salvar_os = (
-            numero_os, data_str, id_principal, ids_formatado,
-            tipo_os_up, self.normalizar(tipo_os_up),
-            tipo_item_up, self.normalizar(tipo_item_up),
-            endereco_completo, bairro_str, self.normalizar(bairro_str),
-            complemento_str, "\n".join([item["descricao"] for item in descricoes_acumuladas]),
-            usuario_logado, pasta_escolhida, origem_demanda,
-            destino_docx # <--- NOVO CAMPO AQUI
-        )
+        # MODIFICAÇÃO: Construção de um Dicionário limpo alinhado ao DB
+        dados_db = {
+            "numero_os": numero_os,
+            "data_criacao": datetime.strptime(data_str, "%d/%m/%Y").date(),
+            "id_principal": id_principal,
+            "origem": origem_demanda,
+            "acao": tipo_os_up,
+            "item": tipo_item_up,
+            "descricao": "\n".join([item["descricao"] for item in descricoes_acumuladas]),
+            "usuario": f"%{usuario_logado}%",
+            "caminho": destino_docx,
+            "pontos_adicionais": pontos_adicionais
+        }
 
         try:
-            self.repo.salvar_os(dados_salvar_os)
+            self.repo.salvar_os(dados_db)
         except Exception as e:
             return False, f"Erro Crítico! A OS NÃO foi gerada pois houve falha no Banco de Dados:\n{str(e)}"
 

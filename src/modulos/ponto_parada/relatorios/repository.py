@@ -4,54 +4,67 @@ from config.database import get_db_connection
 class RelatorioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
-            # Usando as colunas reais: p.solicitante e p.endereco_vistoria
+            # MODIFICAÇÃO: JOINs com origens, tipos e concatenação de numeração
             query = """
-                SELECT p.id, pb.numero_parecer_ano, p.processo, p.origem_demanda as origem, 
-                       p.assunto, pb.tipo_parecer as decisao, p.solicitante, p.endereco_vistoria as endereco, 
-                       pb.created_at as data_criacao, u.nome_completo as responsavel,
-                       p.caminho_arquivo_docx as caminho_arquivo, p.motivo_indeferimento
+                SELECT p.id, pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
+                       p.processo, o.nome AS origem, p.assunto, t.nome AS decisao, 
+                       p.solicitante, p.endereco_vistoria AS endereco, 
+                       pb.created_at AS data_criacao, u.nome_completo AS responsavel,
+                       pb.caminho_arquivo, p.motivo_indeferimento
                 FROM ponto_parada.pareceres p
-                LEFT JOIN common.pareceres_base pb ON p.id = pb.id
+                JOIN common.pareceres_base pb ON p.id = pb.id
+                LEFT JOIN common.tipos t ON pb.tipo_id = t.id
+                LEFT JOIN common.origens o ON p.origem_id = o.id
                 LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
                 WHERE 1=1
             """
-        else: # ORDEM DE SERVIÇO (ponto_parada)
-            # CORREÇÃO: Removido o bloqueio " '' as caminho_arquivo ".
-            # Agora o sistema puxa a coluna 'o.caminho_arquivo' real do banco de dados!
+        else: # ORDEM DE SERVIÇO
+            # MODIFICAÇÃO: Subquery N:M para pontos extras e JOIN com tabela de endereços
             query = """
-                SELECT o.id, o.numero as numero_os, o.origem_demanda as origem, o.acao_realizada as acao,
-                       o.tipo_item as item, o.ponto_principal_id, o.pontos_adicionais, 
-                       o.logradouro_completo as endereco, o.bairro, o.status_conclusao as status,
-                       o.data_criacao, o.responsavel, o.caminho_arquivo
-                FROM ponto_parada.ordens_servico o
+                SELECT os.id, os.numero AS numero_os, o.nome AS origem, 
+                       ta.nome AS acao, ti.nome AS item, os.ponto_principal_id, 
+                       (SELECT string_agg(pa.ponto_id, ', ') 
+                        FROM ponto_parada.os_pontos_adicionais pa 
+                        WHERE pa.os_id = os.id) AS pontos_adicionais, 
+                       (e.logradouro || COALESCE(', ' || e.numero, '') || COALESCE(' - ' || e.complemento, '')) AS endereco, 
+                       e.bairro, os.status_conclusao AS status,
+                       os.data_criacao, u.nome_completo AS responsavel, os.caminho_arquivo
+                FROM ponto_parada.ordens_servico os
+                LEFT JOIN ponto_parada.enderecos_cadastrados e ON os.ponto_principal_id = e.id
+                LEFT JOIN common.origens o ON os.origem_id = o.id
+                LEFT JOIN common.tipos ta ON os.tipo_acao_id = ta.id
+                LEFT JOIN common.tipos ti ON os.tipo_item_id = ti.id
+                LEFT JOIN common.usuarios u ON os.responsavel_id = u.id
                 WHERE 1=1
             """
 
         params = []
         mapeamento = {
             "PARECER": {
-                "processo": "p.processo", "origem": "p.origem_demanda", "assunto": "p.assunto",
-                "decisao": "pb.tipo_parecer", "solicitante": "p.solicitante", "responsavel": "u.nome_completo"
+                "processo": "p.processo", "origem": "o.nome", "assunto": "p.assunto",
+                "decisao": "t.nome", "solicitante": "p.solicitante", "responsavel": "u.nome_completo"
             },
             "OS": {
-                "id_ponto": "MULTI_ID", # Busca tanto no principal quanto nos adicionais
-                "origem": "o.origem_demanda", "acao": "o.acao_realizada", "item": "o.tipo_item",
-                "status": "o.status_conclusao", "bairro": "o.bairro", "responsavel": "o.responsavel"
+                "origem": "o.nome", "acao": "ta.nome", "item": "ti.nome",
+                "status": "os.status_conclusao", "bairro": "e.bairro", "responsavel": "u.nome_completo"
             }
         }
 
         doc_map = mapeamento[tipo_doc]
         for chave, valor in filtros.items():
             if valor and chave in doc_map:
-                if chave == "id_ponto" and tipo_doc == "OS":
-                    query += f" AND (o.ponto_principal_id ILIKE %s OR o.pontos_adicionais ILIKE %s)"
-                    params.extend([f"%{valor}%", f"%{valor}%"])
-                else:
-                    query += f" AND COALESCE({doc_map[chave]}::text, '') ILIKE %s"
-                    params.append(f"%{valor}%")
+                query += f" AND COALESCE({doc_map[chave]}::text, '') ILIKE %s"
+                params.append(f"%{valor}%")
+            # Tratamento especial de ID que busca tanto no principal quanto na tabela N:M
+            elif valor and chave == "id_ponto" and tipo_doc == "OS":
+                query += """ AND (
+                    os.ponto_principal_id ILIKE %s OR 
+                    EXISTS (SELECT 1 FROM ponto_parada.os_pontos_adicionais pa WHERE pa.os_id = os.id AND pa.ponto_id ILIKE %s)
+                )"""
+                params.extend([f"%{valor}%", f"%{valor}%"])
 
         # Filtro de Data
-        col_data = "pb.created_at" if tipo_doc == "PARECER" else "o.data_criacao"
+        col_data = "pb.created_at" if tipo_doc == "PARECER" else "os.data_criacao"
         if filtros.get("data_inicio"):
             query += f" AND ({col_data} IS NULL OR {col_data}::date >= %s)"
             params.append(filtros["data_inicio"])
@@ -89,7 +102,7 @@ class RelatorioRepository:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if tipo_doc == "PARECER":
-                        cur.execute("DELETE FROM ponto_parada.pareceres WHERE id = %s", (registro_id,))
+                        # CASCADE apaga da filha automaticamente
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     else:
                         cur.execute("DELETE FROM ponto_parada.ordens_servico WHERE id = %s", (registro_id,))
@@ -102,6 +115,7 @@ class RelatorioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    cur.execute("SELECT DISTINCT bairro FROM ponto_parada.ordens_servico WHERE bairro IS NOT NULL AND bairro != '' ORDER BY bairro")
+                    # MODIFICAÇÃO: Bairros agora vêm da tabela de endereços
+                    cur.execute("SELECT DISTINCT bairro FROM ponto_parada.enderecos_cadastrados WHERE bairro IS NOT NULL AND bairro != '' ORDER BY bairro")
                     return [row[0] for row in cur.fetchall()]
         except: return []

@@ -34,7 +34,7 @@ class RelatorioView(ctk.CTkFrame):
             }
         else:
             self.colunas_config = {
-                "id": "ID", "numero_parecer_ano": "N° Parecer", "processo": "Processo", 
+                "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
                 "origem": "Origem", "assunto": "Assunto", "decisao": "Decisão", 
                 "solicitante": "Solicitante", "responsavel": "Responsável", 
                 "data_criacao": "Data Criação"
@@ -216,32 +216,15 @@ class RelatorioView(ctk.CTkFrame):
         self.tree.delete(*self.tree.get_children())
         for i, d in enumerate(self.dados_atuais):
             if d.get("data_criacao"): d["data_criacao"] = d["data_criacao"].strftime("%d/%m/%Y")
-            
-            # =========================================================
-            # CORREÇÃO: Limpeza visual de IDs duplicados na Tabela
-            # =========================================================
+        
             if self.tipo_doc == "OS":
                 p_principal = str(d.get("ponto_principal_id") or "").strip()
                 p_adicionais = str(d.get("pontos_adicionais") or "").strip()
 
-                if p_adicionais and p_principal:
-                    # Remove o ID principal da string de adicionais
-                    p_adicionais = p_adicionais.replace(f"-{p_principal}", "")
-                    p_adicionais = p_adicionais.replace(f"{p_principal}-", "")
-                    
-                    # Se após limpar sobrar apenas o próprio ID, esvazia
-                    if p_adicionais == p_principal:
-                        p_adicionais = ""
-                        
-                    # Remove resíduos de formatação (hífens ou vírgulas soltas)
-                    p_adicionais = p_adicionais.strip(' -,.')
-
-                # Define a string final para aparecer na coluna "ID Ponto"
                 if p_adicionais:
-                    d["id_ponto"] = f"{p_principal} (+{p_adicionais})"
+                    d["id_ponto"] = f"{p_principal} (+ {p_adicionais})"
                 else:
                     d["id_ponto"] = p_principal
-            # =========================================================
 
             valores = [d.get(k, "") for k in self.colunas_config.keys()]
             tag = 'par' if i % 2 == 0 else 'impar'
@@ -261,24 +244,16 @@ class RelatorioView(ctk.CTkFrame):
         if not dado_bruto: return
         
         dado = dado_bruto.copy()
-
-        # ==============================================================
-        # CORREÇÃO: Limpeza visual de IDs duplicados no Modal
-        # ==============================================================
+        
         if self.tipo_doc == "OS":
             p_principal = str(dado.get("ponto_principal_id", "")).strip()
-            p_adicionais = str(dado.get("pontos_adicionais", "")).strip()
+            if "id_ponto" in dado: 
+                dado['id_ponto'] = p_principal
 
-            if p_adicionais and p_principal:
-                p_adicionais = p_adicionais.replace(f"-{p_principal}", "")
-                p_adicionais = p_adicionais.replace(f"{p_principal}-", "")
-                if p_adicionais == p_principal: p_adicionais = ""
-                p_adicionais = p_adicionais.strip(' -,.')
-                
-                dado['pontos_adicionais'] = p_adicionais
-            
-            if "id_ponto" in dado: dado['id_ponto'] = p_principal
-        # ==============================================================
+        modal = ctk.CTkToplevel(self)
+        # MODIFICAÇÃO AQUI: Troca para numero_completo no Modal
+        titulo_num = dado.get('numero_os') if self.tipo_doc == "OS" else dado.get('numero_completo')
+        modal.title(f"Visualização Detalhada - {self.tipo_doc} Nº {titulo_num}")
 
         modal = ctk.CTkToplevel(self)
         titulo_num = dado.get('numero_os') if self.tipo_doc == "OS" else dado.get('numero_parecer_ano')

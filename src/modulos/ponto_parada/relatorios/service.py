@@ -59,7 +59,8 @@ class RelatorioService:
                 dados_tabela = [cabecalho]
                 for d in dados:
                     dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
-                    dados_tabela.append([str(d.get('numero_parecer_ano','')), str(d.get('processo','')), str(d.get('origem','')), str(d.get('assunto',''))[:40], str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
+                    # MODIFICAÇÃO: numero_parecer_ano -> numero_completo
+                    dados_tabela.append([str(d.get('numero_completo','')), str(d.get('processo','')), str(d.get('origem','')), str(d.get('assunto',''))[:40], str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
                 col_widths = [80, 100, 80, 240, 90, 150, 80]
 
             tabela = Table(dados_tabela, colWidths=col_widths)

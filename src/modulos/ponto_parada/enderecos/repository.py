@@ -9,43 +9,49 @@ class EnderecoRepository:
         else:
             is_ativo = bool(status)
 
+        # MODIFICAÇÃO: 
+        # 1. 'id_ponto' virou 'id'
+        # 2. 'responsavel_vistoria' virou FK (resolvida via subquery com o ILIKE)
         query = """
             INSERT INTO ponto_parada.enderecos_cadastrados 
-            (id_ponto, logradouro, numero, bairro, complemento, is_ativo, responsavel_vistoria, data_vistoria)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-            ON CONFLICT (id_ponto) DO UPDATE SET
+            (id, logradouro, numero, bairro, complemento, is_ativo, responsavel_vistoria_id, data_vistoria)
+            VALUES (%s, %s, %s, %s, %s, %s, (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %s LIMIT 1), CURRENT_TIMESTAMP)
+            ON CONFLICT (id) DO UPDATE SET
                 logradouro = EXCLUDED.logradouro,
                 numero = EXCLUDED.numero,
                 bairro = EXCLUDED.bairro,
                 complemento = EXCLUDED.complemento,
                 is_ativo = EXCLUDED.is_ativo,
-                responsavel_vistoria = EXCLUDED.responsavel_vistoria,
+                responsavel_vistoria_id = EXCLUDED.responsavel_vistoria_id,
                 data_vistoria = CURRENT_TIMESTAMP;
         """
         try:
             with get_db_connection() as conn:
                 cursor = conn.cursor()
-                cursor.execute(query, (id_ponto, endereco, numero, bairro, complemento, is_ativo, criado_por))
+                # Adicionamos % % ao redor do nome do criador para o ILIKE funcionar bem
+                cursor.execute(query, (id_ponto, endereco, numero, bairro, complemento, is_ativo, f"%{criado_por}%"))
                 conn.commit()
             return True, "Endereço salvo/atualizado com sucesso!"
         except Exception as e:
             return False, f"Erro no banco de dados: {e}"
 
     def listar_todos(self):
-        # O AS (Alias) garante que o Pandas DataFrame continue entregando os nomes 
-        # antigos para a View, sem precisar refazer a tela de Endereços!
+        # MODIFICAÇÃO: 
+        # 1. Aliases mantidos (id AS id_ponto, etc.) para NÃO quebrar a View
+        # 2. LEFT JOIN com common.usuarios para buscar o nome do responsável
         query = """
             SELECT 
-                id_ponto, 
-                logradouro AS endereco, 
-                numero, 
-                bairro, 
-                complemento, 
-                CASE WHEN is_ativo THEN 'ATIVO' ELSE 'INATIVO' END AS status, 
-                responsavel_vistoria AS criado_por, 
-                data_vistoria AS updated_at
-            FROM ponto_parada.enderecos_cadastrados
-            ORDER BY id_ponto
+                e.id AS id_ponto, 
+                e.logradouro AS endereco, 
+                e.numero, 
+                e.bairro, 
+                e.complemento, 
+                CASE WHEN e.is_ativo THEN 'ATIVO' ELSE 'INATIVO' END AS status, 
+                u.nome_completo AS criado_por, 
+                e.data_vistoria AS updated_at
+            FROM ponto_parada.enderecos_cadastrados e
+            LEFT JOIN common.usuarios u ON e.responsavel_vistoria_id = u.id
+            ORDER BY e.id
         """
         try:
             with get_db_connection() as conn:

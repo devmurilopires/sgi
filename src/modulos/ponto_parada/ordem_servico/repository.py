@@ -5,11 +5,11 @@ from datetime import datetime
 class OSRepository:
     
     def buscar_endereco_por_id(self, id_procurado):
-        # BUSCA DE ENDEREÇO CADASTRADO PELO ID DO PONTO
+        # MODIFICAÇÃO: 'id_ponto' agora é 'id'
         query = """
             SELECT logradouro, bairro, numero, complemento, is_ativo
             FROM ponto_parada.enderecos_cadastrados 
-            WHERE id_ponto = %s
+            WHERE id = %s
         """
         try:
             with get_db_connection() as conn:
@@ -30,14 +30,14 @@ class OSRepository:
             raise Exception("Erro ao buscar endereço no banco de dados.")
 
     def cadastrar_endereco(self, id_texto, endereco, numero, bairro, complemento, usuario):
-        # CADASTRO DE NOVO ENDEREÇO PARA UM PONTO (COM RESPONSÁVEL E DATA DE VISTORIA)
+        # MODIFICAÇÃO: 'responsavel_vistoria' virou 'responsavel_vistoria_id' (FK)
         query = """
             INSERT INTO ponto_parada.enderecos_cadastrados 
-            (id_ponto, logradouro, numero, bairro, complemento, is_ativo, responsavel_vistoria, data_vistoria)
-            VALUES (%s, %s, %s, %s, %s, TRUE, %s, %s)
+            (id, logradouro, numero, bairro, complemento, is_ativo, responsavel_vistoria_id, data_vistoria)
+            VALUES (%s, %s, %s, %s, %s, TRUE, (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %s LIMIT 1), %s)
         """
         data_atual = datetime.now() 
-        params = (id_texto, endereco, numero, bairro, complemento, usuario, data_atual)
+        params = (id_texto, endereco, numero, bairro, complemento, f"%{usuario}%", data_atual)
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
@@ -50,16 +50,17 @@ class OSRepository:
     def atualizar_endereco(self, id_texto, endereco, numero, bairro, complemento, usuario, reativar=False):
         set_ativo = "is_ativo = TRUE," if reativar else ""
         
-        # ATUALIZAÇÃO DE ENDEREÇO EXISTENTE (COM OPÇÃO DE REATIVAÇÃO)
+        # MODIFICAÇÃO: Atualizado para suportar a FK de usuário
         query = f"""
             UPDATE ponto_parada.enderecos_cadastrados
             SET logradouro=%s, numero=%s, bairro=%s, complemento=%s, {set_ativo}
-                responsavel_vistoria=%s, data_vistoria=%s
-            WHERE id_ponto=%s
+                responsavel_vistoria_id=(SELECT id FROM common.usuarios WHERE nome_completo ILIKE %s LIMIT 1), 
+                data_vistoria=%s
+            WHERE id=%s
         """
         
         data_atual = datetime.now()
-        params = (endereco, numero, bairro, complemento, usuario, data_atual, id_texto)
+        params = (endereco, numero, bairro, complemento, f"%{usuario}%", data_atual, id_texto)
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
@@ -70,12 +71,18 @@ class OSRepository:
             raise Exception("Falha ao atualizar o endereço no banco.")
 
     def buscar_historico_os(self, id_procurado, limite=5):
-        # BUSCA DO HISTÓRICO DE ORDEM DE SERVIÇO PARA UM PONTO (COM LIMITAÇÃO DE REGISTROS)
+        # MODIFICAÇÃO: JOIN obrigatório para reconstruir o que antes era salvo em texto plano na tabela
         query = """
-            SELECT numero, TO_CHAR(data_criacao, 'DD/MM/YYYY'), acao_realizada, tipo_item, logradouro_completo, bairro, responsavel
-            FROM ponto_parada.ordens_servico
-            WHERE ponto_principal_id = %s
-            ORDER BY data_criacao DESC
+            SELECT os.numero, TO_CHAR(os.data_criacao, 'DD/MM/YYYY'), 
+                   ta.nome AS acao_realizada, ti.nome AS tipo_item, 
+                   e.logradouro, e.bairro, u.nome_completo
+            FROM ponto_parada.ordens_servico os
+            JOIN ponto_parada.enderecos_cadastrados e ON os.ponto_principal_id = e.id
+            LEFT JOIN common.tipos ta ON os.tipo_acao_id = ta.id
+            LEFT JOIN common.tipos ti ON os.tipo_item_id = ti.id
+            LEFT JOIN common.usuarios u ON os.responsavel_id = u.id
+            WHERE os.ponto_principal_id = %s
+            ORDER BY os.data_criacao DESC
             LIMIT %s
         """
         try:
@@ -87,55 +94,60 @@ class OSRepository:
             print(f"[LOG DB] Erro ao buscar histórico: {e}")
             return []
 
-    def obter_proximo_numero_os(self, pasta_final, ano_atual):
-        # GERAÇÃO DO PRÓXIMO NÚMERO DE ORDEM DE SERVIÇO PARA O MODELO SELECIONADO NO ANO ATUAL
+    def obter_proximo_numero_os(self, ano_atual):
+        # MODIFICAÇÃO: Removido 'modelo_documento' pois a numeração agora é única por ano para o Módulo
         query = """
-            SELECT MAX(numero)
+            SELECT COALESCE(MAX(numero), 0) + 1
             FROM ponto_parada.ordens_servico
-            WHERE modelo_documento = %s AND EXTRACT(YEAR FROM data_criacao) = %s
+            WHERE EXTRACT(YEAR FROM data_criacao) = %s
         """
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query, (pasta_final, int(ano_atual)))
-                    resultado = cursor.fetchone()
-                    if resultado and resultado[0] is not None:
-                        return resultado[0] + 1
-                    return 1
+                    cursor.execute(query, (int(ano_atual),))
+                    return cursor.fetchone()[0]
         except Exception as e:
             print(f"[LOG DB] Erro ao gerar numeração da OS: {e}")
             return 1
 
-    def salvar_os(self, dados_os):
-        # SALVA A ORDEM DE SERVIÇO NO BANCO DE DADOS (COM A ORIGEM DA DEMANDA E CAMINHO DO ARQUIVO)
-        (numero_os, data_str, id_principal, ids_formatado,
-         tipo_os, _lixo1, tipo_item, _lixo2,
-         endereco_completo, bairro_str, _lixo3,
-         complemento_str, descricoes, usuario_logado, pasta_escolhida, origem_demanda, caminho_arquivo) = dados_os
-
-        data_criacao = datetime.strptime(data_str, "%d/%m/%Y").date()
-        
-        # ---> CORREÇÃO: Adicionada a coluna 'caminho_arquivo' no INSERT
-        query = """
+    def salvar_os(self, dados_db):
+        # 1. INSERÇÃO DA OS (Apenas chaves estrangeiras, sem dados de endereço duplicados)
+        query_os = """
             INSERT INTO ponto_parada.ordens_servico (
-                numero, data_criacao, ponto_principal_id, pontos_adicionais,
-                acao_realizada, tipo_item, logradouro_completo, bairro,
-                complemento, descricao_tecnica, responsavel, modelo_documento, origem_demanda, caminho_arquivo
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                numero, data_criacao, ponto_principal_id, origem_id,
+                tipo_acao_id, tipo_item_id, descricao_tecnica, responsavel_id, caminho_arquivo
+            ) VALUES (
+                %(numero_os)s, %(data_criacao)s, %(id_principal)s,
+                (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE nome ILIKE %(acao)s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE nome ILIKE %(item)s LIMIT 1),
+                %(descricao)s,
+                (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(usuario)s LIMIT 1),
+                %(caminho)s
+            ) RETURNING id;
         """
         
-        # ---> CORREÇÃO: Passando o parâmetro caminho_arquivo
-        params = (
-            numero_os, data_criacao, id_principal, ids_formatado,
-            tipo_os, tipo_item, endereco_completo, bairro_str,
-            complemento_str, descricoes, usuario_logado, pasta_escolhida, origem_demanda, caminho_arquivo
-        )
+        # 2. INSERÇÃO DOS PONTOS ADICIONAIS (Relacionamento N:M)
+        query_pontos = """
+            INSERT INTO ponto_parada.os_pontos_adicionais (os_id, ponto_id)
+            VALUES (%(os_id)s, %(ponto_id)s)
+        """
 
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query, params)
+                    cursor.execute(query_os, dados_db)
+                    os_id = cursor.fetchone()[0]
+                    
+                    # Salva os pontos extras vinculados a essa OS
+                    for pt_id in dados_db.get("pontos_adicionais", []):
+                        cursor.execute(query_pontos, {"os_id": os_id, "ponto_id": pt_id})
+                        
+                    conn.commit()
             return True
+        except psycopg2.IntegrityError as e:
+            print(f"[LOG DB] Erro de Integridade OS: {e}")
+            raise Exception("Verifique se o ID principal, Origem e Tipos estão cadastrados corretamente no sistema.")
         except Exception as e:
-            print(f"[LOG DB] Erro ao salvar OS final: {e}")
-            raise Exception("Falha ao registrar a Ordem de Serviço no banco de dados.")
+            print(f"[LOG DB] Erro Crítico: {e}")
+            raise Exception(f"Falha ao registrar a OS no banco: {e}")
