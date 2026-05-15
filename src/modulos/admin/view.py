@@ -44,8 +44,6 @@ class AdminUsuariosView:
             
         try:
             usuarios = self.service.listar_usuarios()
-            
-            # Grid layout simulation using frames
             for u in usuarios:
                 self.criar_card_usuario(u)
         except Exception as e:
@@ -55,7 +53,6 @@ class AdminUsuariosView:
         card = ctk.CTkFrame(self.scroll_container, fg_color=self.color_bg_card, corner_radius=12, border_width=1, border_color="#EEEEEE")
         card.pack(fill="x", pady=8, padx=5)
         
-        # Grid interno do card para organização
         card.columnconfigure(0, weight=3) # Info
         card.columnconfigure(1, weight=2) # Perfil
         card.columnconfigure(2, weight=1) # Status/Admin
@@ -68,7 +65,7 @@ class AdminUsuariosView:
         ctk.CTkLabel(info_frame, text=user['nome_completo'].upper(), font=("Arial Bold", 15), text_color="#1A1A1A", anchor="w").pack(fill="x")
         ctk.CTkLabel(info_frame, text=f"👤 {user['username']}  |  ✉️ {user['email']}", font=("Arial", 12), text_color="#666666", anchor="w").pack(fill="x", pady=(2, 0))
 
-        # 2. PERFIL DE ACESSO (Um abaixo do outro como solicitado)
+        # 2. PERFIL DE ACESSO
         perfil_frame = ctk.CTkFrame(card, fg_color="transparent")
         perfil_frame.grid(row=0, column=1, padx=10, pady=15, sticky="nsew")
         
@@ -111,15 +108,13 @@ class AdminUsuariosView:
                      command=lambda uid=user['id'], st=user['is_ativo']: self.acao_toggle_ativo(uid, not st)).pack(side="left", padx=5)
 
     def abrir_modal_edicao(self, user):
-        # Janela de Modal
         modal = ctk.CTkToplevel(self.master)
         modal.title(f"Editar Usuário: {user['username']}")
         modal.geometry("500x550")
-        modal.grab_set() # Torna a janela modal
+        modal.grab_set() 
         modal.focus_force()
         modal.resizable(False, False)
 
-        # Centralizar Modal
         modal.update_idletasks()
         x = (modal.winfo_screenwidth() // 2) - (500 // 2)
         y = (modal.winfo_screenheight() // 2) - (550 // 2)
@@ -130,7 +125,6 @@ class AdminUsuariosView:
 
         ctk.CTkLabel(container, text="Editar Perfil de Acesso", font=("Arial Bold", 20)).pack(pady=(0, 20))
 
-        # Checkboxes para os perfis
         ctk.CTkLabel(container, text="Selecione os módulos permitidos:", font=("Arial Bold", 13), text_color="#666").pack(anchor="w", pady=5)
         
         perfis_atuais = [p.strip() for p in user['tipo_perfil'].split(',')] if user['tipo_perfil'] else []
@@ -148,7 +142,6 @@ class AdminUsuariosView:
             cb.pack(anchor="w", pady=8, padx=10)
             vars_perfil[valor] = var
 
-        # Rodapé com Botões
         footer = ctk.CTkFrame(container, fg_color="transparent")
         footer.pack(fill="x", side="bottom", pady=10)
 
@@ -156,32 +149,35 @@ class AdminUsuariosView:
             novos_perfis = [k for k, v in vars_perfil.items() if v.get()]
             perfil_string = ",".join(novos_perfis)
             
-            try:
-                self.service.atualizar_perfil_acesso(user['id'], perfil_string)
-                messagebox.showinfo("Sucesso", "Perfil atualizado com sucesso!")
+            # MODIFICAÇÃO: Ajuste para receber (sucesso, mensagem) do service
+            sucesso, msg = self.service.atualizar_perfil_acesso(user['id'], perfil_string)
+            if sucesso:
+                messagebox.showinfo("Sucesso", msg)
                 modal.destroy()
                 self.carregar_usuarios()
-            except Exception as e:
-                messagebox.showerror("Erro", f"Erro ao salvar: {e}")
+            else:
+                messagebox.showerror("Erro", msg)
 
         ctk.CTkButton(footer, text="Cancelar", width=100, fg_color="#AAAAAA", command=modal.destroy).pack(side="left", padx=5)
         ctk.CTkButton(footer, text="Salvar Alterações", width=180, fg_color=self.color_accent, command=salvar).pack(side="right", padx=5)
 
     def acao_toggle_admin(self, uid, novo_status):
-        try:
-            self.service.alterar_status_admin(uid, novo_status)
+        # MODIFICAÇÃO: Tratamento em tupla
+        sucesso, msg = self.service.alterar_status_admin(uid, novo_status)
+        if sucesso:
             self.carregar_usuarios()
-        except Exception as e:
-            messagebox.showerror("Erro", str(e))
+        else:
+            messagebox.showerror("Erro", msg)
 
     def acao_toggle_ativo(self, uid, novo_status):
-        msg = "Inativar este usuário impedirá seu acesso ao sistema. Continuar?" if not novo_status else "Reativar acesso deste usuário?"
-        if messagebox.askyesno("Confirmação", msg):
-            try:
-                self.service.alterar_status_ativo(uid, novo_status)
+        msg_confirmacao = "Inativar este usuário impedirá seu acesso ao sistema. Continuar?" if not novo_status else "Reativar acesso deste usuário?"
+        if messagebox.askyesno("Confirmação", msg_confirmacao):
+            # MODIFICAÇÃO: Tratamento em tupla
+            sucesso, msg = self.service.alterar_status_ativo(uid, novo_status)
+            if sucesso:
                 self.carregar_usuarios()
-            except Exception as e:
-                messagebox.showerror("Erro", str(e))
+            else:
+                messagebox.showerror("Erro", msg)
 
 class AdminCentralView:
     def __init__(self, master, usuario_dados):
@@ -202,7 +198,6 @@ class AdminCentralView:
         # Renderizando Sub-Views
         AdminParametrosView(self.tabview.tab("Configurações"), self.usuario_dados)
         AdminUsuariosView(self.tabview.tab("Usuários"), self.usuario_dados)
-        
 
 def renderizar(container, usuario_dados):
     return AdminCentralView(container, usuario_dados)

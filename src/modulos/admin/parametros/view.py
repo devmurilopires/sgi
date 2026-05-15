@@ -11,7 +11,6 @@ class AdminParametrosView:
         self.service = ParametrosService()
         self.color_accent = COLOR_PRIMARY
         
-        # Mapeamento de Setores e Campos conforme solicitado
         self.config_map = {
             "Ponto de Parada": {
                 "TIPO_ITEM": "Tipo de Item",
@@ -40,17 +39,13 @@ class AdminParametrosView:
         self.atualizar_lista()
 
     def _notificar_mudancas_globais(self):
-        """Dispara um evento global avisando que as listas de opções mudaram."""
-        # A janela principal (toplevel) ouve os eventos globais
         toplevel = self.master.winfo_toplevel()
         toplevel.event_generate("<<ParametrosAtualizados>>")
 
     def setup_ui(self):
-        # Container Principal
         self.main_container = ctk.CTkFrame(self.master, fg_color="transparent")
         self.main_container.pack(fill="both", expand=True, padx=20, pady=20)
 
-        # Header Moderno (Seguindo o padrão da aba de Usuários)
         header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 25))
         
@@ -60,11 +55,9 @@ class AdminParametrosView:
         ctk.CTkLabel(title_box, text="Configurações do Sistema", font=("Arial Bold", 28), text_color="#1A1A1A").pack(anchor="w")
         ctk.CTkLabel(title_box, text="Gerencie as listas de opções e parâmetros globais de cada setor", font=("Arial", 13), text_color="#666666").pack(anchor="w")
 
-        # Layout de duas colunas (Sidebar + Content)
         layout_container = ctk.CTkFrame(self.main_container, fg_color="transparent")
         layout_container.pack(fill="both", expand=True)
         
-        # --- COLUNA ESQUERDA: SIDEBAR DE SELEÇÃO ---
         sidebar = ctk.CTkFrame(layout_container, width=280, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#EEEEEE")
         sidebar.pack(side="left", fill="y", padx=(0, 20))
         sidebar.pack_propagate(False)
@@ -83,18 +76,14 @@ class AdminParametrosView:
         
         self.botoes_campos = {}
 
-        # --- COLUNA DIREITA: CONTEÚDO ---
         content = ctk.CTkFrame(layout_container, fg_color="transparent")
         content.pack(side="left", fill="both", expand=True)
         
-        # Header do Conteúdo
         self.lbl_contexto = ctk.CTkLabel(content, text="Gerenciando: Setor > Campo", font=("Arial Bold", 18), text_color=self.color_accent)
         self.lbl_contexto.pack(anchor="w", pady=(0, 20))
         
-        # Agora que lbl_contexto existe, podemos atualizar o menu de campos
         self.atualizar_menu_campos()
 
-        # Formulário de Adição (Card)
         add_frame = ctk.CTkFrame(content, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#EEEEEE")
         add_frame.pack(fill="x", pady=(0, 20))
         
@@ -107,7 +96,6 @@ class AdminParametrosView:
                                     command=self.acao_adicionar)
         self.btn_add.pack(side="right", padx=20, pady=20)
         
-        # Tabela de Listagem (Card)
         table_container = ctk.CTkFrame(content, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#EEEEEE")
         table_container.pack(fill="both", expand=True)
         
@@ -115,25 +103,18 @@ class AdminParametrosView:
         self.scroll_lista.pack(fill="both", expand=True, padx=15, pady=15)
 
     def atualizar_menu_campos(self):
-        """Reconstrói a lista de botões de campos baseada no setor selecionado."""
         for b in self.botoes_campos.values(): b.destroy()
         self.botoes_campos = {}
         
         campos = self.config_map[self.setor_selecionado]
         for chave, rotulo in campos.items():
             btn = ctk.CTkButton(
-                self.scroll_campos, 
-                text=rotulo, 
-                fg_color="transparent", 
-                text_color="#333333",
-                anchor="w",
-                hover_color="#F0F0F0",
-                command=lambda k=chave: self.on_campo_change(k)
+                self.scroll_campos, text=rotulo, fg_color="transparent", text_color="#333333",
+                anchor="w", hover_color="#F0F0F0", command=lambda k=chave: self.on_campo_change(k)
             )
             btn.pack(fill="x", pady=2)
             self.botoes_campos[chave] = btn
         
-        # Selecionar o primeiro por padrão se o atual não existir no novo setor
         if self.campo_selecionado not in campos:
             self.campo_selecionado = list(campos.keys())[0]
         self.destacar_campo_ativo()
@@ -158,44 +139,38 @@ class AdminParametrosView:
         self.destacar_campo_ativo()
         self.atualizar_lista()
 
-    def get_categoria_slug(self):
-        """Mapeia a seleção da UI para o slug exato do banco de dados."""
-        return self.service.get_slug(self.setor_selecionado, self.campo_selecionado)
+    def get_roteamento(self):
+        """Mapeia dinamicamente a tabela do banco SGI v2.2 alvo."""
+        return self.service.obter_roteamento(self.setor_selecionado, self.campo_selecionado)
 
     def atualizar_lista(self):
         for child in self.scroll_lista.winfo_children(): child.destroy()
         
-        # Obtém o slug mapeado corretamente para o banco
-        categoria_slug = self.get_categoria_slug()
+        routing = self.get_roteamento()
+        parametros = self.service.listar_parametros(routing)
         
-        try:
-            parametros = self.service.listar_por_categoria(categoria_slug)
+        if not parametros:
+            ctk.CTkLabel(self.scroll_lista, text="Lista vazia. Adicione opções acima.", text_color="#999").pack(pady=40)
+            return
+
+        for p in parametros:
+            item_row = ctk.CTkFrame(self.scroll_lista, fg_color="transparent", height=45)
+            item_row.pack(fill="x", pady=1)
             
-            if not parametros:
-                ctk.CTkLabel(self.scroll_lista, text="Lista vazia. Adicione opções acima.", text_color="#999").pack(pady=40)
-                return
+            ctk.CTkLabel(item_row, text=p['valor'], font=("Arial", 14)).pack(side="left", padx=15)
+            
+            btns_row = ctk.CTkFrame(item_row, fg_color="transparent")
+            btns_row.pack(side="right", padx=10)
 
-            for p in parametros:
-                item_row = ctk.CTkFrame(self.scroll_lista, fg_color="transparent", height=45)
-                item_row.pack(fill="x", pady=1)
-                
-                ctk.CTkLabel(item_row, text=p['valor'], font=("Arial", 14)).pack(side="left", padx=15)
-                
-                # Container de botões
-                btns_row = ctk.CTkFrame(item_row, fg_color="transparent")
-                btns_row.pack(side="right", padx=10)
+            btn_edit = ctk.CTkButton(btns_row, text="Editar", width=70, height=26, fg_color="#555555", 
+                                   command=lambda param=p: self.abrir_modal_edicao(param))
+            btn_edit.pack(side="left", padx=5)
 
-                btn_edit = ctk.CTkButton(btns_row, text="Editar", width=70, height=26, fg_color="#555555", 
-                                       command=lambda param=p: self.abrir_modal_edicao(param))
-                btn_edit.pack(side="left", padx=5)
-
-                btn_del = ctk.CTkButton(btns_row, text="Excluir", width=70, height=26, fg_color="#F24822", 
-                                       command=lambda pid=p['id']: self.acao_excluir(pid))
-                btn_del.pack(side="left", padx=5)
-                
-                ctk.CTkFrame(self.scroll_lista, fg_color="#EEEEEE", height=1).pack(fill="x")
-        except Exception as e:
-            messagebox.showerror("Erro", str(e))
+            btn_del = ctk.CTkButton(btns_row, text="Excluir", width=70, height=26, fg_color="#F24822", 
+                                   command=lambda pid=p['id']: self.acao_excluir(pid))
+            btn_del.pack(side="left", padx=5)
+            
+            ctk.CTkFrame(self.scroll_lista, fg_color="#EEEEEE", height=1).pack(fill="x")
 
     def abrir_modal_edicao(self, param):
         modal = ctk.CTkToplevel(self.master)
@@ -204,7 +179,6 @@ class AdminParametrosView:
         modal.grab_set()
         modal.resizable(False, False)
 
-        # Centralizar
         modal.update_idletasks()
         x = (modal.winfo_screenwidth() // 2) - (400 // 2)
         y = (modal.winfo_screenheight() // 2) - (250 // 2)
@@ -220,13 +194,15 @@ class AdminParametrosView:
         def salvar():
             novo_valor = entry_edit.get().strip()
             if not novo_valor: return
-            try:
-                self.service.editar_parametro(param['id'], novo_valor)
+            
+            routing = self.get_roteamento()
+            sucesso, msg = self.service.editar_parametro(routing, param['id'], novo_valor)
+            if sucesso:
                 modal.destroy()
                 self.atualizar_lista()
                 self._notificar_mudancas_globais()
-            except Exception as e:
-                messagebox.showerror("Erro", str(e))
+            else:
+                messagebox.showerror("Erro", msg)
 
         btn_save = ctk.CTkButton(modal, text="Salvar", fg_color=self.color_accent, command=salvar)
         btn_save.pack(pady=20)
@@ -235,24 +211,25 @@ class AdminParametrosView:
         valor = self.entry_valor.get().strip()
         if not valor: return
         
-        # Obtém o slug mapeado corretamente para o banco
-        categoria_slug = self.get_categoria_slug()
-        try:
-            self.service.adicionar_parametro(categoria_slug, valor)
+        routing = self.get_roteamento()
+        sucesso, msg = self.service.adicionar_parametro(routing, valor)
+        
+        if sucesso:
             self.entry_valor.delete(0, 'end')
             self.atualizar_lista()
             self._notificar_mudancas_globais()
-        except Exception as e:
-            messagebox.showerror("Erro", str(e))
+        else:
+            messagebox.showerror("Erro", msg)
 
     def acao_excluir(self, pid):
         if messagebox.askyesno("Confirmar", "Deseja excluir esta opção da lista?"):
-            try:
-                self.service.inativar_parametro(pid)
+            routing = self.get_roteamento()
+            sucesso, msg = self.service.inativar_parametro(routing, pid)
+            if sucesso:
                 self.atualizar_lista()
                 self._notificar_mudancas_globais()
-            except Exception as e:
-                messagebox.showerror("Erro", str(e))
+            else:
+                messagebox.showerror("Erro", msg)
 
 def renderizar(container, usuario_dados):
     return AdminParametrosView(container, usuario_dados)

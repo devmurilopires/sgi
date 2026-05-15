@@ -4,62 +4,43 @@ class ParametrosService:
     def __init__(self):
         self.repository = ParametrosRepository()
 
-    def adicionar_parametro(self, categoria, valor):
-        """Regra de negócio para adicionar um novo parâmetro."""
-        if not categoria or not valor:
-            raise ValueError("Categoria e Valor são campos obrigatórios.")
-        
-        categoria_limpa = categoria.strip()
-        valor_limpo = valor.strip()
-        return self.repository.inserir_parametro(categoria_limpa, valor_limpo)
+    def adicionar_parametro(self, routing, valor):
+        if not valor: return False, "O Valor é obrigatório."
+        return self.repository.inserir_parametro(routing, valor.strip())
 
-    def inativar_parametro(self, parametro_id):
-        """Regra de negócio para inativar um parâmetro."""
-        if not parametro_id:
-            raise ValueError("ID do parâmetro é obrigatório para inativação.")
-        return self.repository.inativar_parametro(parametro_id)
+    def inativar_parametro(self, routing, parametro_id):
+        if not parametro_id: return False, "ID é obrigatório."
+        return self.repository.inativar_parametro(routing, parametro_id)
 
-    def editar_parametro(self, parametro_id, novo_valor):
-        """Regra de negócio para editar o valor de um parâmetro."""
-        if not parametro_id or not novo_valor:
-            raise ValueError("ID e Novo Valor são obrigatórios.")
-        valor_limpo = novo_valor.strip()
-        return self.repository.atualizar_valor(parametro_id, valor_limpo)
+    def editar_parametro(self, routing, parametro_id, novo_valor):
+        if not parametro_id or not novo_valor: return False, "Todos os campos são obrigatórios."
+        return self.repository.atualizar_valor(routing, parametro_id, novo_valor.strip())
 
-    def listar_por_categoria(self, categoria):
-        """Regra de negócio para listar parâmetros por categoria."""
-        if not categoria:
-            return []
-        categoria_limpa = categoria.strip()
-        return self.repository.get_parametros_by_categoria(categoria_limpa)
+    def listar_parametros(self, routing):
+        if not routing: return []
+        return self.repository.listar_parametros(routing)
 
-    def get_slug(self, setor, campo):
-        """Mapeia o setor e campo para o slug exato do banco de dados."""
-        if campo.upper() in ["ORIGEM", "ORIGEM_DEMANDA"]:
-            return "geral_origem"
-
-        mapping = {
-            "PONTO DE PARADA": {
-                "TIPO_ITEM": "ponto_parada_tipo_item",
-                "ACAO_OS": "ponto_parada_acao",
-                "SOLICITANTE": "ponto_parada_solicitante"
-            },
-            "ITINERÁRIO": {
-                "EVENTO": "itinerario_evento",
-                "SOLICITANTE": "itinerario_solicitante",
-                "ASSUNTO": "itinerario_assunto"
-            },
-            "QUADRO DE HORÁRIO": {
-                "SOLICITANTE": "qh_solicitante",
-                "ASSUNTO": "qh_assunto",
-                "EVENTO": "qh_evento"
-            }
-        }
-
-        s_key = setor.upper()
+    def obter_roteamento(self, setor, campo):
+        """
+        Roteador Sênior: Mapeia o Campo da Interface para a Tabela SGI v2.2 correspondente.
+        Retorna um dicionário com a instrução exata de onde salvar/ler os dados.
+        """
         c_key = campo.upper()
+        s_key = setor.upper()
 
-        if s_key in mapping and c_key in mapping[s_key]:
-            return mapping[s_key][c_key]
-        
-        return f"{s_key}_{c_key}".lower().replace(' ', '_')
+        # 1. ORIGENS (Vai para common.origens)
+        if c_key in ["ORIGEM", "ORIGEM_DEMANDA"]:
+            return {"tabela": "common.origens", "col_ctx": None, "val_ctx": None, "col_val": "nome"}
+
+        # 2. TIPOS ESTRUTURAIS (Vai para common.tipos)
+        map_tipos = {
+            "TIPO_ITEM": "TIPO_ITEM",
+            "ACAO_OS": "TIPO_ACAO",
+            "EVENTO": "TIPO_EVENTO"
+        }
+        if c_key in map_tipos:
+            return {"tabela": "common.tipos", "col_ctx": "contexto", "val_ctx": map_tipos[c_key], "col_val": "nome"}
+
+        # 3. TEXTOS SIMPLES (Vai para common.parametros_sistema)
+        slug_categoria = f"{s_key}_{c_key}".lower().replace(' ', '_')
+        return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": slug_categoria, "col_val": "valor"}
