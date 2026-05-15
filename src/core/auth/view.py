@@ -183,7 +183,6 @@ class LoginView(ctk.CTk):
 
         ctk.CTkLabel(self.active_frame, text="NOVA CONTA", font=("Century Gothic bold", 32), text_color=COLOR_PRIMARY).pack(pady=(0, 15))
 
-        # Campos de Cadastro
         self.cad_nome = ctk.CTkEntry(self.active_frame, placeholder_text="Nome Completo", width=380, height=45, font=("Arial", 14), corner_radius=8, border_width=2, border_color=COLOR_PRIMARY)
         self.cad_nome.pack(pady=6)
 
@@ -193,21 +192,26 @@ class LoginView(ctk.CTk):
         self.cad_email = ctk.CTkEntry(self.active_frame, placeholder_text="E-mail", width=380, height=45, font=("Arial", 14), corner_radius=8, border_width=2, border_color=COLOR_PRIMARY)
         self.cad_email.pack(pady=6)
         
-        # --- NOVO: Múltipla Escolha de Setores (Checkboxes) ---
+        # --- ATUALIZADO: Grid de Setores (Inclusão de Projetos de Mobilidade) ---
         frame_setores = ctk.CTkFrame(self.active_frame, fg_color="transparent")
         frame_setores.pack(pady=6, fill="x", padx=40)
-        ctk.CTkLabel(frame_setores, text="Setores de Acesso:", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
+        ctk.CTkLabel(frame_setores, text="Setores de Acesso permitidos:", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
         
+        grid_chk = ctk.CTkFrame(frame_setores, fg_color="transparent")
+        grid_chk.pack(fill="x")
+
         self.chk_var_pp = ctk.StringVar(value="")
-        ctk.CTkCheckBox(frame_setores, text="Ponto de Parada", variable=self.chk_var_pp, onvalue="PONTO DE PARADA", offvalue="", fg_color=COLOR_PRIMARY).pack(side="left", padx=(0, 15))
+        ctk.CTkCheckBox(grid_chk, text="Ponto de Parada", variable=self.chk_var_pp, onvalue="PONTO DE PARADA", offvalue="", fg_color=COLOR_PRIMARY).grid(row=0, column=0, pady=5, sticky="w")
         
         self.chk_var_iti = ctk.StringVar(value="")
-        ctk.CTkCheckBox(frame_setores, text="Itinerário", variable=self.chk_var_iti, onvalue="ITINERARIO", offvalue="", fg_color=COLOR_PRIMARY).pack(side="left", padx=15)
+        ctk.CTkCheckBox(grid_chk, text="Itinerário", variable=self.chk_var_iti, onvalue="ITINERARIO", offvalue="", fg_color=COLOR_PRIMARY).grid(row=0, column=1, padx=20, pady=5, sticky="w")
         
         self.chk_var_qh = ctk.StringVar(value="")
-        ctk.CTkCheckBox(frame_setores, text="Quadro de Horário", variable=self.chk_var_qh, onvalue="QUADRO DE HORARIO", offvalue="", fg_color=COLOR_PRIMARY).pack(side="left", padx=15)
+        ctk.CTkCheckBox(grid_chk, text="Quadro de Hor.", variable=self.chk_var_qh, onvalue="QUADRO DE HORARIO", offvalue="", fg_color=COLOR_PRIMARY).grid(row=1, column=0, pady=5, sticky="w")
 
-        # Campos de Senha
+        self.chk_var_pm = ctk.StringVar(value="")
+        ctk.CTkCheckBox(grid_chk, text="Proj. Mobilidade", variable=self.chk_var_pm, onvalue="PROJETOS DE MOBILIDADE", offvalue="", fg_color=COLOR_PRIMARY).grid(row=1, column=1, padx=20, pady=5, sticky="w")
+
         self.cad_senha = self._criar_campo_senha(self.active_frame, "Senha (mín. 6 caracteres)")
         self.cad_conf = self._criar_campo_senha(self.active_frame, "Confirmar Senha")
 
@@ -218,23 +222,22 @@ class LoginView(ctk.CTk):
         btn_voltar.bind("<Button-1>", lambda e: self.mostrar_login())
 
     def acao_cadastrar(self):
-        # 1. Junta todos os setores marcados separados por vírgula
-        setores_marcados = [s for s in [self.chk_var_pp.get(), self.chk_var_iti.get(), self.chk_var_qh.get()] if s]
+        # 1. Validação de marcação (Agora incluindo o 4º módulo)
+        setores_marcados = [s for s in [self.chk_var_pp.get(), self.chk_var_iti.get(), self.chk_var_qh.get(), self.chk_var_pm.get()] if s]
         
         if not setores_marcados:
             messagebox.showwarning("Atenção", "Selecione pelo menos um setor de acesso.")
             return
 
-        perfil_final = ",".join(setores_marcados) # Ex: "PONTO_PARADA,ITINERARIO"
+        perfil_final = ",".join(setores_marcados)
 
-        # 2. Envia para o service gravar no banco
         ok, msg = self.auth.cadastrar_usuario(
             self.cad_nome.get(), 
             self.cad_user.get(), 
             self.cad_email.get(),
             self.cad_senha.get(), 
             self.cad_conf.get(),
-            perfil_final # <--- Envia a string combinada
+            perfil_final
         )
         if ok:
             messagebox.showinfo("Sucesso", msg)

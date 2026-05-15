@@ -1,3 +1,4 @@
+import sys
 from tkinter import messagebox
 import customtkinter as ctk
 from PIL import Image
@@ -90,6 +91,13 @@ def iniciar_sistema(usuario_dados):
         app.iconbitmap(resource_path("assets/sgi_logo.ico"))
     except:
         app.geometry("1400x800")
+
+    # def fechar_sistema():
+    #     app.quit()
+    #     app.destroy()
+    #     sys.exit(0) # Força o Python a matar qualquer animação em segundo plano
+
+    # app.protocol("WM_DELETE_WINDOW", fechar_sistema)
 
     # =====================================================================
     # ESTILIZAÇÃO GLOBAL E TELA DE CARREGAMENTO

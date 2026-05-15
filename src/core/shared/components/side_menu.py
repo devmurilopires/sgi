@@ -19,8 +19,8 @@ class SideMenu(ctk.CTkFrame):
         self.on_menu_click = on_menu_click
         self.buttons = {}
 
-        # Configuração do Layout do Menu
-        self.grid_rowconfigure(5, weight=1) # Espaçador para empurrar o Admin/Sair para baixo
+        # MODIFICAÇÃO: O espaçador agora está na linha 6 para dar lugar ao novo módulo
+        self.grid_rowconfigure(6, weight=1) 
 
         # --- LOGO / TÍTULO ---
         try:
@@ -44,17 +44,20 @@ class SideMenu(ctk.CTkFrame):
         self._criar_botao("Ponto de Parada", "PONTO_PARADA", 2)
         self._criar_botao("Itinerário", "ITINERARIO", 3)
         self._criar_botao("Quadro de Horário", "QUADRO_HORARIO", 4)
+        
+        # MODIFICAÇÃO: Inserção do novo módulo Projetos de Mobilidade
+        self._criar_botao("Projetos de Mobilidade", "PROJETOS_MOBILIDADE", 5)
 
         # --- BOTÃO ADMIN (CONDICIONAL) ---
         if self.user_data.get("is_admin"):
-            self._criar_botao("Módulo Admin", "ADMIN", 6, fg_color="#333333", hover_color="#444444")
+            self._criar_botao("Módulo Admin", "ADMIN", 7, fg_color="#333333", hover_color="#444444")
 
         # --- BOTÃO SAIR ---
         self.btn_sair = ctk.CTkButton(self, text="Sair do Sistema", fg_color="transparent", 
                                      border_width=1, border_color="#555555",
                                      hover_color="#333333", font=("Arial Bold", 13),
                                      command=lambda: self.on_menu_click("SAIR"))
-        self.btn_sair.grid(row=7, column=0, padx=20, pady=20, sticky="ew")
+        self.btn_sair.grid(row=8, column=0, padx=20, pady=20, sticky="ew")
 
     def _criar_botao(self, text, key, row, **custom_style):
         """Helper para criar botões padronizados no menu."""
@@ -80,6 +83,5 @@ class SideMenu(ctk.CTkFrame):
             if k == key:
                 btn.configure(fg_color=COLOR_PRIMARY)
             else:
-                # Volta para o estilo original (admin tem cor diferente)
                 original_fg = "#333333" if k == "ADMIN" else "transparent"
                 btn.configure(fg_color=original_fg)
