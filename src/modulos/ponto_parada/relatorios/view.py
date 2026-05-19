@@ -107,8 +107,7 @@ class RelatorioView(ctk.CTkFrame):
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
             elif key == "assunto" and self.tipo_doc == "PARECER":
-                assuntos = ["Todos", "Solicitação de Implantação de Abrigo Metálico", "Solicitação de Implantação de Placa/Barrote", "Solicitação de Implantação de Placa/Poste", "Solicitação de Implantação de Parada Segura", "Solicitação de Implantação de Abrigo Concreto", "Solicitação de Transferência de Abrigo Metálico", "Solicitação de Transferência de Placa/Barrote", "Solicitação de Recolhimento de Abrigo Metálico"]
-                widget = ctk.CTkComboBox(f, values=assuntos, height=35, fg_color="#F9FAFB")
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ASSUNTO_PARECER", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
             else:
                 widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color="#D1D5DB", fg_color="#F9FAFB")

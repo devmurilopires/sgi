@@ -4,7 +4,6 @@ from config.database import get_db_connection
 class RelatorioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
-            # MODIFICAÇÃO: JOINs com origens, tipos e concatenação de numeração
             query = """
                 SELECT p.id, pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
                        p.processo, o.nome AS origem, p.assunto, t.nome AS decisao, 
@@ -19,7 +18,6 @@ class RelatorioRepository:
                 WHERE 1=1
             """
         else: # ORDEM DE SERVIÇO
-            # MODIFICAÇÃO: Subquery N:M para pontos extras e JOIN com tabela de endereços
             query = """
                 SELECT os.id, os.numero AS numero_os, o.nome AS origem, 
                        ta.nome AS acao, ti.nome AS item, os.ponto_principal_id, 
@@ -53,13 +51,15 @@ class RelatorioRepository:
         doc_map = mapeamento[tipo_doc]
         for chave, valor in filtros.items():
             if valor and chave in doc_map:
-                query += f" AND COALESCE({doc_map[chave]}::text, '') ILIKE %s"
+                # MODIFICAÇÃO: Uso do unaccent para ignorar acentos na pesquisa
+                query += f" AND unaccent(COALESCE({doc_map[chave]}::text, '')) ILIKE unaccent(%s)"
                 params.append(f"%{valor}%")
-            # Tratamento especial de ID que busca tanto no principal quanto na tabela N:M
+                
             elif valor and chave == "id_ponto" and tipo_doc == "OS":
+                # MODIFICAÇÃO: Pesquisa robusta ignorando acentos no ID (se aplicável)
                 query += """ AND (
-                    os.ponto_principal_id ILIKE %s OR 
-                    EXISTS (SELECT 1 FROM ponto_parada.os_pontos_adicionais pa WHERE pa.os_id = os.id AND pa.ponto_id ILIKE %s)
+                    unaccent(os.ponto_principal_id) ILIKE unaccent(%s) OR 
+                    EXISTS (SELECT 1 FROM ponto_parada.os_pontos_adicionais pa WHERE pa.os_id = os.id AND unaccent(pa.ponto_id) ILIKE unaccent(%s))
                 )"""
                 params.extend([f"%{valor}%", f"%{valor}%"])
 
@@ -74,7 +74,7 @@ class RelatorioRepository:
 
         query += " ORDER BY id DESC"
         return query, params
-
+    
     def buscar_dados_paginados(self, tipo_doc, filtros, limit=50, offset=0):
         query, params = self._construir_query_filtros(tipo_doc, filtros)
         query += " LIMIT %s OFFSET %s"
