@@ -13,10 +13,12 @@ class AdminParametrosView:
         
         self.config_map = {
             "Ponto de Parada": {
-                "TIPO_ITEM": "Tipo de Item",
                 "ACAO_OS": "Ação da OS",
+                "ITEM_URBMIDIA": "Itens (Urbmídia)",
+                "ITEM_MCMENSAGEM": "Itens (McMensagem)",
                 "ORIGEM_DEMANDA": "Origem da Demanda",
-                "SOLICITANTE": "Solicitante"
+                "SOLICITANTE_PARECER": "Solicitante",
+                "ASSUNTO_PARECER": "Assunto"
             },
             "Itinerário": {
                 "ORIGEM": "Origem",
