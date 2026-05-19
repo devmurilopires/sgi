@@ -2,6 +2,19 @@ import psycopg2
 from config.database import get_db_connection
 
 class ParecerRepository:
+    
+    # NOVA FUNÇÃO: Executa a busca na tabela de parâmetros genéricos (SGI v2.2)
+    def buscar_parametro_generico(self, categoria):
+        query = "SELECT valor FROM common.parametros_sistema WHERE categoria = %s ORDER BY valor;"
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, (categoria,))
+                    return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"[LOG DB] Erro ao buscar parâmetro {categoria}: {e}")
+            return []
+
     def obter_proximo_numero(self, ano):
         query = "SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 FROM common.pareceres_base WHERE ano = %s AND sistema_origem = 'Ponto de Parada'"
         try:
@@ -15,7 +28,6 @@ class ParecerRepository:
             raise Exception("Falha ao calcular a numeração do parecer.")
 
     def salvar_parecer(self, dados_db):
-        # 1. TABELA MÃE: tipo_id e caminho_arquivo realocados para cá
         query_mae = """
             INSERT INTO common.pareceres_base (
                 sistema_origem, numero_parecer_ano, ano, tipo_id, caminho_arquivo, criado_por_id
@@ -27,7 +39,6 @@ class ParecerRepository:
             ) RETURNING id;
         """
 
-        # 2. TABELA FILHA: origem_id e uso exclusivo das colunas do DDL v2.2
         query_filha = """
             INSERT INTO ponto_parada.pareceres (
                 id, origem_id, processo, assunto, solicitante, 
@@ -40,7 +51,6 @@ class ParecerRepository:
             );
         """
 
-        # 3. TABELA DE RELACIONAMENTO (N:M)
         query_pontos = """
             INSERT INTO ponto_parada.pareceres_pontos (parecer_id, ponto_id)
             VALUES (%(id_base)s, %(ponto_id)s);
@@ -49,15 +59,12 @@ class ParecerRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
-                    # Inserção Base e resgate do ID
                     cursor.execute(query_mae, dados_db)
                     id_base = cursor.fetchone()[0]
                     dados_db['id_base'] = id_base
                     
-                    # Inserção Filha
                     cursor.execute(query_filha, dados_db)
                     
-                    # Loop de Inserção N:M para os pontos
                     for ponto in dados_db.get('ids_list', []):
                         cursor.execute(query_pontos, {"id_base": id_base, "ponto_id": ponto.strip()})
                     
@@ -68,5 +75,15 @@ class ParecerRepository:
             print(f"[LOG DB] Erro de integridade: {e}")
             raise Exception("Erro relacional: Verifique se os IDs informados, a Origem e o Tipo estão cadastrados no banco.")
         except Exception as e:
-            print(f"[LOG DB] Erro ao salvar parecer duplo: {e}")
+            print(f"[LOG DB] Erro ao salvar parecer: {e}")
             raise Exception(f"Erro ao registrar o Parecer no Banco de Dados: {e}")
+        
+    def buscar_todos_itens(self):
+        query = "SELECT nome FROM common.tipos WHERE contexto IN ('ITEM_URBMIDIA', 'ITEM_MCMENSAGEM') ORDER BY nome"
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(query)
+                    return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            return []
