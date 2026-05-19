@@ -6,7 +6,6 @@ from docx.shared import Inches
 from src.modulos.ponto_parada.ordem_servico.repository import OSRepository
 from config.settings import RAIZ_REDE
 
-# Tenta puxar o utils da raiz ou da pasta shared
 try:
     from src.core.shared.utils import resource_path
 except ImportError:
@@ -17,25 +16,21 @@ except ImportError:
 
 class OSService:
     def __init__(self):
-        # Conecta o serviço ao repositório (banco de dados)
         self.repo = OSRepository()
 
     # =========================================================
     # REGRAS DE NEGÓCIO E VALIDAÇÕES
     # =========================================================
     def normalizar(self, texto: str) -> str:
-        """Remove acentos e deixa a string em caixa alta para padronização no banco."""
         if not texto: return ""
         nfkd = unicodedata.normalize('NFKD', texto)
         sem_acentos = "".join(c for c in nfkd if not unicodedata.combining(c))
         return sem_acentos.upper()
 
     def consultar_endereco(self, id_procurado):
-        """Busca os dados do endereço no repositório para preencher a tela."""
         return self.repo.buscar_endereco_por_id(id_procurado)
 
     def obter_historico_formatado(self, id_procurado):
-        """Busca o histórico de OS desse ID e formata em texto para mostrar no popup."""
         historico = self.repo.buscar_historico_os(id_procurado)
         if not historico:
             return "Nenhuma movimentação de Ordem de Serviço encontrada para este ID."
@@ -46,14 +41,15 @@ class OSService:
             texto += "-" * 50 + "\n"
         return texto
 
+    # NOVA FUNÇÃO: Retorna os itens correspondentes ao modelo selecionado
+    def obter_itens_por_modelo(self, modelo):
+        contexto = 'ITEM_URBMIDIA' if modelo == 'Urbmídia' else 'ITEM_MCMENSAGEM'
+        return self.repo.buscar_tipos_por_contexto(contexto)
+
     # =========================================================
     # ORQUESTRAÇÃO PRINCIPAL (GERAÇÃO SEGURA - DB PRIMEIRO)
     # =========================================================
-    def processar_criacao_os(self, descricoes_acumuladas, pasta_escolhida, modelo_escolhido, tipo_os, tipo_item, form_dados, usuario_logado, origem_demanda):
-        
-        if str(pasta_escolhida).replace(" ", "").upper() == "PROXIMAPARADA":
-            pasta_escolhida = "PROXIMA PARADA"
-
+    def processar_criacao_os(self, descricoes_acumuladas, modelo_operacao, modelo_escolhido, tipo_os, tipo_item, form_dados, usuario_logado, origem_demanda):
         if not descricoes_acumuladas:
             return False, "Adicione pelo menos um item (descrição) na lista antes de gerar a OS."
 
@@ -62,15 +58,16 @@ class OSService:
         if not os.path.exists(RAIZ_REDE):
             return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
 
-        if pasta_escolhida == "MC MENSAGEM":
+        # Direciona para as pastas corretas baseadas no novo modelo
+        if modelo_operacao == "McMensagem":
             pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano_atual}\ORDENS DE SERVICO\MC MENSAGEM"
+            item_contexto = "ITEM_MCMENSAGEM"
         else:
-            pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano_atual}\ORDENS DE SERVICO\PROXIMA PARADA"
+            pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano_atual}\ORDENS DE SERVICO\URBMIDIA"
+            item_contexto = "ITEM_URBMIDIA"
 
         ids_unicos = list(set([d["id"] for d in descricoes_acumuladas]))
         id_principal = descricoes_acumuladas[0]["id"]
-        
-        # Filtra os pontos que não são o principal para a tabela N:M
         pontos_adicionais = [pid for pid in ids_unicos if pid != id_principal]
 
         # Cadastro/Atualização dos Endereços na tabela base
@@ -91,7 +88,6 @@ class OSService:
             except Exception as e:
                 return False, f"Erro ao gerenciar endereços no banco:\n{str(e)}"
 
-        # MODIFICAÇÃO: Removido 'pasta_escolhida' da assinatura
         numero_os = self.repo.obter_proximo_numero_os(ano_atual)
         data_str = datetime.now().strftime("%d/%m/%Y")
 
@@ -103,7 +99,7 @@ class OSService:
         nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
         destino_docx = os.path.join(caminho_pasta, nome_arquivo)
 
-        # MODIFICAÇÃO: Construção de um Dicionário limpo alinhado ao DB
+        # Repassa o contexto para a trava do banco
         dados_db = {
             "numero_os": numero_os,
             "data_criacao": datetime.strptime(data_str, "%d/%m/%Y").date(),
@@ -111,6 +107,7 @@ class OSService:
             "origem": origem_demanda,
             "acao": tipo_os_up,
             "item": tipo_item_up,
+            "item_contexto": item_contexto,
             "descricao": "\n".join([item["descricao"] for item in descricoes_acumuladas]),
             "usuario": f"%{usuario_logado}%",
             "caminho": destino_docx,
@@ -126,17 +123,12 @@ class OSService:
             os.makedirs(caminho_pasta, exist_ok=True)
             caminho_modelo = resource_path(modelo_escolhido)
             self._gerar_documento_modelo(caminho_modelo, destino_docx, numero_os, data_str, id_principal, descricoes_acumuladas)
-            
             return True, f"Ordem de Serviço Nº {numero_os:03d} criada e registrada com sucesso!\nSalva em:\n{destino_docx}"
             
         except Exception as e:
             return False, f"Atenção: A OS foi registrada no banco, mas houve falha ao gerar o documento Word na rede:\n{e}"
         
-    # =========================================================
-    # MANIPULAÇÃO DO WORD (DOCX)
-    # =========================================================
     def _gerar_documento_modelo(self, modelo_path, destino_path, numero_os, data_str, id_texto, descricoes):
-        """Abre o modelo do Word, substitui as tags e gera a tabela de descrições."""
         doc = Document(modelo_path)
         mapeamento = {
             "{{NUMERO_OS}}": f"{numero_os:03d}",

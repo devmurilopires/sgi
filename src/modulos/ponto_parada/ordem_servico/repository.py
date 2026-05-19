@@ -5,7 +5,6 @@ from datetime import datetime
 class OSRepository:
     
     def buscar_endereco_por_id(self, id_procurado):
-        # MODIFICAÇÃO: 'id_ponto' agora é 'id'
         query = """
             SELECT logradouro, bairro, numero, complemento, is_ativo
             FROM ponto_parada.enderecos_cadastrados 
@@ -30,7 +29,6 @@ class OSRepository:
             raise Exception("Erro ao buscar endereço no banco de dados.")
 
     def cadastrar_endereco(self, id_texto, endereco, numero, bairro, complemento, usuario):
-        # MODIFICAÇÃO: 'responsavel_vistoria' virou 'responsavel_vistoria_id' (FK)
         query = """
             INSERT INTO ponto_parada.enderecos_cadastrados 
             (id, logradouro, numero, bairro, complemento, is_ativo, responsavel_vistoria_id, data_vistoria)
@@ -49,8 +47,6 @@ class OSRepository:
 
     def atualizar_endereco(self, id_texto, endereco, numero, bairro, complemento, usuario, reativar=False):
         set_ativo = "is_ativo = TRUE," if reativar else ""
-        
-        # MODIFICAÇÃO: Atualizado para suportar a FK de usuário
         query = f"""
             UPDATE ponto_parada.enderecos_cadastrados
             SET logradouro=%s, numero=%s, bairro=%s, complemento=%s, {set_ativo}
@@ -58,7 +54,6 @@ class OSRepository:
                 data_vistoria=%s
             WHERE id=%s
         """
-        
         data_atual = datetime.now()
         params = (endereco, numero, bairro, complemento, f"%{usuario}%", data_atual, id_texto)
         try:
@@ -71,7 +66,6 @@ class OSRepository:
             raise Exception("Falha ao atualizar o endereço no banco.")
 
     def buscar_historico_os(self, id_procurado, limite=5):
-        # MODIFICAÇÃO: JOIN obrigatório para reconstruir o que antes era salvo em texto plano na tabela
         query = """
             SELECT os.numero, TO_CHAR(os.data_criacao, 'DD/MM/YYYY'), 
                    ta.nome AS acao_realizada, ti.nome AS tipo_item, 
@@ -95,7 +89,6 @@ class OSRepository:
             return []
 
     def obter_proximo_numero_os(self, ano_atual):
-        # MODIFICAÇÃO: Removido 'modelo_documento' pois a numeração agora é única por ano para o Módulo
         query = """
             SELECT COALESCE(MAX(numero), 0) + 1
             FROM ponto_parada.ordens_servico
@@ -110,8 +103,20 @@ class OSRepository:
             print(f"[LOG DB] Erro ao gerar numeração da OS: {e}")
             return 1
 
+    # NOVA FUNÇÃO: Busca dinâmica para o Cascading Dropdown
+    def buscar_tipos_por_contexto(self, contexto):
+        query = "SELECT nome FROM common.tipos WHERE contexto = %s ORDER BY nome"
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cursor:
+                    cursor.execute(query, (contexto,))
+                    return [row[0] for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"[LOG DB] Erro ao buscar tipos do contexto {contexto}: {e}")
+            return []
+
     def salvar_os(self, dados_db):
-        # 1. INSERÇÃO DA OS (Apenas chaves estrangeiras, sem dados de endereço duplicados)
+        # MODIFICAÇÃO: A subquery do tipo_item_id agora cruza com o contexto para evitar duplicações
         query_os = """
             INSERT INTO ponto_parada.ordens_servico (
                 numero, data_criacao, ponto_principal_id, origem_id,
@@ -119,15 +124,14 @@ class OSRepository:
             ) VALUES (
                 %(numero_os)s, %(data_criacao)s, %(id_principal)s,
                 (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
-                (SELECT id FROM common.tipos WHERE nome ILIKE %(acao)s LIMIT 1),
-                (SELECT id FROM common.tipos WHERE nome ILIKE %(item)s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE nome ILIKE %(acao)s AND contexto = 'ACAO_OS' LIMIT 1),
+                (SELECT id FROM common.tipos WHERE nome ILIKE %(item)s AND contexto = %(item_contexto)s LIMIT 1),
                 %(descricao)s,
                 (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(usuario)s LIMIT 1),
                 %(caminho)s
             ) RETURNING id;
         """
         
-        # 2. INSERÇÃO DOS PONTOS ADICIONAIS (Relacionamento N:M)
         query_pontos = """
             INSERT INTO ponto_parada.os_pontos_adicionais (os_id, ponto_id)
             VALUES (%(os_id)s, %(ponto_id)s)
@@ -139,7 +143,6 @@ class OSRepository:
                     cursor.execute(query_os, dados_db)
                     os_id = cursor.fetchone()[0]
                     
-                    # Salva os pontos extras vinculados a essa OS
                     for pt_id in dados_db.get("pontos_adicionais", []):
                         cursor.execute(query_pontos, {"os_id": os_id, "ponto_id": pt_id})
                         

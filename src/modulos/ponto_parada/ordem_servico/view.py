@@ -24,10 +24,10 @@ class OSView(ctk.CTkFrame):
 
         ctk.CTkLabel(header_frame, text="Gerador de Ordem de Serviço", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
         
-        self.pasta_escolhida_var = ctk.StringVar(value="MC MENSAGEM")
-
-        ctk.CTkRadioButton(header_frame, text="PROXIMA PARADA", variable=self.pasta_escolhida_var, value="PROXIMAPARADA", fg_color="#0F8C75").pack(side="right", padx=10)
-        ctk.CTkRadioButton(header_frame, text="MC MENSAGEM", variable=self.pasta_escolhida_var, value="MC MENSAGEM", fg_color="#0F8C75").pack(side="right", padx=10)
+        # MODIFICAÇÃO: Criação do ComboBox do "Modelo" que guiará as opções de item
+        self.modelo_var = ctk.StringVar(value="Urbmídia")
+        self.modelo_combo = ctk.CTkComboBox(header_frame, variable=self.modelo_var, values=["Urbmídia", "McMensagem"], command=self.ao_mudar_modelo)
+        self.modelo_combo.pack(side="right", padx=10)
         ctk.CTkLabel(header_frame, text="Modelo:", font=("Arial Bold", 14)).pack(side="right", padx=10)
 
         # --- FORMULÁRIO ---
@@ -38,16 +38,17 @@ class OSView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        # ---> CAMPOS PADRONIZADOS (Vinculados ao Admin de forma inteligente)
         self.origem_combo = self._criar_param_combo(row1, "Origem da Demanda", "Ponto de Parada", "ORIGEM_DEMANDA", width=250, side="left")
         self.tipo_os_combo = self._criar_param_combo(row1, "Ação da OS", "Ponto de Parada", "ACAO_OS", width=250, side="left")
-        self.tipo_item_combo = self._criar_param_combo(row1, "Tipo de Item", "Ponto de Parada", "TIPO_ITEM", width=250, side="left")
+        
+        # MODIFICAÇÃO: Tipo de Item passa a ser um ComboBox normal para ser alimentado dinamicamente via Cascading Dropdown
+        self.tipo_item_combo = self._criar_combobox(row1, "Tipo de Item", 250, [], side="left")
 
         # Linha 2: ID do Ponto e Botões de Pesquisa
         self.id_entry = self._criar_campo(row1, "ID do Ponto", width=250, side="left")
         self.id_entry.bind("<FocusOut>", self.ao_sair_do_id)
 
-        # Linha 2 cont. (Agrupei aqui Bairro e Complemento para melhor preenchimento horizontal)
+        # Linha 2 cont.
         row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row2.pack(fill="x", pady=5, padx=15)
         
@@ -77,6 +78,9 @@ class OSView(ctk.CTkFrame):
 
         ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color="#0F8C75", font=("Arial Bold", 16), height=50, width=300, command=self.acao_criar_os).pack(side="right", padx=10)
 
+        # Inicializa a cascata com o valor padrão do combo
+        self.ao_mudar_modelo(self.modelo_var.get())
+
     # --- UTILITÁRIOS VISUAIS ---
     def _criar_campo(self, parent, label_text, width, side="top"):
         container = ctk.CTkFrame(parent, fg_color="transparent")
@@ -98,13 +102,21 @@ class OSView(ctk.CTkFrame):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side=side, padx=10, fill="x")
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        
-        # Não enviamos 'incluir_todos=True' porque num formulário não faz sentido criar uma Ordem de Serviço com origem "Todos"
         combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=35)
         combo.pack(anchor="w", pady=(2,0))
         return combo
 
     # --- AÇÕES ---
+    def ao_mudar_modelo(self, modelo_selecionado):
+        # Dispara consulta no BD e atualiza opções do Tipo de Item (Cascading Dropdown)
+        itens = self.service.obter_itens_por_modelo(modelo_selecionado)
+        if itens:
+            self.tipo_item_combo.configure(values=itens)
+            self.tipo_item_combo.set(itens[0])
+        else:
+            self.tipo_item_combo.configure(values=["Nenhum item cadastrado"])
+            self.tipo_item_combo.set("Nenhum item cadastrado")
+
     def ao_sair_do_id(self, event=None):
         id_digitado = self.id_entry.get().strip().upper()
         if not id_digitado: return
@@ -187,13 +199,13 @@ class OSView(ctk.CTkFrame):
             'complemento': self.complemento_entry.get().upper()
         }
         
-        modelo = "dados/modelo_etufor_mcmensagem_pp.docx" if self.pasta_escolhida_var.get() == "MC MENSAGEM" else "dados/modelo_etufor_prxparada_pp.docx"
+        modelo_operacao = self.modelo_var.get()
+        doc_template = "dados/modelo_etufor_mcmensagem_pp.docx" if modelo_operacao == "McMensagem" else "dados/modelo_etufor_prxparada_pp.docx"
 
-        # Passando a Origem selecionada para o Service
         sucesso, mensagem = self.service.processar_criacao_os(
             descricoes_acumuladas=self.descricoes_acumuladas,
-            pasta_escolhida=self.pasta_escolhida_var.get(),
-            modelo_escolhido=modelo,
+            modelo_operacao=modelo_operacao,
+            modelo_escolhido=doc_template,
             tipo_os=self.tipo_os_combo.get(),
             tipo_item=self.tipo_item_combo.get(),
             form_dados=form_dados,
