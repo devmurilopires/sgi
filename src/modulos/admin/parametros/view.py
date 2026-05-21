@@ -16,21 +16,28 @@ class AdminParametrosView:
                 "ACAO_OS": "Ação da OS",
                 "ITEM_URBMIDIA": "Itens (Urbmídia)",
                 "ITEM_MCMENSAGEM": "Itens (McMensagem)",
+                "ITEM_MOBILIARIO": "Itens (Mobiliário)", # NOVO
                 "ORIGEM_DEMANDA": "Origem da Demanda",
                 "SOLICITANTE_PARECER": "Solicitante",
                 "ASSUNTO_PARECER": "Assunto"
             },
             "Itinerário": {
                 "ORIGEM": "Origem",
-                "EVENTO": "Nome do Evento",
-                "SOLICITANTE": "Solicitante",
-                "ASSUNTO": "Assunto"
+                "TIPO_OS": "Tipo da OS",
+                "EVENTO": "Lista de Eventos", # Agora vai carregar perfeitamente!
+                "SOLICITANTE_PARECER": "Solicitante",
+                "ASSUNTO_ITINERARIO": "Assunto"
             },
             "Quadro de Horário": {
-                "SOLICITANTE": "Solicitante",
-                "ASSUNTO": "Assunto",
-                "EVENTO": "Evento",
-                "ORIGEM": "Origem"
+                "ORIGEM": "Origem",
+                "PESQUISA": "Tipos de Pesquisa",
+                "EVENTO": "Lista de Eventos",
+                "SOLICITANTE_PARECER": "Solicitante",
+                "ASSUNTO_QUADRO_HORARIO": "Assunto"
+            },
+            "Projetos de Mobilidade": {
+                "SOLICITANTE_PARECER": "Solicitante",
+                "ASSUNTO_PROJETOS_MOBILIDADE": "Assunto"
             }
         }
         
