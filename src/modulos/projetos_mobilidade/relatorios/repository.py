@@ -3,17 +3,11 @@ from config.database import get_db_connection
 
 class RelatorioProjetosMobilidadeRepository:
     def _construir_query_filtros(self, filtros):
-        # 1. MODIFICAÇÃO: Junção atualizada com 'common.tipos' e concatenação de número/ano.
-        # 2. MODIFICAÇÃO: 'motivo_indeferimento' removido do SELECT.
         query = """
             SELECT p.id, 
                    pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
-                   p.processo, 
-                   p.assunto, 
-                   t.nome AS decisao, 
-                   p.solicitante, 
-                   pb.created_at AS data_criacao, 
-                   u.nome_completo AS responsavel
+                   p.processo, p.assunto, t.nome AS decisao, p.solicitante, 
+                   pb.created_at AS data_criacao, u.nome_completo AS responsavel
             FROM projetos_mobilidade.pareceres p
             JOIN common.pareceres_base pb ON p.id = pb.id
             LEFT JOIN common.tipos t ON pb.tipo_id = t.id
@@ -21,32 +15,29 @@ class RelatorioProjetosMobilidadeRepository:
             WHERE 1=1
         """
         params = []
-        
-        # 3. MODIFICAÇÃO: A chave 'decisao' agora aponta para 't.nome' (da tabela de tipos).
+        # Mapeamento para os campos que aceitam filtro
         mapeamento = {
             "processo": "p.processo", 
             "assunto": "p.assunto",
             "decisao": "t.nome", 
-            "solicitante": "p.solicitante", 
-            "responsavel": "u.nome_completo"
+            "solicitante": "p.solicitante"
         }
 
         for chave, valor in filtros.items():
             if valor and chave in mapeamento:
-                query += f" AND COALESCE({mapeamento[chave]}::text, '') ILIKE %s"
+                # Blindagem ILIKE para evitar problemas de case/acentuação
+                query += f" AND {mapeamento[chave]} ILIKE %s"
                 params.append(f"%{valor}%")
 
         # Filtro de Data
-        col_data = "pb.created_at"
         if filtros.get("data_inicio"):
-            query += f" AND ({col_data} IS NULL OR {col_data}::date >= %s)"
+            query += " AND pb.created_at::date >= %s"
             params.append(filtros["data_inicio"])
         if filtros.get("data_fim"):
-            query += f" AND ({col_data} IS NULL OR {col_data}::date <= %s)"
+            query += " AND pb.created_at::date <= %s"
             params.append(filtros["data_fim"])
 
-        # 4. DETALHE: O 'ORDER BY' agora especifica a origem do 'id' para evitar ambiguidade (p.id)
-        query += " ORDER BY p.id DESC"
+        query += " ORDER BY pb.created_at DESC"
         return query, params
 
     def buscar_dados_paginados(self, filtros, limit=50, offset=0):

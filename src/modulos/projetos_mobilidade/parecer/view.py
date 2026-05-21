@@ -44,8 +44,9 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         row2 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row2.pack(fill="x", pady=(10, 20), padx=20)
 
-        self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Projetos de Mobilidade", "SOLICITANTE", width=350)
-        self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Projetos de Mobilidade", "ASSUNTO", width=450)
+        # MODIFICAÇÃO: Apontando para as chaves exatas do banco SGI v2.2
+        self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Projetos de Mobilidade", "SOLICITANTE_PARECER", width=350)
+        self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Projetos de Mobilidade", "ASSUNTO_PROJETOS_MOBILIDADE", width=450)
 
         # --- MOTIVO DE INDEFERIMENTO (Oculto por Padrão) ---
         self.frame_motivo = ctk.CTkFrame(self.scroll_frame, fg_color="#FFF0F0", corner_radius=10, border_width=1, border_color="#FFD6D6")

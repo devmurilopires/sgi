@@ -31,7 +31,7 @@ class ParecerProjetosMobilidadeRepository:
             VALUES (
                 (SELECT proximo_numero FROM seq),
                 %s,
-                (SELECT id FROM common.tipos WHERE contexto = %s AND nome = %s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE contexto = %s AND nome ILIKE %s LIMIT 1),
                 'Projetos de Mobilidade',
                 %s
             )

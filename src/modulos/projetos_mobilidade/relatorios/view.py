@@ -69,18 +69,19 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            # Utilizando os Componentes Dinâmicos
             if key == "assunto":
-                widget = CtkParametrosComboBox(f, setor="Projetos de Mobilidade", campo="ASSUNTO", incluir_todos=True, height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
+                # Apontando para a chave global de Projetos de Mobilidade
+                widget = CtkParametrosComboBox(f, setor="Projetos de Mobilidade", campo="ASSUNTO_PROJETOS_MOBILIDADE", incluir_todos=True, height=35, fg_color="#F9FAFB")
+            
             elif key == "solicitante":
-                widget = CtkParametrosComboBox(f, setor="Projetos de Mobilidade", campo="SOLICITANTE", incluir_todos=True, height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
+                # Apontando para a chave global unificada
+                widget = CtkParametrosComboBox(f, setor="Projetos de Mobilidade", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35, fg_color="#F9FAFB")
+            
             elif key == "decisao":
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
             else:
-                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color="#D1D5DB", fg_color="#F9FAFB")
+                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite...", border_color="#D1D5DB", fg_color="#F9FAFB")
             
             widget.pack(fill="x")
             self.entradas_filtros[key] = widget
