@@ -105,7 +105,7 @@ class OSService:
             "data_criacao": datetime.strptime(data_str, "%d/%m/%Y").date(),
             "id_principal": id_principal,
             "origem": origem_demanda,
-            "acao": tipo_os_up,
+            "acao": tipo_os_up.upper(),
             "item": tipo_item_up,
             "item_contexto": item_contexto,
             "descricao": "\n".join([item["descricao"] for item in descricoes_acumuladas]),

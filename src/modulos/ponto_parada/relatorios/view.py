@@ -23,6 +23,7 @@ class RelatorioView(ctk.CTkFrame):
         self.dados_atuais = []
 
         self.lista_bairros = self.service.obter_bairros()
+        self.lista_itens = self.service.obter_todos_itens()
 
         # Definição de Colunas SIGP
         if self.tipo_doc == "OS":
@@ -87,10 +88,11 @@ class RelatorioView(ctk.CTkFrame):
                 widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
             elif key == "item":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="TIPO_ITEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
+                opcoes_item = ["Todos"] + self.lista_itens if self.lista_itens else ["Todos"]
+                widget = ctk.CTkComboBox(f, values=opcoes_item, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
             elif key == "solicitante":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE", incluir_todos=True, height=35, fg_color="#F9FAFB")
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35, fg_color="#F9FAFB")
                 widget.set("Todos")
             elif key == "status" and self.tipo_doc == "OS":
                 widget = ctk.CTkComboBox(f, values=["Todos", "PENDENTE", "CONCLUÍDO", "CANCELADO"], height=35, fg_color="#F9FAFB")

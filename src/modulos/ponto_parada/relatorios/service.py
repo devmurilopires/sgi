@@ -12,6 +12,8 @@ class RelatorioService:
 
     def obter_bairros(self): return self.repo.obter_bairros()
 
+    def obter_todos_itens(self): return self.repo.obter_todos_itens()
+
     def abrir_documento(self, caminho):
         if not caminho or not os.path.exists(caminho):
             return False, "Arquivo não encontrado no diretório de rede."

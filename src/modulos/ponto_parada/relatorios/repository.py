@@ -51,15 +51,14 @@ class RelatorioRepository:
         doc_map = mapeamento[tipo_doc]
         for chave, valor in filtros.items():
             if valor and chave in doc_map:
-                # MODIFICAÇÃO: Uso do unaccent para ignorar acentos na pesquisa
-                query += f" AND unaccent(COALESCE({doc_map[chave]}::text, '')) ILIKE unaccent(%s)"
+                # SOLUÇÃO NATIVA 100% BLINDADA: Ignora acentos e maiúsculas sem precisar de extensões
+                query += f" AND translate(lower(COALESCE({doc_map[chave]}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
                 params.append(f"%{valor}%")
                 
             elif valor and chave == "id_ponto" and tipo_doc == "OS":
-                # MODIFICAÇÃO: Pesquisa robusta ignorando acentos no ID (se aplicável)
                 query += """ AND (
-                    unaccent(os.ponto_principal_id) ILIKE unaccent(%s) OR 
-                    EXISTS (SELECT 1 FROM ponto_parada.os_pontos_adicionais pa WHERE pa.os_id = os.id AND unaccent(pa.ponto_id) ILIKE unaccent(%s))
+                    translate(lower(os.ponto_principal_id), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') OR 
+                    EXISTS (SELECT 1 FROM ponto_parada.os_pontos_adicionais pa WHERE pa.os_id = os.id AND translate(lower(pa.ponto_id), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc'))
                 )"""
                 params.extend([f"%{valor}%", f"%{valor}%"])
 
@@ -102,7 +101,6 @@ class RelatorioRepository:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if tipo_doc == "PARECER":
-                        # CASCADE apaga da filha automaticamente
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     else:
                         cur.execute("DELETE FROM ponto_parada.ordens_servico WHERE id = %s", (registro_id,))
@@ -115,7 +113,16 @@ class RelatorioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # MODIFICAÇÃO: Bairros agora vêm da tabela de endereços
                     cur.execute("SELECT DISTINCT bairro FROM ponto_parada.enderecos_cadastrados WHERE bairro IS NOT NULL AND bairro != '' ORDER BY bairro")
+                    return [row[0] for row in cur.fetchall()]
+        except: return []
+
+    # NOVA FUNÇÃO: Busca itens de ambos os modelos para o Relatório
+    def obter_todos_itens(self):
+        query = "SELECT nome FROM common.tipos WHERE contexto IN ('ITEM_URBMIDIA', 'ITEM_MCMENSAGEM') ORDER BY nome"
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query)
                     return [row[0] for row in cur.fetchall()]
         except: return []
