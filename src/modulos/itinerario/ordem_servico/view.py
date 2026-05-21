@@ -302,8 +302,8 @@ class OSItinerarioView(ctk.CTkFrame):
         elif tipo == "CORRIDA":
             self.campos_dinamicos['nome_corrida'] = self._criar_campo_grid(self.container_dinamico, "Nome da Corrida", 250, 0, 0)
             self.campos_dinamicos['km'] = self._criar_campo_grid(self.container_dinamico, "Quilometragem (KM)", 250, 0, 1)
-            self.campos_dinamicos['solicitante'] = self._criar_param_combo_grid(self.container_dinamico, "Solicitante", "Itinerário", "SOLICITANTE", 250, 0, 2)
-            self.container_listas.pack_forget() 
+            self.campos_dinamicos['solicitante'] = self._criar_param_combo_grid(self.container_dinamico, "Solicitante", "Itinerário", "SOLICITANTE_PARECER", 250, 0, 2)
+            self.container_listas.pack_forget()
         elif tipo == "OBRAS":
             self.campos_dinamicos['tipo_obra'] = self._criar_campo_grid(self.container_dinamico, "Tipo de Obra", 250, 0, 0)
             self.campos_dinamicos['endereco'] = self._criar_campo_grid(self.container_dinamico, "Endereço/Logradouro", 520, 0, 1, columnspan=2)

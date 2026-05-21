@@ -179,7 +179,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         campos_ignorar = ["id", "data_criacao"]
         row, col = 0, 0
         
-        # Geração Inteligente dos Filtros
+        # Geração Inteligente dos Filtros (Módulo Itinerário Atualizado)
         for key, label in self.colunas_config.items():
             if key in campos_ignorar: continue
             
@@ -188,42 +188,42 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
+            # ---  Início do bloco condicional de componentes ---
             if key == "tipo":
-                widget = ctk.CTkComboBox(f, values=["Todos", "EVENTOS", "CORRIDA", "OBRAS"], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
-                widget.set("Todos")
+                from src.core.shared.components.parameters_combo import CtkParametrosComboBox
+                #  Carrega os tipos de evento direto da nova tabela do banco v2.2
+                widget = CtkParametrosComboBox(f, setor="Itinerário", campo="TIPO_OS", incluir_todos=True, height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
+            
             elif key == "origem":
                 from src.core.shared.components.parameters_combo import CtkParametrosComboBox
-                # Basta adicionar 'incluir_todos=True'. Não precisas de reconfigurar os 'values'!
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
-                # Adiciona "Todos" no início das opções
-                vals = list(widget.cget("values"))
-                if "Todos" not in vals:
-                    vals.insert(0, "Todos")
-                    widget.configure(values=vals)
-                widget.set("Todos")
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
+            
             elif key == "decisao":
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
                 widget.set("Todos")
+            
             elif key in ["solicitante", "assunto", "evento"]:
                 from src.core.shared.components.parameters_combo import CtkParametrosComboBox
-                # Mapeia a key para o nome do campo esperado pelo get_slug
-                campo_map = {"solicitante": "SOLICITANTE", "assunto": "ASSUNTO", "evento": "EVENTO"}
+                # Dicionário mapeando as chaves exatas inseridas por você via SQL
+                campo_map = {
+                    "solicitante": "SOLICITANTE_PARECER", 
+                    "assunto": "ASSUNTO_ITINERARIO", 
+                    "evento": "EVENTO"
+                }
                 widget = CtkParametrosComboBox(f, setor="Itinerário", campo=campo_map[key], incluir_todos=True, height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
-                # Adiciona "Todos" no início das opções
-                vals = list(widget.cget("values"))
-                if "Todos" not in vals:
-                    vals.insert(0, "Todos")
-                    widget.configure(values=vals)
-                widget.set("Todos")
+            
             elif key == "empresa":
-                # NOVA INTEGRAÇÃO: Autocomplete para Empresas!
+                # Autocomplete para Empresas!
                 widget = Autocomplete(f, values=self.lista_empresas, height=35, border_color="#D1D5DB", fg_color="#F9FAFB", placeholder_text="Pesquise o nome...")
+            
             elif key == "linhas":
-                # NOVA INTEGRAÇÃO: Autocomplete para Linhas!
+                # Autocomplete para Linhas!
                 widget = Autocomplete(f, values=self.lista_linhas, height=35, border_color="#D1D5DB", fg_color="#F9FAFB", placeholder_text="Código ou Nome...")
+            
             else:
                 widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color="#D1D5DB", fg_color="#F9FAFB")
-            
+            # --- FIM do bloco condicional ---
+
             widget.pack(fill="x")
             self.entradas_filtros[key] = widget
             

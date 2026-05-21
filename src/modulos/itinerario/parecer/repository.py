@@ -29,26 +29,24 @@ class ParecerItinerarioRepository:
             return 1
 
     def salvar_parecer_no_banco(self, dados_db):
-        # 1. MODIFICAÇÃO: Inserção na tabela Base com tipo_id e caminho_arquivo
         query_base = """
             INSERT INTO common.pareceres_base (
                 numero_parecer_ano, ano, tipo_id, sistema_origem, caminho_arquivo, criado_por_id
             ) VALUES (
                 %(numero_parecer)s, EXTRACT(YEAR FROM CURRENT_DATE), 
-                (SELECT id FROM common.tipos WHERE contexto = 'DECISAO_PARECER' AND nome = %(tipo)s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE contexto = 'DECISAO_PARECER' AND nome ILIKE %(tipo)s LIMIT 1),
                 'Itinerário', %(caminho_arquivo)s,
                 (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1)
             ) RETURNING id;
         """
         
-        # 2. MODIFICAÇÃO: Inserção na tabela Filha com origem_id e data formatada (DATE)
         query_especifica = """
             INSERT INTO itinerario.pareceres (
                 id, origem_id, processo, assunto, evento, data_evento, periodo, 
                 endereco, solicitante, motivo_indeferimento
             ) VALUES (
                 %(id_base)s, 
-                (SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1),
+                (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
                 %(processo)s, %(assunto)s, %(evento)s, %(data_db)s, %(periodo)s,
                 %(endereco)s, %(solicitante)s, %(motivo)s
             );

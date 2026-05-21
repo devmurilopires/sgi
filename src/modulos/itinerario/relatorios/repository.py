@@ -66,21 +66,22 @@ class RelatoriosItinerarioRepository:
         doc_map = mapeamento[tipo_doc]
         for chave, valor in filtros.items():
             if valor and chave in doc_map:
-                query += f" AND COALESCE({doc_map[chave]}::text, '') ILIKE %s"
+                # SOLUÇÃO NATIVA: Busca inteligente ignorando acentos!
+                query += f" AND translate(lower(COALESCE({doc_map[chave]}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
                 params.append(f"%{valor}%")
 
-        # Filtros Especiais de N:M que exigem Subqueries no WHERE
+        # Filtros Especiais de N:M que exigem Subqueries no WHERE (Também ignorando acentos)
         if filtros.get("linhas"):
             term = f"%{filtros['linhas']}%"
             if tipo_doc == "PARECER":
-                query += " AND EXISTS (SELECT 1 FROM itinerario.pareceres_linhas pl JOIN common.linhas cl ON pl.linha_id = cl.id WHERE pl.parecer_id = p.id AND cl.codigo ILIKE %s)"
+                query += " AND EXISTS (SELECT 1 FROM itinerario.pareceres_linhas pl JOIN common.linhas cl ON pl.linha_id = cl.id WHERE pl.parecer_id = p.id AND translate(lower(cl.codigo), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc'))"
                 params.append(term)
             else:
-                query += " AND EXISTS (SELECT 1 FROM itinerario.os_linhas ol JOIN common.linhas cl ON ol.linha_id = cl.id WHERE ol.os_id = os.id AND cl.codigo ILIKE %s)"
+                query += " AND EXISTS (SELECT 1 FROM itinerario.os_linhas ol JOIN common.linhas cl ON ol.linha_id = cl.id WHERE ol.os_id = os.id AND translate(lower(cl.codigo), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc'))"
                 params.append(term)
                 
         if tipo_doc == "OS" and filtros.get("empresa"):
-            query += " AND EXISTS (SELECT 1 FROM itinerario.os_empresas oe JOIN common.empresas ce ON oe.empresa_id = ce.id WHERE oe.os_id = os.id AND ce.nome ILIKE %s)"
+            query += " AND EXISTS (SELECT 1 FROM itinerario.os_empresas oe JOIN common.empresas ce ON oe.empresa_id = ce.id WHERE oe.os_id = os.id AND translate(lower(ce.nome), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc'))"
             params.append(f"%{filtros['empresa']}%")
 
         col_data = "pb.created_at" if tipo_doc == "PARECER" else "os.data_emissao"

@@ -127,9 +127,11 @@ class OSItinerarioService:
             for linha in linhas:
                 codigos_linhas.append(linha.split(" - ")[0].strip() if " - " in linha else linha.strip())
 
-            # Mapeia para o singular para combinar com a tabela common.tipos
-            tipo_db_map = {"EVENTOS": "EVENTO", "CORRIDA": "CORRIDA", "OBRAS": "OBRA"}
-            tipo_evento_db = tipo_db_map.get(tipo_os, tipo_os)
+            # MODIFICAÇÃO: A nova modelagem usa os eventos específicos diretamente como TIPO_EVENTO_OS
+            if tipo_os == "EVENTOS":
+                tipo_evento_db = form_dados.get("evento", "")
+            else:
+                tipo_evento_db = tipo_os  # Mantém "CORRIDA" ou "OBRAS"
 
             dados_db = {
                 "num_os": num_os, 

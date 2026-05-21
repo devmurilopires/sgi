@@ -165,12 +165,12 @@ class ParecerItinerarioView(ctk.CTkFrame):
                 
         self.processo_entry.bind("<KeyRelease>", upper_processo_par)
 
-        # Solicitante DINÂMICO
-        self.solicitante_combo = self._criar_param_combo_grid(grid_master, "Solicitante", "Itinerário", "SOLICITANTE", 250, 0, 2)
+        # Solicitante DINÂMICO (Atualizado para a nova chave global)
+        self.solicitante_combo = self._criar_param_combo_grid(grid_master, "Solicitante", "Itinerário", "SOLICITANTE_PARECER", 250, 0, 2)
 
         # --- LINHA 1 ---
-        # Assunto DINÂMICO
-        self.assunto_combo = self._criar_param_combo_grid(grid_master, "Assunto", "Itinerário", "ASSUNTO", 250, 1, 0)
+        # Assunto DINÂMICO (Atualizado para a nova chave do Itinerário)
+        self.assunto_combo = self._criar_param_combo_grid(grid_master, "Assunto", "Itinerário", "ASSUNTO_ITINERARIO", 250, 1, 0)
         self.endereco_entry = self._criar_campo_grid(grid_master, "Endereço / Logradouro", 520, 1, 1, columnspan=2)
 
         # --- LINHA 2 ---
