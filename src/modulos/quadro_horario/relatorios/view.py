@@ -301,7 +301,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         self.dados_atuais = []
 
         self.lista_linhas = self.service.obter_linhas()
-        self.lista_tipos_pesq = ["Todos", "tempo", "demanda"]
+        
 
         if self.tipo_doc == "PESQUISA":
             self.colunas_config = {
@@ -356,20 +356,24 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
             if key == "tipo":
-                widget = ctk.CTkComboBox(f, values=self.lista_tipos_pesq, height=35)
+                if self.tipo_doc == "PESQUISA":
+                    # MODIFICAÇÃO: Busca os tipos de pesquisa (Demanda, Tempo de Viagem) direto do banco
+                    widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="PESQUISA", incluir_todos=True, height=35)
+                else:
+                    widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35)
                 widget.set("Todos")
+                
             elif key == "decisao":
                 widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35)
                 widget.set("Todos")
                 
-            # --- INTEGRAÇÃO DO CtkParametrosComboBox AQUI ---
+            # --- INTEGRAÇÃO DO CtkParametrosComboBox (CHAVES ATUALIZADAS) ---
             elif key == "assunto":
-                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="ASSUNTO", incluir_todos=True, height=35)
-                widget.set("Todos")
+                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="ASSUNTO_QUADRO_HORARIO", incluir_todos=True, height=35)
+                
             elif key == "solicitante":
-                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="SOLICITANTE", incluir_todos=True, height=35)
-                widget.set("Todos")
-            # ------------------------------------------------
+                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35)
+            # ----------------------------------------------------------------
                 
             elif key in ["titulo", "linhas"]: 
                 widget = Autocomplete(f, values=self.lista_linhas, width=250)

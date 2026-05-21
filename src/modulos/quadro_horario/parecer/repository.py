@@ -12,21 +12,6 @@ class ParecerQuadroHorarioRepository:
             print(f"[LOG DB] Erro ao buscar linhas: {e}")
             return []
         
-    def buscar_opcoes_dropdown(self, tipo_opcao):
-        try:
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    query = """
-                        SELECT valor 
-                        FROM common.parametros_sistema 
-                        WHERE categoria = %s AND is_ativo = true 
-                        ORDER BY valor;
-                    """
-                    cur.execute(query, (tipo_opcao,))
-                    return [r[0] for r in cur.fetchall()]
-        except Exception as e:
-            print(f"[LOG DB] Erro ao buscar opções de filtro: {e}")
-            return []
 
     def obter_proximo_numero_parecer(self):
         try:
@@ -45,34 +30,34 @@ class ParecerQuadroHorarioRepository:
             return 1
 
     def salvar_parecer_no_banco(self, dados_db):
-        # 1. MODIFICAÇÃO: Inserção na Base (tipo convertido por Subquery + caminho_arquivo)
+        # 1. MODIFICAÇÃO: Inserção na Base blindada com ILIKE
         query_base = """
             INSERT INTO common.pareceres_base (
                 numero_parecer_ano, ano, tipo_id, sistema_origem, caminho_arquivo, criado_por_id
             ) VALUES (
                 %(numero_parecer)s, EXTRACT(YEAR FROM CURRENT_DATE), 
-                (SELECT id FROM common.tipos WHERE contexto = 'DECISAO_PARECER' AND nome = %(tipo)s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE contexto = 'DECISAO_PARECER' AND nome ILIKE %(tipo)s LIMIT 1),
                 'Quadro de Horário', %(caminho_arquivo)s,
                 (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1)
             ) RETURNING id;
         """
         
-        # 2. MODIFICAÇÃO: Inserção Específica (origem convertida por Subquery + data formatada)
+        # 2. MODIFICAÇÃO: Inserção Específica (Origem blindada com ILIKE)
         query_especifica = """
             INSERT INTO quadro_horario.pareceres (
                 id, origem_id, processo, assunto, evento, data_evento, solicitante, motivo_indeferimento
             ) VALUES (
                 %(id_base)s,
-                (SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1),
+                (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
                 %(processo)s, %(assunto)s, %(evento)s, %(data_db)s,
                 %(solicitante)s, %(motivo)s
             );
         """
 
-        # 3. MODIFICAÇÃO: Inserção na Tabela de Associação N:M
+        # 3. MODIFICAÇÃO: Inserção na Tabela de Associação N:M (Código da Linha blindado com ILIKE)
         query_linha = """
             INSERT INTO quadro_horario.pareceres_linhas (parecer_id, linha_id)
-            SELECT %(id_base)s, id FROM common.linhas WHERE codigo = %(codigo)s LIMIT 1;
+            SELECT %(id_base)s, id FROM common.linhas WHERE codigo ILIKE %(codigo)s LIMIT 1;
         """
 
         try:

@@ -56,7 +56,8 @@ class RelatorioQuadroHorarioRepository:
         doc_map = mapeamento[tipo_doc]
         for chave, valor in filtros.items():
             if valor and chave in doc_map:
-                query += f" AND COALESCE({doc_map[chave]}::text, '') ILIKE %s"
+                # SOLUÇÃO NATIVA: Ignorando acentos e maiúsculas/minúsculas
+                query += f" AND translate(lower(COALESCE({doc_map[chave]}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
                 params.append(f"%{valor}%")
 
         # Tratamento especial para o filtro de Linhas (Relacionamento N:M)
@@ -64,12 +65,12 @@ class RelatorioQuadroHorarioRepository:
             query += """ AND EXISTS (
                 SELECT 1 FROM quadro_horario.pareceres_linhas pl 
                 JOIN common.linhas cl ON pl.linha_id = cl.id 
-                WHERE pl.parecer_id = p.id AND cl.codigo ILIKE %s
+                WHERE pl.parecer_id = p.id AND translate(lower(cl.codigo), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')
             )"""
             params.append(f"%{filtros['linhas']}%")
 
         if tipo_doc == "PESQUISA" and filtros.get("relatorios"):
-            query += " AND p.resultado_payload::text ILIKE %s"
+            query += " AND translate(lower(p.resultado_payload::text), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
             params.append(f"%{filtros['relatorios']}%")
 
         col_data = "b.created_at" if tipo_doc == "PARECER" else "p.created_at"
@@ -83,15 +84,6 @@ class RelatorioQuadroHorarioRepository:
         query += " ORDER BY id DESC"
         return query, params
     
-    def buscar_opcoes_dropdown(self, tipo_opcao):
-        try:
-            with get_db_connection() as conn:
-                with conn.cursor() as cur:
-                    query = "SELECT valor FROM common.parametros_sistema WHERE categoria = %s AND is_ativo = true ORDER BY valor;"
-                    cur.execute(query, (tipo_opcao,))
-                    return [r[0] for r in cur.fetchall()]
-        except Exception as e:
-            return []
 
     def buscar_dados_paginados(self, tipo_doc, filtros, limit=50, offset=0):
         query, params = self._construir_query_filtros(tipo_doc, filtros)

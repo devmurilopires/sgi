@@ -160,14 +160,14 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         f_sol.grid(row=1, column=0, padx=(0, 15), pady=(0, 20), sticky="ew")
         ctk.CTkLabel(f_sol, text="Solicitante:", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
         # Utilizando o novo componente dinâmico
-        self.solicitante_combo = CtkParametrosComboBox(f_sol, setor="Quadro de Horário", campo="SOLICITANTE", height=40, font=("Arial", 13))
+        self.solicitante_combo = CtkParametrosComboBox(f_sol, setor="Quadro de Horário", campo="SOLICITANTE_PARECER", height=40, font=("Arial", 13))
         self.solicitante_combo.pack(fill="x")
 
         f_ass = ctk.CTkFrame(self.form_frame, fg_color="transparent")
         f_ass.grid(row=1, column=1, padx=(15, 0), pady=(0, 20), sticky="ew")
         ctk.CTkLabel(f_ass, text="Assunto:", font=("Arial Bold", 13), text_color="#4B5563").pack(anchor="w", pady=(0, 5))
         # Utilizando o novo componente dinâmico
-        self.assunto_combo = CtkParametrosComboBox(f_ass, setor="Quadro de Horário", campo="ASSUNTO", height=40, font=("Arial", 13))
+        self.assunto_combo = CtkParametrosComboBox(f_ass, setor="Quadro de Horário", campo="ASSUNTO_QUADRO_HORARIO", height=40, font=("Arial", 13))
         self.assunto_combo.pack(fill="x")
 
         # --- LINHA 2: Linha Afetada (Esquerda) e Evento (Direita) ---

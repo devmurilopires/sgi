@@ -191,12 +191,6 @@ class RelatorioQuadroHorarioService:
 
     def obter_linhas(self): return self.repo.obter_linhas()
 
-    def buscar_opcoes_dropdown(self, tipo_opcao):
-        """
-        Solicita ao repositório a lista de opções para os comboboxes de filtro.
-        """
-        return self.repo.buscar_opcoes_dropdown(tipo_opcao)
-
     def abrir_documento(self, caminho):
         if not caminho or not os.path.exists(caminho):
             return False, "Arquivo não encontrado no diretório de rede."
