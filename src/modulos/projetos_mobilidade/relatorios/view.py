@@ -21,10 +21,10 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         self.entradas_filtros = {}
         self.dados_atuais = []
 
-        # ATUALIZADO: "numero_parecer_ano" virou "numero_completo"
+        # MODIFICAÇÃO: Inclusão da coluna "Origem" na estrutura da tabela e dos filtros
         self.colunas_config = {
             "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
-            "assunto": "Assunto", "decisao": "Decisão", 
+            "origem": "Origem", "assunto": "Assunto", "decisao": "Decisão", 
             "solicitante": "Solicitante", "responsavel": "Responsável", 
             "data_criacao": "Data Criação"
         }
@@ -43,8 +43,14 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         style.map("Modern.Treeview", background=[('selected', '#0F8C75')], foreground=[('selected', 'white')])
         style.map("Modern.Treeview.Heading", background=[('active', '#D1D5DB')])
 
+    def _criar_date_wrapper(self, parent, width):
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container.pack_propagate(False) 
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry.pack(fill="both", expand=True, padx=2, pady=2)
+        return container, date_entry
+
     def _construir_interface(self):
-        # --- TOPO (FILTROS) ---
         self.frame_top = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
         self.frame_top.pack(side="top", fill="x", padx=20, pady=(20, 10))
         
@@ -58,7 +64,7 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         self.grid_filtros = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         self.grid_filtros.pack(fill="x", padx=15, pady=5)
         
-        campos_ignorar = ["id", "data_criacao"]
+        campos_ignorar = ["id", "data_criacao", "responsavel"]
         row, col = 0, 0
         
         for key, label in self.colunas_config.items():
@@ -69,17 +75,15 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            if key == "assunto":
-                # Apontando para a chave global de Projetos de Mobilidade
+            # Geração inteligente de componentes via banco de dados
+            if key == "origem":
+                widget = CtkParametrosComboBox(f, setor="Projetos de Mobilidade", campo="ORIGEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
+            elif key == "assunto":
                 widget = CtkParametrosComboBox(f, setor="Projetos de Mobilidade", campo="ASSUNTO_PROJETOS_MOBILIDADE", incluir_todos=True, height=35, fg_color="#F9FAFB")
-            
             elif key == "solicitante":
-                # Apontando para a chave global unificada
                 widget = CtkParametrosComboBox(f, setor="Projetos de Mobilidade", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35, fg_color="#F9FAFB")
-            
             elif key == "decisao":
-                widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
+                widget = CtkParametrosComboBox(f, setor="Projetos de Mobilidade", campo="DECISAO_PARECER", incluir_todos=True, height=35, fg_color="#F9FAFB")
             else:
                 widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite...", border_color="#D1D5DB", fg_color="#F9FAFB")
             
@@ -89,18 +93,18 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
             col += 1
             if col > 3: col = 0; row += 1
 
-        f_data = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
-        f_data.grid(row=row, column=col, padx=10, pady=8, sticky="ew")
-        ctk.CTkLabel(f_data, text="Período (Início - Fim)", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
-        
-        f_data_inner = ctk.CTkFrame(f_data, fg_color="transparent")
-        f_data_inner.pack(fill="x")
-        self.date_ini = DateEntry(f_data_inner, width=12, background='#0F8C75', locale='pt_BR')
-        self.date_ini.set_date(date(date.today().year, 1, 1))
-        self.date_ini.pack(side="left")
-        ctk.CTkLabel(f_data_inner, text=" até ").pack(side="left", padx=5)
-        self.date_fim = DateEntry(f_data_inner, width=12, background='#0F8C75', locale='pt_BR')
-        self.date_fim.pack(side="left")
+        date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
+        date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
+        ctk.CTkLabel(date_inicio, text="Data Inicial:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        wrapper_ini, self.data_inicio = self._criar_date_wrapper(date_inicio, 250)
+        wrapper_ini.pack(anchor="w", pady=(2,0))
+
+        date_fim = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
+        date_fim.grid(row=row, column=col+1, padx=10, pady=8, sticky="w")
+        ctk.CTkLabel(date_fim, text="Data Final:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        wrapper_fim, self.data_fim = self._criar_date_wrapper(date_fim, 250)
+        wrapper_fim.pack(anchor="w", pady=(2,0))
+
 
         btn_busca = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         btn_busca.pack(fill="x", padx=20, pady=(5, 15))
@@ -139,9 +143,11 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
             if k == "assunto":
-                self.tree.column(k, width=350, anchor="w") 
+                self.tree.column(k, width=280, anchor="w") 
             elif k == "solicitante":
-                self.tree.column(k, width=180, anchor="w") 
+                self.tree.column(k, width=150, anchor="w") 
+            elif k == "origem":
+                self.tree.column(k, width=120, anchor="center") 
             else:
                 self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
@@ -173,8 +179,8 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
             val = v.get().strip()
             if val == "Todos": val = "" 
             filtros[k] = val
-        filtros["data_inicio"] = self.date_ini.get_date()
-        filtros["data_fim"] = self.date_fim.get_date()
+        filtros["data_inicio"] = self.data_inicio.get_date()
+        filtros["data_fim"] = self.data_fim.get_date()
         return filtros
 
     def _executar_busca_banco(self):
@@ -207,7 +213,6 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         if not dado: return
 
         modal = ctk.CTkToplevel(self)
-        # ATUALIZADO: Usando numero_completo no título
         modal.title(f"Visualização Detalhada - Parecer Nº {dado.get('numero_completo', '')}")
         modal.geometry("800x600")
         modal.grab_set()
@@ -226,7 +231,6 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         grid = ctk.CTkFrame(info_frame, fg_color="transparent")
         grid.pack(fill="x", padx=15, pady=15)
         
-        # ATUALIZADO: Removida a exceção para 'motivo_indeferimento' pois ele não existe mais
         campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id'] and v]
         
         for i in range(0, len(campos_exibir), 2):
@@ -239,8 +243,6 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
                 ctk.CTkLabel(grid, text=f"{lbl_key2}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row_idx, column=2, sticky="w", pady=8, padx=(0, 5))
                 ctk.CTkLabel(grid, text=str(campos_exibir[i+1][1]), font=("Arial", 12), wraplength=250, justify="left").grid(row=row_idx, column=3, sticky="w", pady=8)
             row_idx += 1
-
-        # ATUALIZADO: Bloco visual do "Motivo de Indeferimento" removido integralmente
 
         ctk.CTkButton(scroll, text="Fechar Janela", width=150, height=40, fg_color="#6B7280", hover_color="#4B5563", command=modal.destroy).pack(pady=30)
 
@@ -268,7 +270,8 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
 
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
-            if isinstance(widget, ctk.CTkComboBox): widget.set("Todos")
+            # MODIFICAÇÃO: Verifica de forma genérica o nosso componente base CtkParametrosComboBox
+            if isinstance(widget, CtkParametrosComboBox): widget.set("Todos")
             else: widget.delete(0, 'end')
         self.date_ini.set_date(date(date.today().year, 1, 1))
         self.date_fim.set_date(date.today())

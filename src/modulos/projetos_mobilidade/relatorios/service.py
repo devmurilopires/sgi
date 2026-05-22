@@ -40,21 +40,23 @@ class RelatorioProjetosMobilidadeService:
             elementos.append(Paragraph("Relatório Gerencial - Pareceres (Projetos de Mobilidade)", estilos['Title']))
             elementos.append(Spacer(1, 20))
 
-            cabecalho = ["Nº Parecer", "Processo", "Assunto", "Decisão", "Solicitante", "Data Criação"]
+            # MODIFICAÇÃO: Cabeçalho com 'Origem'
+            cabecalho = ["Nº Parecer", "Processo", "Origem", "Assunto", "Decisão", "Solicitante", "Data Criação"]
             dados_tabela = [cabecalho]
             
             for d in dados:
                 dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
                 dados_tabela.append([
-                    str(d.get('numero_completo', '')), # ATUALIZADO AQUI
+                    str(d.get('numero_completo', '')), 
                     str(d.get('processo', '')), 
-                    str(d.get('assunto', ''))[:40], 
+                    str(d.get('origem', '')),         # <-- NOVO DADO
+                    str(d.get('assunto', ''))[:35],   # Reduzido de 40 para 35 para caber a origem
                     str(d.get('decisao', '')), 
-                    str(d.get('solicitante', ''))[:25], 
+                    str(d.get('solicitante', ''))[:20], 
                     dt
                 ])
                 
-            col_widths = [80, 100, 240, 90, 150, 80]
+            col_widths = [80, 90, 100, 200, 80, 130, 80]
 
             tabela = Table(dados_tabela, colWidths=col_widths)
             tabela.setStyle(TableStyle([

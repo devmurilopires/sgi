@@ -27,24 +27,24 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         bloco1 = ctk.CTkFrame(self.scroll_frame, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E0E0E0")
         bloco1.pack(fill="x", pady=10, padx=10)
 
-        # Linha 1: Decisão e Processo
+        # Linha 1: Decisão, Origem e Processo
         row1 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row1.pack(fill="x", pady=(20, 10), padx=20)
 
-        self.tipo_parecer_var = ctk.StringVar(value="DEFERIDO")
-        self.tipo_parecer_var.trace_add("write", self._on_tipo_change) 
+        # MODIFICAÇÃO: "Tipo de Parecer" agora usa o componente do Banco de Dados
+        self.tipo_parecer_combo = self._criar_param_combo(row1, "Decisão", "Projetos de Mobilidade", "DECISAO_PARECER", width=200, command=self._on_tipo_change)
         
-        self._criar_combobox(row1, "Decisão do Parecer", self.tipo_parecer_var, ["DEFERIDO", "INDEFERIDO"], width=200, state="readonly")
-        
+        # MODIFICAÇÃO: Atribuindo à variável self.origem_combo para podermos ler com .get()
+        self.origem_combo = self._criar_param_combo(row1, "Origem do Processo", "Projetos de Mobilidade", "ORIGEM", width=200)
+
         self.processo_var = ctk.StringVar()
         self.processo_var.trace_add("write", self._formatar_processo)
         self._criar_entry(row1, "Nº do Processo", self.processo_var, width=400)
 
-        # Linha 2: Solicitante e Assunto (Componentes Inteligentes)
+        # Linha 2: Solicitante e Assunto
         row2 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row2.pack(fill="x", pady=(10, 20), padx=20)
 
-        # MODIFICAÇÃO: Apontando para as chaves exatas do banco SGI v2.2
         self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Projetos de Mobilidade", "SOLICITANTE_PARECER", width=350)
         self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Projetos de Mobilidade", "ASSUNTO_PROJETOS_MOBILIDADE", width=450)
 
@@ -72,24 +72,19 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
         ctk.CTkEntry(container, textvariable=variable, width=width, height=38, fg_color="#F9FAFB", border_color="#D1D5DB").pack(anchor="w", pady=(2,0))
 
-    def _criar_combobox(self, parent, label_text, variable, values, width, state="normal"):
+    # MODIFICAÇÃO: Helper atualizado para suportar callback 'command'
+    def _criar_param_combo(self, parent, label_text, setor, campo, width, command=None):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side="left", padx=10, fill="x")
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = ctk.CTkComboBox(container, variable=variable, values=values, width=width, height=38, state=state, fg_color="#F9FAFB", border_color="#D1D5DB")
-        combo.pack(anchor="w", pady=(2,0))
-
-    def _criar_param_combo(self, parent, label_text, setor, campo, width):
-        container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(side="left", padx=10, fill="x")
-        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=38, fg_color="#F9FAFB")
+        combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=38, fg_color="#F9FAFB", command=command)
         combo.pack(anchor="w", pady=(2,0))
         return combo
 
     # --- LÓGICAS DE INTERFACE ---
     def _on_tipo_change(self, *args):
-        if self.tipo_parecer_var.get() == "INDEFERIDO":
+        # Validação blindada lendo direto do componente
+        if self.tipo_parecer_combo.get().upper() == "INDEFERIDO":
             self.frame_motivo.pack(fill="x", pady=10, padx=10, before=self.scroll_frame.winfo_children()[-1])
             self.btn_gerar.configure(fg_color="#C21010", hover_color="#9E0D0D")
         else:
@@ -105,17 +100,18 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
     # --- AÇÃO PRINCIPAL ---
     def _acao_gerar_parecer(self):
         dados_form = {
-            'tipo': self.tipo_parecer_var.get(),
+            'tipo': self.tipo_parecer_combo.get().strip(),
+            'origem': self.origem_combo.get().strip(), # Coletando a Origem
             'processo': self.processo_var.get().strip(),
             'solicitante': self.solicitante_combo.get().strip(),
             'assunto': self.assunto_combo.get().strip(),
             'motivo': self.motivo_text.get("1.0", "end").strip()
         }
 
-        if not all([dados_form['processo'], dados_form['solicitante'], dados_form['assunto']]):
-            return messagebox.showwarning("Aviso", "Por favor, preencha Processo, Solicitante e Assunto.")
+        if not all([dados_form['processo'], dados_form['origem'], dados_form['solicitante'], dados_form['assunto']]):
+            return messagebox.showwarning("Aviso", "Por favor, preencha Processo, Origem, Solicitante e Assunto.")
 
-        if dados_form['tipo'] == "INDEFERIDO" and not dados_form['motivo']:
+        if dados_form['tipo'].upper() == "INDEFERIDO" and not dados_form['motivo']:
             return messagebox.showwarning("Aviso", "É obrigatório informar o Motivo para pareceres Indeferidos.")
 
         sucesso, msg = self.service.processar_geracao_parecer(dados_form, self.usuario_logado)
@@ -128,10 +124,11 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
 
     def _limpar_formulario(self):
         self.processo_var.set("")
+        self.origem_combo.set("")
         self.solicitante_combo.set("")
         self.assunto_combo.set("")
         self.motivo_text.delete("1.0", "end")
-        self.tipo_parecer_var.set("DEFERIDO")
+        self.tipo_parecer_combo.set("DEFERIDO")
 
 def renderizar(frame_destino, usuario_logado):
     return ParecerProjetosMobilidadeView(master=frame_destino, usuario_logado=usuario_logado)

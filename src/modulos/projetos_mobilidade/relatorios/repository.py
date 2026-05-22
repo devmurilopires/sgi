@@ -3,21 +3,26 @@ from config.database import get_db_connection
 
 class RelatorioProjetosMobilidadeRepository:
     def _construir_query_filtros(self, filtros):
+        # MODIFICAÇÃO: Adicionado o campo o.nome AS origem e o LEFT JOIN com common.origens
         query = """
             SELECT p.id, 
                    pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
-                   p.processo, p.assunto, t.nome AS decisao, p.solicitante, 
+                   p.processo, 
+                   o.nome AS origem, 
+                   p.assunto, t.nome AS decisao, p.solicitante, 
                    pb.created_at AS data_criacao, u.nome_completo AS responsavel
             FROM projetos_mobilidade.pareceres p
             JOIN common.pareceres_base pb ON p.id = pb.id
             LEFT JOIN common.tipos t ON pb.tipo_id = t.id
+            LEFT JOIN common.origens o ON p.origem_id = o.id
             LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
             WHERE 1=1
         """
         params = []
-        # Mapeamento para os campos que aceitam filtro
+        # MODIFICAÇÃO: Inclusão do filtro de Origem
         mapeamento = {
             "processo": "p.processo", 
+            "origem": "o.nome",
             "assunto": "p.assunto",
             "decisao": "t.nome", 
             "solicitante": "p.solicitante"
@@ -69,8 +74,6 @@ class RelatorioProjetosMobilidadeRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # Devido ao ON DELETE CASCADE na tabela filha, 
-                    # basta excluir na tabela base e o banco de dados limpa a filha automaticamente!
                     cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     conn.commit()
                     return True, "Parecer excluído com sucesso do banco de dados."
