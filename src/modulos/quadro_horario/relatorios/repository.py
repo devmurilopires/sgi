@@ -5,11 +5,11 @@ from config.database import get_db_connection
 class RelatorioQuadroHorarioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
-            # MODIFICAÇÃO: Ajuste de JOINs com common.tipos, common.usuarios e concatenação de Linhas (N:M)
+            # MODIFICAÇÃO: Adicionado o campo "o.nome AS origem" e o LEFT JOIN
             query = """
                 SELECT p.id, 
                        b.numero_parecer_ano::text || '/' || b.ano::text AS numero_completo, 
-                       p.processo, p.assunto, 
+                       p.processo, o.nome AS origem, p.assunto, 
                        t.nome AS decisao, p.solicitante, p.evento, 
                        (SELECT string_agg(cl.codigo, ', ') 
                         FROM quadro_horario.pareceres_linhas pl 
@@ -21,11 +21,11 @@ class RelatorioQuadroHorarioRepository:
                 FROM quadro_horario.pareceres p
                 JOIN common.pareceres_base b ON p.id = b.id
                 LEFT JOIN common.tipos t ON b.tipo_id = t.id
+                LEFT JOIN common.origens o ON p.origem_id = o.id
                 LEFT JOIN common.usuarios u ON b.criado_por_id = u.id 
                 WHERE 1=1
             """
         else: # PESQUISA
-            # MODIFICAÇÃO: Ajuste de JOINs e renomeação de colunas (resultado_payload, data_pesquisa)
             query = """
                 SELECT p.id, 
                        l.codigo || ' - ' || l.nome AS titulo, 
@@ -43,9 +43,10 @@ class RelatorioQuadroHorarioRepository:
             """
 
         params = []
+        # MODIFICAÇÃO: Mapeamento "origem" incluído
         mapeamento = {
             "PARECER": {
-                "processo": "p.processo", "assunto": "p.assunto", "decisao": "t.nome",
+                "processo": "p.processo", "origem": "o.nome", "assunto": "p.assunto", "decisao": "t.nome",
                 "solicitante": "p.solicitante", "responsavel": "u.nome_completo"
             },
             "PESQUISA": {
@@ -56,11 +57,9 @@ class RelatorioQuadroHorarioRepository:
         doc_map = mapeamento[tipo_doc]
         for chave, valor in filtros.items():
             if valor and chave in doc_map:
-                # SOLUÇÃO NATIVA: Ignorando acentos e maiúsculas/minúsculas
                 query += f" AND translate(lower(COALESCE({doc_map[chave]}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
                 params.append(f"%{valor}%")
 
-        # Tratamento especial para o filtro de Linhas (Relacionamento N:M)
         if tipo_doc == "PARECER" and filtros.get("linhas"):
             query += """ AND EXISTS (
                 SELECT 1 FROM quadro_horario.pareceres_linhas pl 
@@ -84,7 +83,6 @@ class RelatorioQuadroHorarioRepository:
         query += " ORDER BY id DESC"
         return query, params
     
-
     def buscar_dados_paginados(self, tipo_doc, filtros, limit=50, offset=0):
         query, params = self._construir_query_filtros(tipo_doc, filtros)
         query += " LIMIT %s OFFSET %s"
@@ -113,7 +111,6 @@ class RelatorioQuadroHorarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # Resolve ID do usuário pela string do nome (caso a View passe apenas o nome)
                     cur.execute("SELECT id FROM common.usuarios WHERE nome_completo = %s LIMIT 1", (excluido_por,))
                     usr = cur.fetchone()
                     excluido_por_id = usr[0] if usr else None
@@ -123,7 +120,6 @@ class RelatorioQuadroHorarioRepository:
                         linha = cur.fetchone()
                         numero = linha[0] if linha else registro_id
                         cur.execute("INSERT INTO common.lixeira (modulo, numero, motivo, excluido_por_id, data_exclusao) VALUES ('PARECER_quadro_horario', %s, %s, %s, NOW())", (numero, motivo, excluido_por_id))
-                        # Deletar da base aciona ON DELETE CASCADE nas filhas
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     else:
                         cur.execute("SELECT row_to_json(p) FROM quadro_horario.pesquisas p WHERE id = %s", (registro_id,))

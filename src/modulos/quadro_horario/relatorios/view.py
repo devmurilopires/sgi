@@ -302,21 +302,19 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
 
         self.lista_linhas = self.service.obter_linhas()
         
-
         if self.tipo_doc == "PESQUISA":
             self.colunas_config = {
-                "id": "ID", 
-                "titulo": "Linha", 
-                "tipo": "Tipo", 
-                "relatorios": "Relatórios Utilizados", 
-                "responsavel": "Criador", 
+                "id": "ID", "titulo": "Linha", "tipo": "Tipo", 
+                "relatorios": "Relatórios Utilizados", "responsavel": "Criador", 
                 "data_criacao": "Data Criação"
             }
         else:
+            # MODIFICAÇÃO: "Origem" inserida logo após o processo!
             self.colunas_config = {
                 "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
-                "assunto": "Assunto", "decisao": "Decisão", "solicitante": "Solicitante", 
-                "linhas": "Linhas", "responsavel": "Responsável", "data_criacao": "Data Criação"
+                "origem": "Origem", "assunto": "Assunto", "decisao": "Decisão", 
+                "solicitante": "Solicitante", "linhas": "Linhas", 
+                "responsavel": "Responsável", "data_criacao": "Data Criação"
             }
 
         self._configurar_estilos()
@@ -329,6 +327,14 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         style.configure("Modern.Treeview", background="#FFFFFF", fieldbackground="#FFFFFF", rowheight=60, font=("Arial", 11), borderwidth=0)
         style.configure("Modern.Treeview.Heading", font=("Arial Bold", 11), background="#E9ECEF", foreground="#333333", borderwidth=0, padding=(0, 5))
         style.map("Modern.Treeview", background=[('selected', '#0F8C75')], foreground=[('selected', 'white')])
+
+    # Helper Wrapper Importado do Projetos de Mobilidade
+    def _criar_date_wrapper(self, parent, width):
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container.pack_propagate(False) 
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry.pack(fill="both", expand=True, padx=2, pady=2)
+        return container, date_entry
 
     def _construir_interface(self):
         self.frame_top = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
@@ -357,24 +363,22 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             
             if key == "tipo":
                 if self.tipo_doc == "PESQUISA":
-                    # MODIFICAÇÃO: Busca os tipos de pesquisa (Demanda, Tempo de Viagem) direto do banco
                     widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="PESQUISA", incluir_todos=True, height=35)
                 else:
-                    widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35)
+                    widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="DECISAO_PARECER", incluir_todos=True, height=35)
                 widget.set("Todos")
-                
+            elif key == "origem": # NOVO FILTRO DINÂMICO
+                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="ORIGEM", incluir_todos=True, height=35)
+                widget.set("Todos")
             elif key == "decisao":
-                widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35)
+                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="DECISAO_PARECER", incluir_todos=True, height=35)
                 widget.set("Todos")
-                
-            # --- INTEGRAÇÃO DO CtkParametrosComboBox (CHAVES ATUALIZADAS) ---
             elif key == "assunto":
-                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="ASSUNTO_QUADRO_HORARIO", incluir_todos=True, height=35)
-                
+                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="ASSUNTO_QUADRO_HORARIO", incluir_todos=True, height=35) 
+                widget.set("Todos")
             elif key == "solicitante":
                 widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35)
-            # ----------------------------------------------------------------
-                
+                widget.set("Todos")
             elif key in ["titulo", "linhas"]: 
                 widget = Autocomplete(f, values=self.lista_linhas, width=250)
                 widget.bind("<<AutocompleteSelected>>", lambda e: self.acao_buscar())
@@ -387,22 +391,24 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             col += 1
             if col > 3: col = 0; row += 1
 
-        f_data = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
-        f_data.grid(row=row, column=col, padx=10, pady=8, sticky="ew")
-        ctk.CTkLabel(f_data, text="Criação (De/Até)", font=("Arial Bold", 11)).pack(anchor="w")
-        
-        f_data_inner = ctk.CTkFrame(f_data, fg_color="transparent")
-        f_data_inner.pack(fill="x")
-        self.date_ini = DateEntry(f_data_inner, width=11, background='#0F8C75', locale='pt_BR')
+        # MODIFICAÇÃO: Wrapper elegante de Data adicionado!
+        date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
+        date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
+        ctk.CTkLabel(date_inicio, text="Data Criação Inicial:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
+        wrapper_ini, self.date_ini = self._criar_date_wrapper(date_inicio, 150)
+        wrapper_ini.pack(anchor="w", pady=(2,0))
         self.date_ini.set_date(date(date.today().year, 1, 1))
-        self.date_ini.pack(side="left")
-        self.date_fim = DateEntry(f_data_inner, width=11, background='#0F8C75', locale='pt_BR')
-        self.date_fim.pack(side="right")
+
+        date_fim = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
+        date_fim.grid(row=row, column=col+1, padx=10, pady=8, sticky="w")
+        ctk.CTkLabel(date_fim, text="Data Criação Final:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
+        wrapper_fim, self.date_fim = self._criar_date_wrapper(date_fim, 150)
+        wrapper_fim.pack(anchor="w", pady=(2,0))
 
         btn_busca = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         btn_busca.pack(fill="x", padx=20, pady=(5, 15))
-        ctk.CTkButton(btn_busca, text="🔍 Buscar", width=120, fg_color="#0F8C75", command=self.acao_buscar).pack(side="left", padx=5)
-        ctk.CTkButton(btn_busca, text="🧹 Limpar", width=100, fg_color="transparent", text_color="#666", border_width=1, command=self._limpar_filtros).pack(side="left")
+        ctk.CTkButton(btn_busca, text="🔍 Buscar", font=("Arial Bold", 13), width=120, height=35, fg_color="#0F8C75", command=self.acao_buscar).pack(side="left", padx=5)
+        ctk.CTkButton(btn_busca, text="🧹 Limpar Filtros", font=("Arial", 13), width=120, height=35, fg_color="transparent", text_color="#666", border_width=1, command=self._limpar_filtros).pack(side="left")
 
         self.frame_bottom = ctk.CTkFrame(self, fg_color="transparent")
         self.frame_bottom.pack(side="bottom", fill="x", padx=20, pady=(5, 20))
@@ -421,7 +427,8 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
             if k == "relatorios": self.tree.column(k, width=180, anchor="w") 
-            elif k in ["titulo", "assunto"]: self.tree.column(k, width=320, anchor="w")
+            elif k in ["titulo", "assunto"]: self.tree.column(k, width=250, anchor="w")
+            elif k == "origem": self.tree.column(k, width=100, anchor="center")
             else: self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
         
@@ -491,10 +498,12 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         for key, widget in self.entradas_filtros.items():
             if isinstance(widget, Autocomplete):  
                 widget.set("")
-            elif isinstance(widget, ctk.CTkComboBox): 
+            elif isinstance(widget, CtkParametrosComboBox): 
                 widget.set("Todos")
             else: 
                 widget.delete(0, 'end')
+        self.date_ini.set_date(date(date.today().year, 1, 1))
+        self.date_fim.set_date(date.today())
         self.acao_buscar()
 
 def renderizar(frame_destino, usuario_logado, tipo_relatorio):
