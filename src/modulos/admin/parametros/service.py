@@ -31,22 +31,26 @@ class ParametrosService:
         if c_key in ["ORIGEM", "ORIGEM_DEMANDA"]:
             return {"tabela": "common.origens", "col_ctx": None, "val_ctx": None, "col_val": "nome"}
 
-        # 2. TIPOS ESTRUTURAIS (Corrigido e Expandido com base no seu Banco)
+        # No método obter_roteamento da classe ParametrosService...
         map_tipos = {
             "ACAO_OS": "ACAO_OS", 
+            "MODELO_OS": "MODELO_OS",
             "ITEM_URBMIDIA": "ITEM_URBMIDIA",
             "ITEM_MCMENSAGEM": "ITEM_MCMENSAGEM",
-            "ITEM_MOBILIARIO": "ITEM_MOBILIARIO",  # Adicionado
-            "PESQUISA": "PESQUISA",                # Adicionado
+            "ITEM_MOBILIARIO": "ITEM_MOBILIARIO",  
+            "PESQUISA": "PESQUISA",                
             "TIPO_OS": "TIPO_OS",
-            "TIPO_EVENTO_OS": "TIPO_EVENTO_OS"
+            "TIPO_EVENTO_OS": "TIPO_EVENTO_OS",
+            "STATUS_OS": "STATUS_OS",              
+            "DECISAO_PARECER": "PARECER"
         }
-        # REMOVIDO: "EVENTO" não fica mais aqui para não buscar na tabela errada!
         
         if c_key in map_tipos:
             return {"tabela": "common.tipos", "col_ctx": "contexto", "val_ctx": map_tipos[c_key], "col_val": "nome"}
-
-        # 3. TEXTOS SIMPLES (Tabela parametros_sistema)
+        if c_key == "ITEM_GLOBAL":
+            return {"tabela": "common.tipos", "col_ctx": "contexto IN ('ITEM_URBMIDIA', 'ITEM_MCMENSAGEM', 'ITEM_MOBILIARIO') AND is_ativo", "val_ctx": True, "col_val": "nome"}
+        if c_key in map_tipos:
+            return {"tabela": "common.tipos", "col_ctx": "contexto", "val_ctx": map_tipos[c_key], "col_val": "nome"}
         if c_key == "SOLICITANTE_PARECER":
             return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": "SOLICITANTE_PARECER", "col_val": "valor"}
         if c_key == "ASSUNTO_PARECER":

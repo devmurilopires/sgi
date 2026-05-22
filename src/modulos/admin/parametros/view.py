@@ -13,10 +13,13 @@ class AdminParametrosView:
         
         self.config_map = {
             "Ponto de Parada": {
+                "MODELO_OS": "Modelo da OS",
                 "ACAO_OS": "Ação da OS",
+                "STATUS_OS": "Status da OS",              # <-- NOVO
+                "DECISAO_PARECER": "Decisões de Parecer",   # <-- NOVO
                 "ITEM_URBMIDIA": "Itens (Urbmídia)",
                 "ITEM_MCMENSAGEM": "Itens (McMensagem)",
-                "ITEM_MOBILIARIO": "Itens (Mobiliário)", # NOVO
+                "ITEM_MOBILIARIO": "Itens (Mobiliário)",
                 "ORIGEM_DEMANDA": "Origem da Demanda",
                 "SOLICITANTE_PARECER": "Solicitante",
                 "ASSUNTO_PARECER": "Assunto"
@@ -24,9 +27,12 @@ class AdminParametrosView:
             "Itinerário": {
                 "ORIGEM": "Origem",
                 "TIPO_OS": "Tipo da OS",
-                "EVENTO": "Lista de Eventos", # Agora vai carregar perfeitamente!
+                "EVENTO": "Lista de Eventos",
                 "SOLICITANTE_PARECER": "Solicitante",
-                "ASSUNTO_ITINERARIO": "Assunto"
+                "ASSUNTO_ITINERARIO": "Assunto",
+                "DECISAO_PARECER": "Decisões de Parecer", # <--- NOVO (Para gerenciar Deferido/Indeferido)
+                "SELECAO_DATA": "Modo de Data",
+                "HORARIO": "Horários do Sistema"
             },
             "Quadro de Horário": {
                 "ORIGEM": "Origem",
@@ -37,7 +43,8 @@ class AdminParametrosView:
             },
             "Projetos de Mobilidade": {
                 "SOLICITANTE_PARECER": "Solicitante",
-                "ASSUNTO_PROJETOS_MOBILIDADE": "Assunto"
+                "ASSUNTO_PROJETOS_MOBILIDADE": "Assunto",
+                "ORIGEM": "Origem"
             }
         }
         
