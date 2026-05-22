@@ -13,13 +13,6 @@ except ImportError:
 class ParecerService:
     def __init__(self):
         self.repo = ParecerRepository()
-
-    # NOVAS FUNÇÕES: Buscam dinamicamente as listas para popular a interface
-    def obter_assuntos(self):
-        return self.repo.buscar_parametro_generico('ASSUNTO_PARECER')
-
-    def obter_solicitantes(self):
-        return self.repo.buscar_parametro_generico('SOLICITANTE_PARECER')
     
     def obter_itens(self):
         return self.repo.buscar_todos_itens()
@@ -67,7 +60,8 @@ class ParecerService:
         except Exception as e:
             return False, str(e)
 
-        modelo = resource_path(os.path.join("dados", "modelo_deferido_pp.docx")) if tipo_parecer == "Deferido" else resource_path(os.path.join("dados", "modelo_indeferido_pp.docx"))
+        is_deferido = tipo_parecer.upper() == "DEFERIDO"
+        modelo = resource_path(os.path.join("dados", "modelo_deferido_pp.docx")) if is_deferido else resource_path(os.path.join("dados", "modelo_indeferido_pp.docx"))
         
         if not os.path.exists(modelo):
             return False, f"Modelo Word não encontrado em: {modelo}"

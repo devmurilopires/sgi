@@ -24,11 +24,16 @@ class OSView(ctk.CTkFrame):
 
         ctk.CTkLabel(header_frame, text="Gerador de Ordem de Serviço", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
         
-        # MODIFICAÇÃO: Criação do ComboBox do "Modelo" que guiará as opções de item
-        self.modelo_var = ctk.StringVar(value="Urbmídia")
-        self.modelo_combo = ctk.CTkComboBox(header_frame, variable=self.modelo_var, values=["Urbmídia", "McMensagem"], command=self.ao_mudar_modelo)
+        self.modelo_combo = CtkParametrosComboBox(
+            header_frame, 
+            setor="Ponto de Parada", 
+            campo="MODELO_OS", 
+            width=150,
+            command=self.ao_mudar_modelo
+        )
         self.modelo_combo.pack(side="right", padx=10)
-        ctk.CTkLabel(header_frame, text="Modelo:", font=("Arial Bold", 14)).pack(side="right", padx=10)
+        
+        ctk.CTkLabel(header_frame, text="Modelo:", font=("Arial Bold", 14)).pack(side="right", padx=5)
 
         # --- FORMULÁRIO ---
         form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
@@ -40,9 +45,7 @@ class OSView(ctk.CTkFrame):
 
         self.origem_combo = self._criar_param_combo(row1, "Origem da Demanda", "Ponto de Parada", "ORIGEM_DEMANDA", width=250, side="left")
         self.tipo_os_combo = self._criar_param_combo(row1, "Ação da OS", "Ponto de Parada", "ACAO_OS", width=250, side="left")
-        
-        # MODIFICAÇÃO: Tipo de Item passa a ser um ComboBox normal para ser alimentado dinamicamente via Cascading Dropdown
-        self.tipo_item_combo = self._criar_combobox(row1, "Tipo de Item", 250, [], side="left")
+        self.tipo_item_combo = self._criar_param_combo(row1, "Tipo de Item", "Ponto de Parada", "ITEM_URBMIDIA", width=250, side="left")
 
         # Linha 2: ID do Ponto e Botões de Pesquisa
         self.id_entry = self._criar_campo(row1, "ID do Ponto", width=250, side="left")
@@ -78,8 +81,7 @@ class OSView(ctk.CTkFrame):
 
         ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color="#0F8C75", font=("Arial Bold", 16), height=50, width=300, command=self.acao_criar_os).pack(side="right", padx=10)
 
-        # Inicializa a cascata com o valor padrão do combo
-        self.ao_mudar_modelo(self.modelo_var.get())
+        self.ao_mudar_modelo(self.modelo_combo.get())
 
     # --- UTILITÁRIOS VISUAIS ---
     def _criar_campo(self, parent, label_text, width, side="top"):
@@ -199,7 +201,7 @@ class OSView(ctk.CTkFrame):
             'complemento': self.complemento_entry.get().upper()
         }
         
-        modelo_operacao = self.modelo_var.get()
+        modelo_operacao = self.modelo_combo.get()
         doc_template = "dados/modelo_etufor_mcmensagem_pp.docx" if modelo_operacao == "McMensagem" else "dados/modelo_etufor_prxparada_pp.docx"
 
         sucesso, mensagem = self.service.processar_criacao_os(

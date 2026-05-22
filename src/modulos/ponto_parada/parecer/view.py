@@ -30,10 +30,15 @@ class ParecerView(ctk.CTkFrame):
 
         self.origem_combo = self._criar_param_combo(row1, "Origem", "Ponto de Parada", "ORIGEM_DEMANDA", width=130)
 
-        self.tipo_parecer_var = ctk.StringVar(value="Deferido")
-        self.tipo_parecer_var.trace_add("write", self._atualizar_campos) 
-        
-        self._criar_combobox(row1, "Tipo do Parecer", self.tipo_parecer_var, ["Deferido", "Indeferido"], width=200, state="readonly")
+        self.tipo_parecer_combo = self._criar_param_combo(
+            row1, 
+            "Tipo do Parecer", 
+            "Ponto de Parada", 
+            "DECISAO_PARECER", 
+            width=200, 
+            command=self._atualizar_campos
+        )
+        self.tipo_parecer_combo.set("Deferido")
         
         self.processo_var = ctk.StringVar()
         self.processo_var.trace_add("write", self._converter_maiusculas)
@@ -42,17 +47,11 @@ class ParecerView(ctk.CTkFrame):
         row2 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row2.pack(fill="x", pady=(5, 15), padx=15)
 
-        # MODIFICAÇÃO: Busca dinâmica de Solicitantes direto do banco genérico
-        lista_solicitantes = self.service.obter_solicitantes()
-        if not lista_solicitantes: lista_solicitantes = ["Nenhum solicitante cadastrado"]
-        self.solicitante_var = ctk.StringVar(value=lista_solicitantes[0])
-        self._criar_combobox(row2, "Solicitante", self.solicitante_var, lista_solicitantes, width=350)
+        # MODIFICAÇÃO: Solicitante agora busca nativamente e diretamente do banco (Modo Banco de Dados)
+        self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Ponto de Parada", "SOLICITANTE_PARECER", width=350)
 
-        # MODIFICAÇÃO: Busca dinâmica de Assuntos direto do banco genérico (substituindo a lista gigante de texto)
-        lista_assuntos = self.service.obter_assuntos()
-        if not lista_assuntos: lista_assuntos = ["Nenhum assunto cadastrado"]
-        self.assunto_var = ctk.StringVar(value=lista_assuntos[0])
-        self._criar_combobox(row2, "Assunto", self.assunto_var, lista_assuntos, width=450)
+        # MODIFICAÇÃO: Assunto agora busca nativamente e diretamente do banco (Modo Banco de Dados)
+        self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Ponto de Parada", "ASSUNTO_PARECER", width=450)
 
         bloco2 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         bloco2.pack(fill="x", pady=10, padx=10)
@@ -61,11 +60,12 @@ class ParecerView(ctk.CTkFrame):
         row3.pack(fill="x", pady=(15, 5), padx=15)
 
         self.acao_combo = self._criar_param_combo(row3, "Ação", "Ponto de Parada", "ACAO_OS", width=500)
-        # Busca os itens dos dois modelos juntos e joga no combobox
+        
+        # MODIFICAÇÃO: "Tipo de Item" usa componente moderno em Modo Estático, pois precisamos juntar as duas listas!
         lista_itens = self.service.obter_itens()
         if not lista_itens: lista_itens = ["Nenhum item cadastrado"]
-        self.item_var = ctk.StringVar(value=lista_itens[0])
-        self._criar_combobox(row3, "Tipo de Item", self.item_var, lista_itens, width=300)
+        self.item_combo = self._criar_combobox(row3, "Tipo de Item", lista_itens, width=300)
+        self.item_combo.set(lista_itens[0])
 
         row4 = ctk.CTkFrame(bloco2, fg_color="transparent")
         row4.pack(fill="x", pady=(5, 15), padx=15)
@@ -109,23 +109,27 @@ class ParecerView(ctk.CTkFrame):
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
         ctk.CTkEntry(container, textvariable=variable, width=width, height=35).pack(anchor="w", pady=(2,0))
 
-    def _criar_combobox(self, parent, label_text, variable, values, width, state="normal"):
+    # MODIFICAÇÃO: Helper estático agora usa CtkParametrosComboBox
+    def _criar_combobox(self, parent, label_text, values, width, command=None):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side="left", padx=10, fill="x")
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = ctk.CTkComboBox(container, variable=variable, values=values, width=width, height=35, state=state)
-        combo.pack(anchor="w", pady=(2,0))
-
-    def _criar_param_combo(self, parent, label_text, setor, campo, width):
-        container = ctk.CTkFrame(parent, fg_color="transparent")
-        container.pack(side="left", padx=10, fill="x")
-        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=35)
+        combo = CtkParametrosComboBox(container, values=values, width=width, height=35, command=command)
         combo.pack(anchor="w", pady=(2,0))
         return combo
 
-    def _atualizar_campos(self, *args):
-        if self.tipo_parecer_var.get() == "Indeferido":
+    def _criar_param_combo(self, parent, label_text, setor, campo, width, command=None):
+        container = ctk.CTkFrame(parent, fg_color="transparent")
+        container.pack(side="left", padx=10, fill="x")
+        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        # Passa o comando diretamente para o construtor do componente moderno
+        combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=35, command=command)
+        combo.pack(anchor="w", pady=(2,0))
+        return combo
+
+    def _atualizar_campos(self, escolha=None):
+        # Validação blindada em caixa alta para interceptar o 'INDEFERIDO' do banco
+        if self.tipo_parecer_combo.get().upper() == "INDEFERIDO":
             self.frame_motivo.pack(fill="x", pady=10, padx=10, before=self.scroll_frame.winfo_children()[-1])
         else:
             self.frame_motivo.pack_forget()
@@ -175,15 +179,12 @@ class ParecerView(ctk.CTkFrame):
     def _acao_gerar_parecer(self):
         dados_form = {
             'origem': self.origem_combo.get(),
-            'tipo': self.tipo_parecer_var.get(),
+            'tipo': self.tipo_parecer_combo.get(),
             'processo': self.processo_var.get().strip(),
-            
-            # MODIFICAÇÃO: Acessando via _var para pegar o texto do combobox atualizado
-            'assunto': self.assunto_var.get().strip(),
-            'solicitante': self.solicitante_var.get().strip(),
-            
+            'assunto': self.assunto_combo.get().strip(),
+            'solicitante': self.solicitante_combo.get().strip(),
             'tipo_execucao': self.acao_combo.get().strip(),
-            'item': self.item_var.get().strip(),
+            'item': self.item_combo.get().strip(),
             'endereco': self.endereco_var.get().strip(),
             'motivo': self.entry_motivo.get("1.0", "end").strip(),
             'quantidade': self.quantidade_var.get().strip()

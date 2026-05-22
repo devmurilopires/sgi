@@ -2,18 +2,6 @@ import psycopg2
 from config.database import get_db_connection
 
 class ParecerRepository:
-    
-    # NOVA FUNÇÃO: Executa a busca na tabela de parâmetros genéricos (SGI v2.2)
-    def buscar_parametro_generico(self, categoria):
-        query = "SELECT valor FROM common.parametros_sistema WHERE categoria = %s ORDER BY valor;"
-        try:
-            with get_db_connection() as conn:
-                with conn.cursor() as cursor:
-                    cursor.execute(query, (categoria,))
-                    return [row[0] for row in cursor.fetchall()]
-        except Exception as e:
-            print(f"[LOG DB] Erro ao buscar parâmetro {categoria}: {e}")
-            return []
 
     def obter_proximo_numero(self, ano):
         query = "SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 FROM common.pareceres_base WHERE ano = %s AND sistema_origem = 'Ponto de Parada'"

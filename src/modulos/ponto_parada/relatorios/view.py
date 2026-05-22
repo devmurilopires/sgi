@@ -55,6 +55,14 @@ class RelatorioView(ctk.CTkFrame):
         style.map("Modern.Treeview", background=[('selected', '#0F8C75')], foreground=[('selected', 'white')])
         style.map("Modern.Treeview.Heading", background=[('active', '#D1D5DB')])
 
+    # MODIFICAÇÃO: Helper Wrapper de Datas importado para manter o padrão elegante
+    def _criar_date_wrapper(self, parent, width):
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container.pack_propagate(False) 
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry.pack(fill="both", expand=True, padx=2, pady=2)
+        return container, date_entry
+
     def _construir_interface(self):
         # --- 1. TOPO (FILTROS) ---
         self.frame_top = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
@@ -81,36 +89,21 @@ class RelatorioView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
+            # GERAÇÃO INTELIGENTE DE FILTROS COM COMPONENTE MODERNO
             if key == "origem":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35)
             elif key == "acao":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", incluir_todos=True, height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", incluir_todos=True, height=35)
             elif key == "item":
-                opcoes_item = ["Todos"] + self.lista_itens if self.lista_itens else ["Todos"]
-                widget = ctk.CTkComboBox(f, values=opcoes_item, height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ITEM_GLOBAL", incluir_todos=True, height=35)
             elif key == "solicitante":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
-            elif key == "status" and self.tipo_doc == "OS":
-                widget = ctk.CTkComboBox(f, values=["Todos", "PENDENTE", "CONCLUÍDO", "CANCELADO"], height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
-            elif key == "bairro":
-                widget = ctk.CTkComboBox(f, values=self.lista_bairros[:20] if self.lista_bairros else [""], height=35, fg_color="#F9FAFB")
-                widget.set("") 
-                def on_key_bairro(event, cb=widget):
-                    txt = cb.get().lower()
-                    sugestoes = [b for b in self.lista_bairros if txt in b.lower()][:20]
-                    cb.configure(values=sugestoes)
-                widget.bind("<KeyRelease>", on_key_bairro)
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35)
+            elif key == "status":
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="STATUS_OS", incluir_todos=True, height=35)
             elif key == "decisao":
-                widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
-            elif key == "assunto" and self.tipo_doc == "PARECER":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ASSUNTO_PARECER", incluir_todos=True, height=35, fg_color="#F9FAFB")
-                widget.set("Todos")
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="DECISAO_PARECER", incluir_todos=True, height=35)
+            elif key == "assunto":
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ASSUNTO_PARECER", incluir_todos=True, height=35)
             else:
                 widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color="#D1D5DB", fg_color="#F9FAFB")
             
@@ -120,18 +113,19 @@ class RelatorioView(ctk.CTkFrame):
             col += 1
             if col > 3: col = 0; row += 1
 
-        f_data = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
-        f_data.grid(row=row, column=col, padx=10, pady=8, sticky="ew")
-        ctk.CTkLabel(f_data, text="Período (Início - Fim)", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
-        
-        f_data_inner = ctk.CTkFrame(f_data, fg_color="transparent")
-        f_data_inner.pack(fill="x")
-        self.date_ini = DateEntry(f_data_inner, width=12, background='#0F8C75', locale='pt_BR')
+        # MODIFICAÇÃO: Wrapper elegante de Data implementado
+        date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
+        date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
+        ctk.CTkLabel(date_inicio, text="Data Inicial:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
+        wrapper_ini, self.date_ini = self._criar_date_wrapper(date_inicio, 150)
+        wrapper_ini.pack(anchor="w", pady=(2,0))
         self.date_ini.set_date(date(date.today().year, 1, 1))
-        self.date_ini.pack(side="left")
-        ctk.CTkLabel(f_data_inner, text=" até ").pack(side="left", padx=5)
-        self.date_fim = DateEntry(f_data_inner, width=12, background='#0F8C75', locale='pt_BR')
-        self.date_fim.pack(side="left")
+
+        date_fim = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
+        date_fim.grid(row=row, column=col+1, padx=10, pady=8, sticky="w")
+        ctk.CTkLabel(date_fim, text="Data Final:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
+        wrapper_fim, self.date_fim = self._criar_date_wrapper(date_fim, 150)
+        wrapper_fim.pack(anchor="w", pady=(2,0))
 
         btn_busca = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         btn_busca.pack(fill="x", padx=20, pady=(5, 15))
@@ -251,13 +245,9 @@ class RelatorioView(ctk.CTkFrame):
             if "id_ponto" in dado: 
                 dado['id_ponto'] = p_principal
 
+        # MODIFICAÇÃO: Corrigido o bug do modal instanciado duplicadamente e da chave incorreta!
         modal = ctk.CTkToplevel(self)
-        # MODIFICAÇÃO AQUI: Troca para numero_completo no Modal
         titulo_num = dado.get('numero_os') if self.tipo_doc == "OS" else dado.get('numero_completo')
-        modal.title(f"Visualização Detalhada - {self.tipo_doc} Nº {titulo_num}")
-
-        modal = ctk.CTkToplevel(self)
-        titulo_num = dado.get('numero_os') if self.tipo_doc == "OS" else dado.get('numero_parecer_ano')
         modal.title(f"Visualização Detalhada - {self.tipo_doc} Nº {titulo_num}")
         modal.geometry("800x650")
         modal.grab_set()
@@ -330,11 +320,11 @@ class RelatorioView(ctk.CTkFrame):
 
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
-            if isinstance(widget, ctk.CTkComboBox):
-                if key == "bairro": widget.set("")
-                else: widget.set("Todos")
+            if isinstance(widget, CtkParametrosComboBox):
+                widget.set("Todos")
             else:
                 widget.delete(0, 'end')
+                
         self.date_ini.set_date(date(date.today().year, 1, 1))
         self.date_fim.set_date(date.today())
         self.acao_buscar()
