@@ -5,6 +5,7 @@ from tkcalendar import DateEntry
 from datetime import date
 import math
 from src.modulos.itinerario.relatorios.service import RelatoriosItinerarioService
+from src.core.shared.components.parameters_combo import CtkParametrosComboBox
 
 # =====================================================================
 # COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
@@ -127,11 +128,9 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         self.entradas_filtros = {}
         self.dados_atuais = []
 
-        # Buscando dados do Banco para os Combos Dinâmicos
         self.lista_empresas = self.service.obter_empresas()
         self.lista_linhas = self.service.obter_linhas()
 
-        # Configuração de Colunas
         if self.tipo_doc == "OS":
             self.colunas_config = {
                 "id": "ID", "numero_os": "N° OS", "processo": "Processo", "solicitante": "Solicitante",
@@ -162,7 +161,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         style.map("Modern.Treeview.Heading", background=[('active', '#D1D5DB')])
 
     def _construir_interface(self):
-        # --- 1. TOPO (FILTROS) ---
         self.frame_top = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
         self.frame_top.pack(side="top", fill="x", padx=20, pady=(20, 10))
         
@@ -179,7 +177,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         campos_ignorar = ["id", "data_criacao"]
         row, col = 0, 0
         
-        # Geração Inteligente dos Filtros (Módulo Itinerário Atualizado)
+        # GERAÇÃO INTELIGENTE ZERO HARDCODE
         for key, label in self.colunas_config.items():
             if key in campos_ignorar: continue
             
@@ -188,41 +186,25 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            # ---  Início do bloco condicional de componentes ---
             if key == "tipo":
-                from src.core.shared.components.parameters_combo import CtkParametrosComboBox
-                #  Carrega os tipos de evento direto da nova tabela do banco v2.2
-                widget = CtkParametrosComboBox(f, setor="Itinerário", campo="TIPO_OS", incluir_todos=True, height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
-            
+                widget = CtkParametrosComboBox(f, setor="Itinerário", campo="TIPO_OS", incluir_todos=True, height=35)
             elif key == "origem":
-                from src.core.shared.components.parameters_combo import CtkParametrosComboBox
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
-            
+                widget = CtkParametrosComboBox(f, setor="Itinerário", campo="ORIGEM", incluir_todos=True, height=35)
             elif key == "decisao":
-                widget = ctk.CTkComboBox(f, values=["Todos", "DEFERIDO", "INDEFERIDO"], height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
-                widget.set("Todos")
-            
+                widget = CtkParametrosComboBox(f, setor="Itinerário", campo="DECISAO_PARECER", incluir_todos=True, height=35)
             elif key in ["solicitante", "assunto", "evento"]:
-                from src.core.shared.components.parameters_combo import CtkParametrosComboBox
-                # Dicionário mapeando as chaves exatas inseridas por você via SQL
                 campo_map = {
                     "solicitante": "SOLICITANTE_PARECER", 
                     "assunto": "ASSUNTO_ITINERARIO", 
                     "evento": "EVENTO"
                 }
-                widget = CtkParametrosComboBox(f, setor="Itinerário", campo=campo_map[key], incluir_todos=True, height=35, border_color="#D1D5DB", fg_color="#F9FAFB")
-            
+                widget = CtkParametrosComboBox(f, setor="Itinerário", campo=campo_map[key], incluir_todos=True, height=35)
             elif key == "empresa":
-                # Autocomplete para Empresas!
-                widget = Autocomplete(f, values=self.lista_empresas, height=35, border_color="#D1D5DB", fg_color="#F9FAFB", placeholder_text="Pesquise o nome...")
-            
+                widget = Autocomplete(f, values=self.lista_empresas, height=35, placeholder_text="Pesquise o nome...")
             elif key == "linhas":
-                # Autocomplete para Linhas!
-                widget = Autocomplete(f, values=self.lista_linhas, height=35, border_color="#D1D5DB", fg_color="#F9FAFB", placeholder_text="Código ou Nome...")
-            
+                widget = Autocomplete(f, values=self.lista_linhas, height=35, placeholder_text="Código ou Nome...")
             else:
-                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color="#D1D5DB", fg_color="#F9FAFB")
-            # --- FIM do bloco condicional ---
+                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...")
 
             widget.pack(fill="x")
             self.entradas_filtros[key] = widget
@@ -415,11 +397,14 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
 
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
-            if isinstance(widget, ctk.CTkComboBox):
+            # A MÁGICA AQUI: Reconhecendo corretamente os dois componentes criados por você!
+            if isinstance(widget, CtkParametrosComboBox):
                 widget.set("Todos")
+            elif isinstance(widget, Autocomplete):
+                widget.set("")
             else:
-                # O Autocomplete agora entra nesta regra por ser um CTkEntry, ficando vazio perfeitamente!
                 widget.delete(0, 'end')
+                
         self.date_ini.set_date(date(date.today().year, 1, 1))
         self.date_fim.set_date(date.today())
         self.acao_buscar()
