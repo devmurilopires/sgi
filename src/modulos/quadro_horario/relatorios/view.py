@@ -304,15 +304,15 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         
         if self.tipo_doc == "PESQUISA":
             self.colunas_config = {
-                "id": "ID", "titulo": "Linha", "tipo": "Tipo", 
-                "relatorios": "Relatórios Utilizados", "responsavel": "Criador", 
+                "id": "ID", "titulo": "Linha","responsavel": "Criador",  
+                "relatorios": "Relatórios Utilizados", "tipo": "Tipo",
                 "data_criacao": "Data Criação"
             }
         else:
             # MODIFICAÇÃO: "Origem" inserida logo após o processo!
             self.colunas_config = {
-                "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
-                "origem": "Origem", "assunto": "Assunto", "decisao": "Decisão", 
+                "id": "ID", "origem": "Origem", "assunto": "Assunto",
+                "numero_completo": "N° Parecer", "processo": "Processo", "decisao": "Decisão", 
                 "solicitante": "Solicitante", "linhas": "Linhas", 
                 "responsavel": "Responsável", "data_criacao": "Data Criação"
             }
@@ -380,7 +380,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35)
                 widget.set("Todos")
             elif key in ["titulo", "linhas"]: 
-                widget = Autocomplete(f, values=self.lista_linhas, width=250)
+                widget = Autocomplete(f, values=self.lista_linhas, width=130)
                 widget.bind("<<AutocompleteSelected>>", lambda e: self.acao_buscar())
                 widget.bind("<Return>", lambda e: self.acao_buscar())
             else:
@@ -395,14 +395,14 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
         ctk.CTkLabel(date_inicio, text="Data Criação Inicial:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
-        wrapper_ini, self.date_ini = self._criar_date_wrapper(date_inicio, 150)
+        wrapper_ini, self.date_ini = self._criar_date_wrapper(date_inicio, 450)
         wrapper_ini.pack(anchor="w", pady=(2,0))
         self.date_ini.set_date(date(date.today().year, 1, 1))
 
         date_fim = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_fim.grid(row=row, column=col+1, padx=10, pady=8, sticky="w")
         ctk.CTkLabel(date_fim, text="Data Criação Final:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
-        wrapper_fim, self.date_fim = self._criar_date_wrapper(date_fim, 150)
+        wrapper_fim, self.date_fim = self._criar_date_wrapper(date_fim, 450)
         wrapper_fim.pack(anchor="w", pady=(2,0))
 
         btn_busca = ctk.CTkFrame(self.frame_top, fg_color="transparent")

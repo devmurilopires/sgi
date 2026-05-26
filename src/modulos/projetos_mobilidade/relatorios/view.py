@@ -96,13 +96,13 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
         ctk.CTkLabel(date_inicio, text="Data Inicial:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        wrapper_ini, self.data_inicio = self._criar_date_wrapper(date_inicio, 250)
+        wrapper_ini, self.data_inicio = self._criar_date_wrapper(date_inicio, 400)
         wrapper_ini.pack(anchor="w", pady=(2,0))
 
         date_fim = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_fim.grid(row=row, column=col+1, padx=10, pady=8, sticky="w")
         ctk.CTkLabel(date_fim, text="Data Final:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        wrapper_fim, self.data_fim = self._criar_date_wrapper(date_fim, 250)
+        wrapper_fim, self.data_fim = self._criar_date_wrapper(date_fim, 400)
         wrapper_fim.pack(anchor="w", pady=(2,0))
 
 
@@ -143,11 +143,11 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
             if k == "assunto":
-                self.tree.column(k, width=280, anchor="w") 
+                self.tree.column(k, width=270, anchor="w") 
             elif k == "solicitante":
                 self.tree.column(k, width=150, anchor="w") 
             elif k == "origem":
-                self.tree.column(k, width=120, anchor="center") 
+                self.tree.column(k, width=110, anchor="center") 
             else:
                 self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 

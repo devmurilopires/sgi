@@ -160,6 +160,14 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         style.map("Modern.Treeview", background=[('selected', '#0F8C75')], foreground=[('selected', 'white')])
         style.map("Modern.Treeview.Heading", background=[('active', '#D1D5DB')])
 
+    def _criar_date_wrapper(self, parent, width=150):
+        # Container com borda e tamanho fixo para o visual moderno
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container.pack_propagate(False) 
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry.pack(fill="both", expand=True, padx=2, pady=2)
+        return container, date_entry
+
     def _construir_interface(self):
         self.frame_top = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
         self.frame_top.pack(side="top", fill="x", padx=20, pady=(20, 10))
@@ -218,12 +226,18 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         
         f_data_inner = ctk.CTkFrame(f_data, fg_color="transparent")
         f_data_inner.pack(fill="x")
-        self.date_ini = DateEntry(f_data_inner, width=12, background='#0F8C75', locale='pt_BR')
-        self.date_ini.set_date(date(date.today().year, 1, 1))
-        self.date_ini.pack(side="left")
+        
+        # Substitua a criação direta do DateEntry pelo wrapper
+        container_ini, self.date_ini = self._criar_date_wrapper(f_data_inner, 150)
+        container_ini.pack(side="left")
+        
         ctk.CTkLabel(f_data_inner, text=" até ").pack(side="left", padx=5)
-        self.date_fim = DateEntry(f_data_inner, width=12, background='#0F8C75', locale='pt_BR')
-        self.date_fim.pack(side="left")
+        
+        container_fim, self.date_fim = self._criar_date_wrapper(f_data_inner, 150)
+        container_fim.pack(side="left")
+
+        self.date_ini.set_date(date(date.today().year, 1, 1))
+        self.date_fim.set_date(date.today())
 
         btn_busca = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         btn_busca.pack(fill="x", padx=20, pady=(5, 15))

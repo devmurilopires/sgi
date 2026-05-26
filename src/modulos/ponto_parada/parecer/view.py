@@ -28,14 +28,14 @@ class ParecerView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        self.origem_combo = self._criar_param_combo(row1, "Origem", "Ponto de Parada", "ORIGEM_DEMANDA", width=130)
+        self.origem_combo = self._criar_param_combo(row1, "Origem", "Ponto de Parada", "ORIGEM_DEMANDA", width=300)
 
         self.tipo_parecer_combo = self._criar_param_combo(
             row1, 
             "Tipo do Parecer", 
             "Ponto de Parada", 
             "DECISAO_PARECER", 
-            width=200, 
+            width=500, 
             command=self._atualizar_campos
         )
         self.tipo_parecer_combo.set("Deferido")
@@ -48,10 +48,10 @@ class ParecerView(ctk.CTkFrame):
         row2.pack(fill="x", pady=(5, 15), padx=15)
 
         # MODIFICAÇÃO: Solicitante agora busca nativamente e diretamente do banco (Modo Banco de Dados)
-        self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Ponto de Parada", "SOLICITANTE_PARECER", width=350)
+        self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Ponto de Parada", "SOLICITANTE_PARECER", width=625)
 
         # MODIFICAÇÃO: Assunto agora busca nativamente e diretamente do banco (Modo Banco de Dados)
-        self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Ponto de Parada", "ASSUNTO_PARECER", width=450)
+        self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Ponto de Parada", "ASSUNTO_PARECER", width=625)
 
         bloco2 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         bloco2.pack(fill="x", pady=10, padx=10)
@@ -59,22 +59,22 @@ class ParecerView(ctk.CTkFrame):
         row3 = ctk.CTkFrame(bloco2, fg_color="transparent")
         row3.pack(fill="x", pady=(15, 5), padx=15)
 
-        self.acao_combo = self._criar_param_combo(row3, "Ação", "Ponto de Parada", "ACAO_OS", width=500)
+        self.acao_combo = self._criar_param_combo(row3, "Ação", "Ponto de Parada", "ACAO_OS", width=625)
         
         # MODIFICAÇÃO: "Tipo de Item" usa componente moderno em Modo Estático, pois precisamos juntar as duas listas!
         lista_itens = self.service.obter_itens()
         if not lista_itens: lista_itens = ["Nenhum item cadastrado"]
-        self.item_combo = self._criar_combobox(row3, "Tipo de Item", lista_itens, width=300)
+        self.item_combo = self._criar_combobox(row3, "Tipo de Item", lista_itens, width=625)
         self.item_combo.set(lista_itens[0])
 
         row4 = ctk.CTkFrame(bloco2, fg_color="transparent")
         row4.pack(fill="x", pady=(5, 15), padx=15)
 
         self.endereco_var = ctk.StringVar()
-        self._criar_entry(row4, "Endereço Completo", self.endereco_var, width=500)
+        self._criar_entry(row4, "Endereço Completo", self.endereco_var, width=625)
 
         self.quantidade_var = ctk.StringVar()
-        self._criar_entry(row4, "Quantidade (Por extenso: Um, Dois...)", self.quantidade_var, width=300)
+        self._criar_entry(row4, "Quantidade (Por extenso: Um, Dois...)", self.quantidade_var, width=625)
 
         bloco3 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
         bloco3.pack(fill="x", pady=10, padx=10)

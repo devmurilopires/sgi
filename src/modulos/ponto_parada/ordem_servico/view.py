@@ -43,22 +43,22 @@ class OSView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        self.origem_combo = self._criar_param_combo(row1, "Origem da Demanda", "Ponto de Parada", "ORIGEM_DEMANDA", width=250, side="left")
-        self.tipo_os_combo = self._criar_param_combo(row1, "Ação da OS", "Ponto de Parada", "ACAO_OS", width=250, side="left")
-        self.tipo_item_combo = self._criar_param_combo(row1, "Tipo de Item", "Ponto de Parada", "ITEM_URBMIDIA", width=250, side="left")
+        self.origem_combo = self._criar_param_combo(row1, "Origem da Demanda", "Ponto de Parada", "ORIGEM_DEMANDA", width=300, side="left")
+        self.tipo_os_combo = self._criar_param_combo(row1, "Ação da OS", "Ponto de Parada", "ACAO_OS", width=300, side="left")
+        self.tipo_item_combo = self._criar_param_combo(row1, "Tipo de Item", "Ponto de Parada", "ITEM_URBMIDIA", width=300, side="left")
 
         # Linha 2: ID do Ponto e Botões de Pesquisa
-        self.id_entry = self._criar_campo(row1, "ID do Ponto", width=250, side="left")
+        self.id_entry = self._criar_campo(row1, "ID do Ponto", width=300, side="left")
         self.id_entry.bind("<FocusOut>", self.ao_sair_do_id)
 
         # Linha 2 cont.
         row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row2.pack(fill="x", pady=5, padx=15)
         
-        self.endereco_entry = self._criar_campo(row2, "Endereço", width=250, side="left")
-        self.numero_entry = self._criar_campo(row2, "Número", width=250, side="left")
-        self.bairro_entry = self._criar_campo(row2, "Bairro", width=250, side="left")
-        self.complemento_entry = self._criar_campo(row2, "Complemento", width=250, side="left")
+        self.endereco_entry = self._criar_campo(row2, "Endereço", width=300, side="left")
+        self.numero_entry = self._criar_campo(row2, "Número", width=300, side="left")
+        self.bairro_entry = self._criar_campo(row2, "Bairro", width=300, side="left")
+        self.complemento_entry = self._criar_campo(row2, "Complemento", width=300, side="left")
 
         # Botão Adicionar
         ctk.CTkButton(form_frame, text="➕ Adicionar à Lista", fg_color="#0F8C75", font=("Arial Bold", 14), height=40, command=self.adicionar_descricao).pack(pady=(10, 20))

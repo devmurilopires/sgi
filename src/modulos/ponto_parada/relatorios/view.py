@@ -34,10 +34,16 @@ class RelatorioView(ctk.CTkFrame):
                 "data_criacao": "Data Criação"
             }
         else:
+            # MODIFICAÇÃO: Ordem alterada e alinhada conforme sua solicitação
             self.colunas_config = {
-                "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
-                "origem": "Origem", "assunto": "Assunto", "decisao": "Decisão", 
-                "solicitante": "Solicitante", "responsavel": "Responsável", 
+                "id": "ID", 
+                "numero_completo": "N° Parecer", 
+                "processo": "Processo", 
+                "decisao": "Decisão", 
+                "responsavel": "Responsável", 
+                "origem": "Origem", 
+                "assunto": "Assunto", 
+                "solicitante": "Solicitante", 
                 "data_criacao": "Data Criação"
             }
 
@@ -55,9 +61,8 @@ class RelatorioView(ctk.CTkFrame):
         style.map("Modern.Treeview", background=[('selected', '#0F8C75')], foreground=[('selected', 'white')])
         style.map("Modern.Treeview.Heading", background=[('active', '#D1D5DB')])
 
-    # MODIFICAÇÃO: Helper Wrapper de Datas importado para manter o padrão elegante
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=30, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
         container.pack_propagate(False) 
         date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
@@ -78,18 +83,27 @@ class RelatorioView(ctk.CTkFrame):
         self.grid_filtros = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         self.grid_filtros.pack(fill="x", padx=15, pady=5)
         
+        # MODIFICAÇÃO: Criando uma grade exata de 6 colunas para permitir redimensionamento amplo
+        for i in range(6):
+            self.grid_filtros.grid_columnconfigure(i, weight=1)
+            
         campos_ignorar = ["id", "data_criacao"]
         row, col = 0, 0
         
         for key, label in self.colunas_config.items():
             if key in campos_ignorar: continue
             
+            # MODIFICAÇÃO: Assunto, Solicitante e Origem receberão 2 colunas de largura (dobro do tamanho)
+            colspan = 1
+            if self.tipo_doc == "PARECER" and key in ["assunto", "solicitante", "origem"]:
+                colspan = 2
+            elif self.tipo_doc == "OS" and key in ["item", "bairro"]:
+                colspan = 2
+            
             f = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
-            f.grid(row=row, column=col, padx=10, pady=8, sticky="ew")
-            self.grid_filtros.grid_columnconfigure(col, weight=1)
+            f.grid(row=row, column=col, columnspan=colspan, padx=10, pady=8, sticky="ew")
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            # GERAÇÃO INTELIGENTE DE FILTROS COM COMPONENTE MODERNO
             if key == "origem":
                 widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35)
             elif key == "acao":
@@ -110,22 +124,29 @@ class RelatorioView(ctk.CTkFrame):
             widget.pack(fill="x")
             self.entradas_filtros[key] = widget
             
-            col += 1
-            if col > 3: col = 0; row += 1
+            col += colspan
+            if col >= 6: 
+                col = 0
+                row += 1
 
-        # MODIFICAÇÃO: Wrapper elegante de Data implementado
+        # MODIFICAÇÃO: Datas fluindo perfeitamente com a lógica de 6 colunas
         date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
-        date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
+        date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="ew")
         ctk.CTkLabel(date_inicio, text="Data Inicial:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
         wrapper_ini, self.date_ini = self._criar_date_wrapper(date_inicio, 150)
-        wrapper_ini.pack(anchor="w", pady=(2,0))
+        wrapper_ini.pack(fill="x", pady=(2,0))
         self.date_ini.set_date(date(date.today().year, 1, 1))
 
+        col += 1
+        if col >= 6: 
+            col = 0
+            row += 1
+
         date_fim = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
-        date_fim.grid(row=row, column=col+1, padx=10, pady=8, sticky="w")
+        date_fim.grid(row=row, column=col, padx=10, pady=8, sticky="ew")
         ctk.CTkLabel(date_fim, text="Data Final:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
         wrapper_fim, self.date_fim = self._criar_date_wrapper(date_fim, 150)
-        wrapper_fim.pack(anchor="w", pady=(2,0))
+        wrapper_fim.pack(fill="x", pady=(2,0))
 
         btn_busca = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         btn_busca.pack(fill="x", padx=20, pady=(5, 15))
@@ -165,7 +186,9 @@ class RelatorioView(ctk.CTkFrame):
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
             if k == "assunto":
-                self.tree.column(k, width=250, anchor="w") 
+                self.tree.column(k, width=280, anchor="w") 
+            elif k == "solicitante":
+                self.tree.column(k, width=200, anchor="w")
             else:
                 self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
@@ -245,7 +268,6 @@ class RelatorioView(ctk.CTkFrame):
             if "id_ponto" in dado: 
                 dado['id_ponto'] = p_principal
 
-        # MODIFICAÇÃO: Corrigido o bug do modal instanciado duplicadamente e da chave incorreta!
         modal = ctk.CTkToplevel(self)
         titulo_num = dado.get('numero_os') if self.tipo_doc == "OS" else dado.get('numero_completo')
         modal.title(f"Visualização Detalhada - {self.tipo_doc} Nº {titulo_num}")

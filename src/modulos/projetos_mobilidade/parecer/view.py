@@ -32,10 +32,10 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         row1.pack(fill="x", pady=(20, 10), padx=20)
 
         # MODIFICAÇÃO: "Tipo de Parecer" agora usa o componente do Banco de Dados
-        self.tipo_parecer_combo = self._criar_param_combo(row1, "Decisão", "Projetos de Mobilidade", "DECISAO_PARECER", width=200, command=self._on_tipo_change)
+        self.tipo_parecer_combo = self._criar_param_combo(row1, "Decisão", "Projetos de Mobilidade", "DECISAO_PARECER", width=400, command=self._on_tipo_change)
         
         # MODIFICAÇÃO: Atribuindo à variável self.origem_combo para podermos ler com .get()
-        self.origem_combo = self._criar_param_combo(row1, "Origem do Processo", "Projetos de Mobilidade", "ORIGEM", width=200)
+        self.origem_combo = self._criar_param_combo(row1, "Origem do Processo", "Projetos de Mobilidade", "ORIGEM", width=400)
 
         self.processo_var = ctk.StringVar()
         self.processo_var.trace_add("write", self._formatar_processo)
@@ -45,8 +45,8 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         row2 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row2.pack(fill="x", pady=(10, 20), padx=20)
 
-        self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Projetos de Mobilidade", "SOLICITANTE_PARECER", width=350)
-        self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Projetos de Mobilidade", "ASSUNTO_PROJETOS_MOBILIDADE", width=450)
+        self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Projetos de Mobilidade", "SOLICITANTE_PARECER", width=610)
+        self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Projetos de Mobilidade", "ASSUNTO_PROJETOS_MOBILIDADE", width=610)
 
         # --- MOTIVO DE INDEFERIMENTO (Oculto por Padrão) ---
         self.frame_motivo = ctk.CTkFrame(self.scroll_frame, fg_color="#FFF0F0", corner_radius=10, border_width=1, border_color="#FFD6D6")

@@ -142,11 +142,13 @@ class OSItinerarioView(ctk.CTkFrame):
 
         linha_fixa = ctk.CTkFrame(form_frame, fg_color="transparent")
         linha_fixa.pack(fill="x", pady=(15, 0), padx=15)
-
-        # MODIFICAÇÃO: TIPO DE OS AGORA É DINÂMICO LENDO DA BASE DE DADOS (EVENTOS, CORRIDA, OBRAS)
-        self.tipo_os_combo = self._criar_param_combo_grid(linha_fixa, "Tipo de OS", "Itinerário", "TIPO_OS", 250, 0, 0, command=self._on_tipo_change)
         
-        self.processo_entry = self._criar_campo_grid(linha_fixa, "Nº Processo (Opcional)", 250, 0, 1)
+        # MODIFICAÇÃO: Aplicando Grade de 6 colunas na linha fixa
+        for i in range(6):
+            linha_fixa.grid_columnconfigure(i, weight=1, uniform="col")
+
+        self.tipo_os_combo = self._criar_param_combo_grid(linha_fixa, "Tipo de OS", "Itinerário", "TIPO_OS", 0, 0, 2, command=self._on_tipo_change)
+        self.processo_entry = self._criar_campo_grid(linha_fixa, "Nº Processo (Opcional)", 0, 2, 2)
         
         def upper_processo_os(event):
             if getattr(event, 'keysym', '') in ['Up', 'Down', 'Left', 'Right', 'Home', 'End']: return
@@ -159,11 +161,14 @@ class OSItinerarioView(ctk.CTkFrame):
                 
         self.processo_entry.bind("<KeyRelease>", upper_processo_os)
 
-        # MODIFICAÇÃO: Usa a função helper com command adaptado
-        self.origem_combo = self._criar_param_combo_grid(linha_fixa, "Origem", "Itinerário", "ORIGEM", 250, 0, 2)
+        self.origem_combo = self._criar_param_combo_grid(linha_fixa, "Origem", "Itinerário", "ORIGEM", 0, 4, 2)
 
         self.container_dinamico = ctk.CTkFrame(form_frame, fg_color="transparent")
         self.container_dinamico.pack(fill="x", pady=0, padx=15)
+        
+        # MODIFICAÇÃO: Aplicando Grade de 6 colunas no contêiner dinâmico
+        for i in range(6):
+            self.container_dinamico.grid_columnconfigure(i, weight=1, uniform="col")
 
         self.container_listas = ctk.CTkFrame(form_frame, fg_color="transparent")
         self.container_listas.pack(fill="x", pady=(0, 15), padx=15)
@@ -177,8 +182,10 @@ class OSItinerarioView(ctk.CTkFrame):
         self.lista_linhas = self.service.buscar_sugestoes("LINHAS")
         ctk.CTkLabel(add_lin_row, text="Pesquise a Linha de Ônibus", font=("Arial Bold", 12), text_color="#555").grid(row=0, column=0, padx=10, pady=(10,0), sticky="w")
         
-        self.linha_combo = Autocomplete(add_lin_row, values=self.lista_linhas, width=350, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC", placeholder_text="Código ou Nome...")
-        self.linha_combo.grid(row=1, column=0, padx=10, pady=(2, 10), sticky="w")
+        self.linha_combo = Autocomplete(add_lin_row, values=self.lista_linhas, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC", placeholder_text="Código ou Nome...")
+        self.linha_combo.grid(row=1, column=0, padx=10, pady=(2, 10), sticky="ew")
+        add_lin_row.grid_columnconfigure(0, weight=1)
+        
         self.linha_combo.bind("<<AutocompleteSelected>>", lambda e: self._add_linha())
         
         ctk.CTkButton(add_lin_row, text="➕ Add", width=80, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_linha).grid(row=1, column=1, sticky="w", pady=(2, 10))
@@ -206,53 +213,45 @@ class OSItinerarioView(ctk.CTkFrame):
         ctk.CTkLabel(footer_frame, text=f"Responsável pelo Documento: {self.usuario_logado}", font=("Arial Bold", 12), text_color="#777").pack(side="left", padx=10)
         ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color="#0F8C75", hover_color="#0B6B59", font=("Arial Black", 16), height=50, width=320, command=self.acao_criar_os).pack(side="right", padx=10)
 
-    # --- HELPERS DE GRID UI/UX ---
-    def _criar_campo_grid(self, parent, label, width, row, col, columnspan=1):
+    # --- HELPERS DE GRID UI/UX (AGORA COM RESIZING INTELIGENTE) ---
+    def _criar_campo_grid(self, parent, label, row, col, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        entry = ctk.CTkEntry(frame, width=width, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
-        entry.pack(anchor="w", pady=(2,0))
+        entry = ctk.CTkEntry(frame, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
+        entry.pack(fill="x", expand=True, pady=(2,0))
         return entry
 
-    # MODIFICAÇÃO: Helper para o Banco de Dados (SGI v2.2)
-    def _criar_param_combo_grid(self, parent, label, setor, campo, width, row, col, columnspan=1, command=None):
+    def _criar_param_combo_grid(self, parent, label, setor, campo, row, col, columnspan=1, command=None):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = CtkParametrosComboBox(frame, setor=setor, campo=campo, width=width, height=35, command=command)
-        combo.pack(anchor="w", pady=(2,0))
+        combo = CtkParametrosComboBox(frame, setor=setor, campo=campo, height=35, command=command)
+        combo.pack(fill="x", expand=True, pady=(2,0))
         return combo
 
-    # MODIFICAÇÃO: Helper para Modos e Horas (Estático no Python, mas moderno na UI)
-    def _criar_combo_estatico_grid(self, parent, label, width, values, row, col, columnspan=1, command=None):
+    def _criar_combo_estatico_grid(self, parent, label, values, row, col, columnspan=1, command=None):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        combo = CtkParametrosComboBox(frame, values=values, width=width, height=35, command=command)
-        combo.pack(anchor="w", pady=(2,0))
+        combo = CtkParametrosComboBox(frame, values=values, height=35, command=command)
+        combo.pack(fill="x", expand=True, pady=(2,0))
         return combo
 
-    def _criar_autocomplete_grid(self, parent, label, width, values, row, col, columnspan=1):
+    def _criar_autocomplete_grid(self, parent, label, values, row, col, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
-        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="nw")
+        frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        autocomplete = Autocomplete(frame, values=values, width=width, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
-        autocomplete.pack(anchor="w", pady=(2,0))
+        autocomplete = Autocomplete(frame, values=values, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
+        autocomplete.pack(fill="x", expand=True, pady=(2,0))
         return autocomplete
 
-    def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+    def _criar_date_wrapper(self, parent):
+        container = ctk.CTkFrame(parent, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
         container.pack_propagate(False) 
         date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
-
-    def _toggle_evento(self):
-        estado = "disabled" if self.no_evento_var.get() else "normal"
-        if 'evento' in self.campos_dinamicos:
-            self.campos_dinamicos['evento'].configure(state=estado)
-            if self.no_evento_var.get(): self.campos_dinamicos['evento'].set("")
 
     def _toggle_data(self):
         estado = "disabled" if self.no_data_var.get() else "normal"
@@ -268,7 +267,6 @@ class OSItinerarioView(ctk.CTkFrame):
             self._render_datas_chips()
 
     def _toggle_hora(self):
-        # CtkParametrosComboBox usa "disabled" e "normal"
         estado = "disabled" if self.no_hora_var.get() else "normal"
         if 'hr_inicio' in self.campos_dinamicos:
             self.campos_dinamicos['hr_inicio'].configure(state=estado)
@@ -280,50 +278,53 @@ class OSItinerarioView(ctk.CTkFrame):
     def _on_tipo_change(self, *args):
         for w in self.container_dinamico.winfo_children(): w.destroy()
         
-        # O Tipo da OS agora vem direto do componente SGI!
         tipo = self.tipo_os_combo.get().upper()
         self.campos_dinamicos = {}
 
+        # MODIFICAÇÃO: Distribuição inteligente no grid de 6 colunas
         if tipo == "EVENTOS":
-            self.campos_dinamicos['evento'] = self._criar_param_combo_grid(self.container_dinamico, "Nome do Evento", "Itinerário", "EVENTO", 250, 0, 0)
-            self.campos_dinamicos['endereco'] = self._criar_campo_grid(self.container_dinamico, "Endereço/Logradouro", 520, 0, 1, columnspan=2)
+            self.campos_dinamicos['evento'] = self._criar_param_combo_grid(self.container_dinamico, "Nome do Evento", "Itinerário", "EVENTO", 0, 0, 2)
+            self.campos_dinamicos['endereco'] = self._criar_campo_grid(self.container_dinamico, "Endereço/Logradouro", 0, 2, 4)
             self.container_listas.pack(fill="x", pady=(0, 15), padx=15)
         elif tipo == "CORRIDA":
-            self.campos_dinamicos['nome_corrida'] = self._criar_campo_grid(self.container_dinamico, "Nome da Corrida", 250, 0, 0)
-            self.campos_dinamicos['km'] = self._criar_campo_grid(self.container_dinamico, "Quilometragem (KM)", 250, 0, 1)
-            self.campos_dinamicos['solicitante'] = self._criar_param_combo_grid(self.container_dinamico, "Solicitante", "Itinerário", "SOLICITANTE_PARECER", 250, 0, 2)
+            self.campos_dinamicos['nome_corrida'] = self._criar_campo_grid(self.container_dinamico, "Nome da Corrida", 0, 0, 2)
+            self.campos_dinamicos['km'] = self._criar_campo_grid(self.container_dinamico, "Quilometragem (KM)", 0, 2, 1)
+            # Solicitante GIGANTE (Ocupa 3 colunas, garantindo leitura total)
+            self.campos_dinamicos['solicitante'] = self._criar_param_combo_grid(self.container_dinamico, "Solicitante", "Itinerário", "SOLICITANTE_PARECER", 0, 3, 3)
             self.container_listas.pack_forget()
         elif tipo == "OBRAS":
-            self.campos_dinamicos['tipo_obra'] = self._criar_campo_grid(self.container_dinamico, "Tipo de Obra", 250, 0, 0)
-            self.campos_dinamicos['endereco'] = self._criar_campo_grid(self.container_dinamico, "Endereço/Logradouro", 520, 0, 1, columnspan=2)
+            self.campos_dinamicos['tipo_obra'] = self._criar_campo_grid(self.container_dinamico, "Tipo de Obra", 0, 0, 2)
+            self.campos_dinamicos['endereco'] = self._criar_campo_grid(self.container_dinamico, "Endereço/Logradouro", 0, 2, 4)
             self.container_listas.pack(fill="x", pady=(0, 15), padx=15)
 
         HORARIOS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
 
-        # MODO HÍBRIDO: Valores Estáticos Locais (Sem BD), mas Design Moderno via `values=`
-        self.modo_combo = self._criar_combo_estatico_grid(self.container_dinamico, "Seleção de Datas", 250, ["Período (Início-Fim)", "Dias Isolados"], 1, 0, command=self._on_modo_data_change)
+        self.modo_combo = self._criar_combo_estatico_grid(self.container_dinamico, "Seleção de Datas", ["Período (Início-Fim)", "Dias Isolados"], 1, 0, 2, command=self._on_modo_data_change)
         self.modo_combo.set("Período (Início-Fim)")
 
-        self.campos_dinamicos['hr_inicio'] = self._criar_combo_estatico_grid(self.container_dinamico, "Hora Início", 250, HORARIOS, 1, 1)
-        self.campos_dinamicos['hr_fim'] = self._criar_combo_estatico_grid(self.container_dinamico, "Hora Fim", 250, HORARIOS, 1, 2)
+        self.campos_dinamicos['hr_inicio'] = self._criar_combo_estatico_grid(self.container_dinamico, "Hora Início", HORARIOS, 1, 2, 2)
+        self.campos_dinamicos['hr_fim'] = self._criar_combo_estatico_grid(self.container_dinamico, "Hora Fim", HORARIOS, 1, 4, 2)
 
+        # Container interno de datas
         self.container_datas = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
-        self.container_datas.grid(row=2, column=0, columnspan=2, sticky="nw", padx=0, pady=0)
+        self.container_datas.grid(row=2, column=0, columnspan=3, sticky="ew", padx=0, pady=0)
         self._on_modo_data_change()
 
+        # Container de Empresas
         self.frame_empresas = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
-        self.frame_empresas.grid(row=2, column=2, sticky="nw", padx=0, pady=0)
+        self.frame_empresas.grid(row=2, column=3, columnspan=3, sticky="new", padx=0, pady=0)
+        self.frame_empresas.grid_columnconfigure(0, weight=1)
         
         self.lista_empresas = self.service.buscar_sugestoes("EMPRESAS")
-        self.empresa_combo = self._criar_autocomplete_grid(self.frame_empresas, "Pesquise a Empresa", 250, self.lista_empresas, 0, 0)
+        self.empresa_combo = self._criar_autocomplete_grid(self.frame_empresas, "Pesquise a Empresa", self.lista_empresas, 0, 0, 1)
         self.empresa_combo.configure(placeholder_text="Nome da Empresa...")
         
         self.empresa_combo.bind("<<AutocompleteSelected>>", lambda e: self._add_empresa())
         
-        ctk.CTkButton(self.frame_empresas, text="➕ Add", width=50, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_empresa).grid(row=0, column=1, sticky="sw", pady=(10, 10), padx=(0, 10))
+        ctk.CTkButton(self.frame_empresas, text="➕ Add", width=50, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_empresa).grid(row=0, column=1, sticky="se", pady=(10, 10), padx=(0, 10))
         
         self.frame_chips_empresas = ctk.CTkFrame(self.frame_empresas, fg_color="transparent")
-        self.frame_chips_empresas.grid(row=1, column=0, columnspan=2, sticky="nw", padx=10, pady=(0, 10))
+        self.frame_chips_empresas.grid(row=1, column=0, columnspan=2, sticky="ew", padx=10, pady=(0, 10))
         self._render_empresas_chips()
 
     def _on_modo_data_change(self, *args):
@@ -331,30 +332,34 @@ class OSItinerarioView(ctk.CTkFrame):
         modo = self.modo_combo.get()
 
         if "Período" in modo:
+            self.container_datas.grid_columnconfigure((0,1), weight=1, uniform="col")
+            
             f_ini = ctk.CTkFrame(self.container_datas, fg_color="transparent")
-            f_ini.grid(row=0, column=0, padx=10, pady=10, sticky="w")
+            f_ini.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
             ctk.CTkLabel(f_ini, text="Data Inicial:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-            wrapper_ini, self.data_inicio = self._criar_date_wrapper(f_ini, 250)
-            wrapper_ini.pack(anchor="w", pady=(2,0))
+            wrapper_ini, self.data_inicio = self._criar_date_wrapper(f_ini)
+            wrapper_ini.pack(fill="x", expand=True, pady=(2,0))
 
             f_fim = ctk.CTkFrame(self.container_datas, fg_color="transparent")
-            f_fim.grid(row=0, column=1, padx=10, pady=10, sticky="w")
+            f_fim.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
             ctk.CTkLabel(f_fim, text="Data Final:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-            wrapper_fim, self.data_fim = self._criar_date_wrapper(f_fim, 250)
-            wrapper_fim.pack(anchor="w", pady=(2,0))
+            wrapper_fim, self.data_fim = self._criar_date_wrapper(f_fim)
+            wrapper_fim.pack(fill="x", expand=True, pady=(2,0))
 
         else:
+            self.container_datas.grid_columnconfigure(0, weight=1)
+            
             f_iso = ctk.CTkFrame(self.container_datas, fg_color="transparent")
-            f_iso.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="w")
+            f_iso.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
             
             input_row = ctk.CTkFrame(f_iso, fg_color="transparent")
             input_row.pack(side="top", fill="x")
 
             col1 = ctk.CTkFrame(input_row, fg_color="transparent")
-            col1.pack(side="left", padx=(0, 15))
+            col1.pack(side="left", fill="x", expand=True, padx=(0, 15))
             ctk.CTkLabel(col1, text="Selecionar Dia:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-            wrapper_iso, self.data_isolada = self._criar_date_wrapper(col1, 250)
-            wrapper_iso.pack(anchor="w", pady=(2,0))
+            wrapper_iso, self.data_isolada = self._criar_date_wrapper(col1)
+            wrapper_iso.pack(fill="x", expand=True, pady=(2,0))
 
             self.btn_add_data = ctk.CTkButton(input_row, text="➕ Add Data", width=80, height=35, fg_color="#0F8C75", font=("Arial Bold", 12), command=self._add_data_isolada)
             self.btn_add_data.pack(side="left", anchor="s", pady=(0,2))
@@ -456,12 +461,13 @@ class OSItinerarioView(ctk.CTkFrame):
 
         grid_row = ctk.CTkFrame(card, fg_color="transparent")
         grid_row.pack(fill="x", padx=5, pady=(0, 15))
+        grid_row.grid_columnconfigure((0,1,2), weight=1, uniform="col")
         
         campos = {}
-        campos['ida'] = self._criar_campo_grid(grid_row, "Linhas Específicas Ida (Ex: 015,021)", 250, 0, 0)
-        campos['r_ida'] = self._criar_campo_grid(grid_row, "Descrição Ruas - Ida", 520, 0, 1)
-        campos['volta'] = self._criar_campo_grid(grid_row, "Linhas Específicas Volta (Ex: 015,021)", 250, 1, 0)
-        campos['r_volta'] = self._criar_campo_grid(grid_row, "Descrição Ruas - Volta", 520, 1, 1)
+        campos['ida'] = self._criar_campo_grid(grid_row, "Linhas Específicas Ida (Ex: 015,021)", 0, 0, 1)
+        campos['r_ida'] = self._criar_campo_grid(grid_row, "Descrição Ruas - Ida", 0, 1, 2)
+        campos['volta'] = self._criar_campo_grid(grid_row, "Linhas Específicas Volta (Ex: 015,021)", 1, 0, 1)
+        campos['r_volta'] = self._criar_campo_grid(grid_row, "Descrição Ruas - Volta", 1, 1, 2)
 
         ref_obj["widgets"] = campos
         self.anexos_add.append(ref_obj)
@@ -504,7 +510,7 @@ class OSItinerarioView(ctk.CTkFrame):
             })
 
         sucesso, msg = self.service.processar_criacao_os(
-            tipo_os=self.tipo_os_combo.get().upper(), # Extrai diretamente do componente!
+            tipo_os=self.tipo_os_combo.get().upper(),
             form_dados=form_dados,
             empresas=self.empresas_add,
             linhas=self.linhas_add,
