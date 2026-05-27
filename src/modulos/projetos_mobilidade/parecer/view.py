@@ -10,10 +10,11 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         self.pack(fill="both", expand=True)
 
         self.service = ParecerProjetosMobilidadeService()
-        self.usuario_logado = usuario_logado
+        # CORREÇÃO: Garante que extrai apenas a string do nome, independente do que o roteador mandar
+        self.usuario_logado = usuario_logado.get('nome') if isinstance(usuario_logado, dict) else usuario_logado
 
         self._construir_interface()
-
+        
     def _construir_interface(self):
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#F4F6F9")
         self.scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
