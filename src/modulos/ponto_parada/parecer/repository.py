@@ -16,12 +16,13 @@ class ParecerRepository:
             raise Exception("Falha ao calcular a numeração do parecer.")
 
     def salvar_parecer(self, dados_db):
+        # CORREÇÃO AQUI: Ampliamos a busca do contexto para 'PARECER' e 'DECISAO_PARECER' para blindar a query
         query_mae = """
             INSERT INTO common.pareceres_base (
                 sistema_origem, numero_parecer_ano, ano, tipo_id, caminho_arquivo, criado_por_id
             ) VALUES (
                 'Ponto de Parada', %(numero)s, %(ano)s, 
-                (SELECT id FROM common.tipos WHERE contexto = 'DECISAO_PARECER' AND nome ILIKE %(tipo_parecer)s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE contexto IN ('PARECER', 'DECISAO_PARECER') AND nome ILIKE %(tipo_parecer)s LIMIT 1),
                 %(caminho_arquivo)s,
                 (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(usuario_logado)s OR username ILIKE %(usuario_logado)s LIMIT 1)
             ) RETURNING id;
@@ -61,7 +62,7 @@ class ParecerRepository:
             
         except psycopg2.IntegrityError as e:
             print(f"[LOG DB] Erro de integridade: {e}")
-            raise Exception("Erro relacional: Verifique se os IDs informados, a Origem e o Tipo estão cadastrados no banco.")
+            raise Exception("Erro relacional: Verifique se os IDs informados, a Origem e a Decisão (Deferido/Indeferido) estão cadastradas no banco de dados.")
         except Exception as e:
             print(f"[LOG DB] Erro ao salvar parecer: {e}")
             raise Exception(f"Erro ao registrar o Parecer no Banco de Dados: {e}")

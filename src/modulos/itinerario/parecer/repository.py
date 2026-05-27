@@ -16,11 +16,11 @@ class ParecerItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
+                    # REMOVIDO o filtro de sistema_origem para manter a sequência global de 388 em diante!
                     cur.execute("""
                         SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 
                         FROM common.pareceres_base 
-                        WHERE sistema_origem = 'Itinerário' 
-                        AND ano = EXTRACT(YEAR FROM CURRENT_DATE)
+                        WHERE ano = EXTRACT(YEAR FROM CURRENT_DATE)
                     """)
                     resultado = cur.fetchone()
                     return resultado[0] if resultado else 1
@@ -29,14 +29,16 @@ class ParecerItinerarioRepository:
             return 1
 
     def salvar_parecer_no_banco(self, dados_db):
+        # CORREÇÃO: Ampliamos a busca do contexto para 'PARECER' e 'DECISAO_PARECER' para blindar a query
+        # Também adicionei a blindagem no 'criado_por' (username ou nome_completo)
         query_base = """
             INSERT INTO common.pareceres_base (
                 numero_parecer_ano, ano, tipo_id, sistema_origem, caminho_arquivo, criado_por_id
             ) VALUES (
                 %(numero_parecer)s, EXTRACT(YEAR FROM CURRENT_DATE), 
-                (SELECT id FROM common.tipos WHERE contexto = 'DECISAO_PARECER' AND nome ILIKE %(tipo)s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE contexto IN ('PARECER', 'DECISAO_PARECER') AND nome ILIKE %(tipo)s LIMIT 1),
                 'Itinerário', %(caminho_arquivo)s,
-                (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1)
+                (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s OR username ILIKE %(criado_por)s LIMIT 1)
             ) RETURNING id;
         """
         
@@ -52,7 +54,7 @@ class ParecerItinerarioRepository:
             );
         """
 
-        # 3. MODIFICAÇÃO: Relacionamento N:M para as linhas afetadas
+        # Relacionamento N:M para as linhas afetadas
         query_linha = """
             INSERT INTO itinerario.pareceres_linhas (parecer_id, linha_id)
             SELECT %(id_base)s, id FROM common.linhas WHERE codigo = %(codigo)s LIMIT 1;
@@ -61,19 +63,21 @@ class ParecerItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
+                    # 1. Insere na tabela base
                     cur.execute(query_base, dados_db)
                     id_base = cur.fetchone()[0]
                     dados_db["id_base"] = id_base
                     
+                    # 2. Insere na tabela específica do Itinerário
                     cur.execute(query_especifica, dados_db)
 
-                    # Inserir as linhas afetadas na tabela de relacionamento
+                    # 3. Insere as linhas afetadas na tabela de relacionamento
                     for codigo in dados_db.get("codigos_linhas", []):
                         cur.execute(query_linha, {"id_base": id_base, "codigo": codigo})
 
                     conn.commit()
             return True, "Registro salvo no banco com sucesso."
         except psycopg2.IntegrityError as e:
-            return False, f"Erro de integridade relacional. Verifique os cadastros base: {e}"
+            return False, f"Erro de integridade relacional. Verifique se a Origem e a Decisão estão cadastradas corretamente: {e}"
         except Exception as e:
             return False, f"Erro ao salvar no banco: {e}"

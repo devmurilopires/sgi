@@ -1,59 +1,52 @@
 import psycopg2
 from config.database import get_db_connection
-from datetime import datetime
 
 class ParecerProjetosMobilidadeRepository:
-    
-    def salvar_parecer(self, tipo_parecer, processo, origem, assunto, solicitante, motivo_indeferimento, usuario_id):
-        ano_atual = datetime.now().year
-        contexto_tipo = 'DECISAO_PARECER' 
-        
-        # Inserção Base (Sem alterações lógicas, apenas formatação)
-        query_base = """
-            WITH seq AS (
-                SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 AS proximo_numero
-                FROM common.pareceres_base
-                WHERE ano = %s AND sistema_origem = 'Projetos de Mobilidade'
-            )
-            INSERT INTO common.pareceres_base (
-                numero_parecer_ano, ano, tipo_id, sistema_origem, criado_por_id
-            )
-            VALUES (
-                (SELECT proximo_numero FROM seq), %s,
-                (SELECT id FROM common.tipos WHERE contexto = %s AND nome ILIKE %s LIMIT 1),
-                'Projetos de Mobilidade', %s
-            )
-            RETURNING id, numero_parecer_ano
-        """
-        
-        # MODIFICAÇÃO: Inserindo a Origem via Subquery (Evitando necessidade de saber ID)
-        query_filha = """
-            INSERT INTO projetos_mobilidade.pareceres (id, processo, assunto, solicitante, origem_id)
-            VALUES (%s, %s, %s, %s, (SELECT id FROM common.origens WHERE nome ILIKE %s LIMIT 1))
-        """
-        
+    def obter_proximo_numero_parecer(self):
         try:
             with get_db_connection() as conn:
-                with conn.cursor() as cursor:
-                    
-                    cursor.execute(query_base, (ano_atual, ano_atual, contexto_tipo, tipo_parecer, usuario_id))
-                    resultado_base = cursor.fetchone()
-                    
-                    if not resultado_base:
-                        raise Exception("Falha de integridade: Tipo de Parecer não cadastrado em common.tipos ou erro ao gerar numeração.")
-                        
-                    id_gerado, numero_parecer_ano = resultado_base
-                    
-                    # Passo 2: Executando Query Filha enviando a Origem Textual
-                    cursor.execute(query_filha, (id_gerado, processo, assunto, solicitante, origem))
-                    conn.commit()
-                    
-                    numero_formatado = f"{numero_parecer_ano}/{ano_atual}"
-                    return True, (id_gerado, numero_formatado)
-                    
-        except psycopg2.IntegrityError as e:
-            print(f"[LOG DB] Erro de Integridade Relacional: {e}")
-            return False, "Erro de integridade no banco. Verifique se os dados relacionados (como Origem) existem no Admin."
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 
+                        FROM common.pareceres_base 
+                        WHERE ano = EXTRACT(YEAR FROM CURRENT_DATE)
+                    """)
+                    resultado = cur.fetchone()
+                    return resultado[0] if resultado else 1
         except Exception as e:
-            print(f"[LOG DB] Erro crítico ao salvar Parecer: {e}")
+            return 1
+
+    def salvar_parecer_no_banco(self, dados_db):
+        query_base = """
+            INSERT INTO common.pareceres_base (
+                numero_parecer_ano, ano, tipo_id, sistema_origem, caminho_arquivo, criado_por_id
+            ) VALUES (
+                %(numero_parecer)s, EXTRACT(YEAR FROM CURRENT_DATE), 
+                (SELECT id FROM common.tipos WHERE contexto IN ('PARECER', 'DECISAO_PARECER') AND nome ILIKE %(tipo)s LIMIT 1),
+                'Projetos de Mobilidade', %(caminho_arquivo)s,
+                (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s OR username ILIKE %(criado_por)s LIMIT 1)
+            ) RETURNING id;
+        """
+        
+        query_especifica = """
+            INSERT INTO projetos_mobilidade.pareceres (
+                id, origem_id, processo, assunto, solicitante, motivo_indeferimento
+            ) VALUES (
+                %(id_base)s,
+                (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
+                %(processo)s, %(assunto)s, %(solicitante)s, %(motivo)s
+            );
+        """
+
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(query_base, dados_db)
+                    dados_db["id_base"] = cur.fetchone()[0]
+                    cur.execute(query_especifica, dados_db)
+                    conn.commit()
+                    return True, "Sucesso"
+        except psycopg2.IntegrityError as e:
+            return False, "Erro relacional: O banco rejeitou a inserção. Verifique se a Origem e a Decisão estão corretamente cadastradas."
+        except Exception as e:
             return False, str(e)
