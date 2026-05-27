@@ -202,7 +202,7 @@ class OSView(ctk.CTkFrame):
         }
         
         modelo_operacao = self.modelo_combo.get()
-        doc_template = "dados/modelo_etufor_mcmensagem_pp.docx" if modelo_operacao == "McMensagem" else "dados/modelo_etufor_prxparada_pp.docx"
+        doc_template = "dados/modelo_etufor_mcmensagem_pp.docx" if modelo_operacao == "McMensagem" else "dados/modelo_etufor_urbmidia_pp.docx"
 
         sucesso, mensagem = self.service.processar_criacao_os(
             descricoes_acumuladas=self.descricoes_acumuladas,

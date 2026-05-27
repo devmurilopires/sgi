@@ -132,7 +132,8 @@ class AdminUsuariosView:
         opcoes = [
             ("PONTO DE PARADA", "Ponto de Parada"),
             ("ITINERARIO", "Itinerário"),
-            ("QUADRO DE HORARIO", "Quadro de Horário")
+            ("QUADRO DE HORARIO", "Quadro de Horário"),
+            ("PROJETOS DE MOBILIDADE", "Projetos de Mobilidade")
         ]
         
         vars_perfil = {}
