@@ -304,17 +304,17 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         
         if self.tipo_doc == "PESQUISA":
             self.colunas_config = {
-                "id": "ID", "titulo": "Linha","responsavel": "Criador",  
+                "id": "ID", "titulo": "Linha", "responsavel": "Criador",  
                 "relatorios": "Relatórios Utilizados", "tipo": "Tipo",
                 "data_criacao": "Data Criação"
             }
         else:
-            # MODIFICAÇÃO: "Origem" inserida logo após o processo!
+            # MODIFICAÇÃO: Nova ordem do Parecer: Origem <-> Linhas, Decisão <-> Responsável
             self.colunas_config = {
-                "id": "ID", "origem": "Origem", "assunto": "Assunto",
-                "numero_completo": "N° Parecer", "processo": "Processo", "decisao": "Decisão", 
-                "solicitante": "Solicitante", "linhas": "Linhas", 
-                "responsavel": "Responsável", "data_criacao": "Data Criação"
+                "id": "ID", "linhas": "Linhas", "assunto": "Assunto",
+                "numero_completo": "N° Parecer", "processo": "Processo", "responsavel": "Responsável", 
+                "solicitante": "Solicitante", "origem": "Origem", 
+                "decisao": "Decisão", "data_criacao": "Data Criação"
             }
 
         self._configurar_estilos()
@@ -328,7 +328,6 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         style.configure("Modern.Treeview.Heading", font=("Arial Bold", 11), background="#E9ECEF", foreground="#333333", borderwidth=0, padding=(0, 5))
         style.map("Modern.Treeview", background=[('selected', '#0F8C75')], foreground=[('selected', 'white')])
 
-    # Helper Wrapper Importado do Projetos de Mobilidade
     def _criar_date_wrapper(self, parent, width):
         container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
         container.pack_propagate(False) 
@@ -367,7 +366,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 else:
                     widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="DECISAO_PARECER", incluir_todos=True, height=35)
                 widget.set("Todos")
-            elif key == "origem": # NOVO FILTRO DINÂMICO
+            elif key == "origem": 
                 widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="ORIGEM", incluir_todos=True, height=35)
                 widget.set("Todos")
             elif key == "decisao":
@@ -391,7 +390,6 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             col += 1
             if col > 3: col = 0; row += 1
 
-        # MODIFICAÇÃO: Wrapper elegante de Data adicionado!
         date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
         ctk.CTkLabel(date_inicio, text="Data Criação Inicial:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
@@ -427,7 +425,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
             if k == "relatorios": self.tree.column(k, width=180, anchor="w") 
-            elif k in ["titulo", "assunto"]: self.tree.column(k, width=250, anchor="w")
+            elif k in ["titulo", "assunto", "solicitante"]: self.tree.column(k, width=250, anchor="w")
             elif k == "origem": self.tree.column(k, width=100, anchor="center")
             else: self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
@@ -470,7 +468,15 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             else:
                 d["relatorios"] = "-"
 
-            valores = [d.get(k, "") for k in self.colunas_config.keys()]
+            # MODIFICAÇÃO: Tratamento de valores None / em branco para exibir '-' na Tabela
+            valores = []
+            for k in self.colunas_config.keys():
+                val = d.get(k)
+                if val is None or str(val).strip() == "":
+                    valores.append("-")
+                else:
+                    valores.append(str(val))
+                    
             self.tree.insert("", "end", values=valores, iid=d['id'])
             
         self.lbl_pag.configure(text=f"Total: {total} resultados")

@@ -253,10 +253,16 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         self._aplicar_regras_negocio()
 
     def _formatar_processo(self, event):
-        v = re.sub(r'[^a-zA-Z0-9]', '', self.processo_entry.get())
-        if len(v) > 5: v = f"{v[:-4]}/{v[-4:]}"
-        self.processo_entry.delete(0, "end")
-        self.processo_entry.insert(0, v)
+        # Ignora teclas de navegação para não atrapalhar o usuário
+        if getattr(event, 'keysym', '') in ['Up', 'Down', 'Left', 'Right', 'Home', 'End']: return
+        
+        texto = self.processo_entry.get()
+        if texto != texto.upper():
+            # Força maiúscula e mantém o cursor no lugar certo
+            pos = self.processo_entry.index("insert")
+            self.processo_entry.delete(0, "end")
+            self.processo_entry.insert(0, texto.upper())
+            self.processo_entry.icursor(pos)
 
     def _adicionar_linha(self, event=None):
         linha = self.linha_combo.get().strip()
