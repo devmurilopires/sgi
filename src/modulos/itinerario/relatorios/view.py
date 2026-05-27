@@ -119,7 +119,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         
         self.service = RelatoriosItinerarioService()
         self.usuario = usuario_logado
-        self.is_admin = usuario_logado.get("is_admin", False)
+        self.is_admin = usuario_logado.get("is_admin", False) if isinstance(usuario_logado, dict) else False
         self.tipo_doc = tipo_doc.upper()
         
         self.pagina_atual = 1
@@ -131,18 +131,18 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         self.lista_empresas = self.service.obter_empresas()
         self.lista_linhas = self.service.obter_linhas()
 
+        # MODIFICAÇÃO: Ordem dos campos perfeitamente trocada! E Inclusão do 'Evento'
         if self.tipo_doc == "OS":
             self.colunas_config = {
-                "id": "ID", "numero_os": "N° OS", "processo": "Processo", "solicitante": "Solicitante",
-                "tipo": "Tipo", "origem": "Origem", "empresa": "Empresa", 
+                "id": "ID", "numero_os": "N° OS", "solicitante": "Solicitante", "processo": "Processo",
+                "tipo": "Tipo", "evento": "Evento/Obra", "origem": "Origem", "empresa": "Empresa", 
                 "linhas": "Linhas", "responsavel": "Responsável", 
                 "data_criacao": "Data Criação", "endereco": "Endereço"
             }
         else:
             self.colunas_config = {
-                "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
-                "origem": "Origem", "assunto": "Assunto", "decisao": "Decisão", 
-                "solicitante": "Solicitante", "endereco": "Endereço", 
+                "id": "ID", "numero_completo": "N° Parecer", "assunto": "Assunto", "processo": "Processo", 
+                "origem": "Origem", "decisao": "Decisão", "solicitante": "Solicitante", "endereco": "Endereço", 
                 "evento": "Evento", "data_criacao": "Data Criação", "responsavel": "Responsável"
             }
 
@@ -161,7 +161,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         style.map("Modern.Treeview.Heading", background=[('active', '#D1D5DB')])
 
     def _criar_date_wrapper(self, parent, width=150):
-        # Container com borda e tamanho fixo para o visual moderno
         container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
         container.pack_propagate(False) 
         date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
@@ -185,7 +184,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         campos_ignorar = ["id", "data_criacao"]
         row, col = 0, 0
         
-        # GERAÇÃO INTELIGENTE ZERO HARDCODE
         for key, label in self.colunas_config.items():
             if key in campos_ignorar: continue
             
@@ -227,7 +225,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         f_data_inner = ctk.CTkFrame(f_data, fg_color="transparent")
         f_data_inner.pack(fill="x")
         
-        # Substitua a criação direta do DateEntry pelo wrapper
         container_ini, self.date_ini = self._criar_date_wrapper(f_data_inner, 150)
         container_ini.pack(side="left")
         
@@ -276,7 +273,10 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
-            self.tree.column(k, width=100, anchor="center")
+            if k in ["assunto", "solicitante"]:
+                self.tree.column(k, width=180, anchor="w")
+            else:
+                self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
         
         scrollbar = ttk.Scrollbar(self.frame_tabela, orient="vertical", command=self.tree.yview)
@@ -320,7 +320,16 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         self.tree.delete(*self.tree.get_children())
         for i, d in enumerate(self.dados_atuais):
             if d.get("data_criacao"): d["data_criacao"] = d["data_criacao"].strftime("%d/%m/%Y")
-            valores = [d.get(k, "") for k in self.colunas_config.keys()]
+            
+            # BLINDAGEM: Trocar tudo que for nulo ou vazio por um traço elegante
+            valores = []
+            for k in self.colunas_config.keys():
+                val = d.get(k)
+                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none":
+                    valores.append("-")
+                else:
+                    valores.append(str(val))
+                    
             tag = 'par' if i % 2 == 0 else 'impar'
             self.tree.insert("", "end", values=valores, iid=d['id'], tags=(tag,))
             
@@ -357,7 +366,14 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         grid = ctk.CTkFrame(info_frame, fg_color="transparent")
         grid.pack(fill="x", padx=15, pady=15)
         
-        campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo'] and v]
+        # BLINDAGEM NOS DETALHES: Valores Nulos viram traço (-)
+        campos_exibir = []
+        for k, v in dado.items():
+            if k not in ['id', 'caminho_arquivo']:
+                val_str = str(v).strip() if v is not None else ""
+                if val_str == "" or val_str.lower() == "none":
+                    val_str = "-"
+                campos_exibir.append((k, val_str))
         
         for i in range(0, len(campos_exibir), 2):
             lbl_key1 = str(campos_exibir[i][0]).replace("_", " ").title()
@@ -411,7 +427,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
 
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
-            # A MÁGICA AQUI: Reconhecendo corretamente os dois componentes criados por você!
             if isinstance(widget, CtkParametrosComboBox):
                 widget.set("Todos")
             elif isinstance(widget, Autocomplete):

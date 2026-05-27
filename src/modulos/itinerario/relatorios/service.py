@@ -49,19 +49,19 @@ class RelatoriosItinerarioService:
             elementos.append(Spacer(1, 15))
 
             if tipo_doc == "OS":
-                cabecalho = ["Nº OS", "Processo", "Tipo", "Empresa", "Responsável", "Data"]
+                cabecalho = ["Nº OS", "Solicitante", "Processo", "Tipo", "Evento", "Empresa", "Responsável", "Data"]
                 dados_tabela = [cabecalho]
                 for d in dados:
                     dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
-                    dados_tabela.append([str(d.get('numero_os','')), str(d.get('processo','')), str(d.get('tipo','')), str(d.get('empresa',''))[:30], str(d.get('responsavel','')), dt])
-                col_widths = [60, 100, 100, 250, 150, 80]
+                    dados_tabela.append([str(d.get('numero_os','')), str(d.get('solicitante',''))[:25], str(d.get('processo','')), str(d.get('tipo','')), str(d.get('evento',''))[:25], str(d.get('empresa',''))[:30], str(d.get('responsavel','')), dt])
+                col_widths = [60, 110, 90, 80, 120, 150, 120, 70]
             else:
-                cabecalho = ["Nº Parecer", "Processo", "Assunto", "Decisão", "Solicitante", "Data"]
+                cabecalho = ["Nº Parecer", "Assunto", "Processo", "Decisão", "Solicitante", "Data"]
                 dados_tabela = [cabecalho]
                 for d in dados:
                     dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
-                    dados_tabela.append([str(d.get('numero_completo','')), str(d.get('processo','')), str(d.get('assunto',''))[:30], str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
-                col_widths = [80, 100, 220, 90, 180, 80]
+                    dados_tabela.append([str(d.get('numero_completo','')), str(d.get('assunto',''))[:30], str(d.get('processo','')), str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
+                col_widths = [80, 220, 100, 90, 180, 80]
 
             tabela = Table(dados_tabela, colWidths=col_widths)
             tabela.setStyle(TableStyle([
