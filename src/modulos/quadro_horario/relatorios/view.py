@@ -1,6 +1,6 @@
 import customtkinter as ctk
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 from tkcalendar import DateEntry
 from datetime import date
 import math
@@ -34,21 +34,16 @@ class Autocomplete(ctk.CTkEntry):
     def on_keyrelease(self, event):
         if event.keysym in ["Up", "Down", "Return", "Escape", "Tab"]:
             return  
-
         texto = self.get().strip().lower()
         if not texto:
             self.esconder_lista()
             return
-
         filtradas = [linha for linha in self.lista_sugestoes if texto in linha.lower()][:15]
-        if filtradas:
-            self.mostrar_lista(filtradas)
-        else:
-            self.esconder_lista()
+        if filtradas: self.mostrar_lista(filtradas)
+        else: self.esconder_lista()
 
     def mostrar_lista(self, filtradas):
         self.esconder_lista()
-        
         toplevel = self.winfo_toplevel()
         if not toplevel.winfo_exists(): return
         
@@ -57,34 +52,25 @@ class Autocomplete(ctk.CTkEntry):
         w = self.winfo_width()
         h = min(180, len(filtradas) * 26 + 5)
         
-        self.listbox_frame = ctk.CTkFrame(
-            toplevel, fg_color="#FFFFFF", border_width=1, 
-            border_color="#10B981", corner_radius=6, width=w, height=h
-        )
+        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color="#FFFFFF", border_width=1, border_color="#10B981", corner_radius=6, width=w, height=h)
         self.listbox_frame.place(x=x, y=y)
         self.listbox_frame.pack_propagate(False)
         
-        self.listbox_widget = tk.Listbox(
-            self.listbox_frame, bg="#FFFFFF", fg="#333333",
-            selectbackground="#10B981", selectforeground="#FFFFFF",
-            bd=0, highlightthickness=0, font=("Arial", 11)
-        )
+        self.listbox_widget = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#10B981", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
         self.listbox_widget.pack(side="left", fill="both", expand=True, padx=3, pady=3)
         
         scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox_widget.yview)
         scrollbar.pack(side="right", fill="y")
         self.listbox_widget.config(yscrollcommand=scrollbar.set)
         
-        for item in filtradas:
-            self.listbox_widget.insert(tk.END, item)
+        for item in filtradas: self.listbox_widget.insert(tk.END, item)
             
         self.selecao_idx = -1
         self.listbox_widget.bind("<<ListboxSelect>>", self.on_listbox_click)
         self.listbox_frame.lift()
 
     def esconder_lista(self, event=None):
-        if self.listbox_frame and self.listbox_frame.winfo_exists():
-            self.listbox_frame.destroy()
+        if self.listbox_frame and self.listbox_frame.winfo_exists(): self.listbox_frame.destroy()
         self.listbox_frame = None
         self.listbox_widget = None
 
@@ -101,12 +87,11 @@ class Autocomplete(ctk.CTkEntry):
                 self.listbox_widget.see(self.selecao_idx)
 
     def navegar_para_cima(self, event):
-        if self.listbox_widget:
-            if self.selecao_idx > 0:
-                self.selecao_idx -= 1
-                self.listbox_widget.selection_clear(0, tk.END)
-                self.listbox_widget.selection_set(self.selecao_idx)
-                self.listbox_widget.see(self.selecao_idx)
+        if self.listbox_widget and self.selecao_idx > 0:
+            self.selecao_idx -= 1
+            self.listbox_widget.selection_clear(0, tk.END)
+            self.listbox_widget.selection_set(self.selecao_idx)
+            self.listbox_widget.see(self.selecao_idx)
 
     def selecionar_com_enter(self, event):
         if self.listbox_widget and self.selecao_idx >= 0:
@@ -130,17 +115,12 @@ class Autocomplete(ctk.CTkEntry):
             self.esconder_lista()
             self.event_generate("<<AutocompleteSelected>>")
 
-    def set(self, value):
-        self.delete(0, "end")
-        if value: self.insert(0, value)
-
 # ==========================================================
-# JANELA DE DETALHES AVANÇADA (PARA PESQUISAS COM GRÁFICOS)
+# JANELA DE DETALHES AVANÇADA (PESQUISAS E GRÁFICOS)
 # ==========================================================
 class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
     def __init__(self, master, dado, service):
         super().__init__(master)
-        
         self.title(f"Detalhes Avançados - {dado.get('titulo', 'Pesquisa')}")
         self.geometry("1200x800")
         self.resizable(True, True)
@@ -149,7 +129,6 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
         self.service = service
         self.nome = dado.get("titulo", "Pesquisa")
         self.tipo = dado.get("tipo", "tempo")
-        
         self.payload = ensure_payload_list(dado.get("payload"))
         
         container = ctk.CTkScrollableFrame(self, fg_color="#F9FAFB")
@@ -157,31 +136,26 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
 
         header = ctk.CTkFrame(container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 20))
-        
         ctk.CTkLabel(header, text=self.nome, font=("Arial Bold", 28), text_color="#10B981").pack(side="left", padx=10)
         
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right")
-        
         ctk.CTkButton(btn_frame, text="Exportar PDF", fg_color="#EF4444", hover_color="#DC2626", command=self.acao_exportar_pdf).pack(side="left", padx=5)
         ctk.CTkButton(btn_frame, text="Exportar Excel", fg_color="#059669", hover_color="#047857", command=self.acao_exportar_excel).pack(side="left", padx=5)
 
         row1 = ctk.CTkFrame(container, fg_color="transparent")
         row1.pack(fill="x", pady=10)
-        
         row2 = ctk.CTkFrame(container, fg_color="transparent")
         row2.pack(fill="x", pady=10)
 
         for i, tabela in enumerate(self.payload):
             parent_row = row1 if i < 3 else row2
-            if i < 3: 
-                color = "#D1D5DB"
+            if i < 3: color = "#D1D5DB"
             else: 
                 idx_cor = i - 3
                 if self.tipo == "demanda": map_colors = ["#F8D057", "#3498DB", "#5DADE2"]
                 else: map_colors = ["#F8D057", "#58D68D", "#3498db"]
                 color = map_colors[idx_cor] if idx_cor < len(map_colors) else "#F0F0F0"
-            
             self._criar_tabela_card(parent_row, tabela, color)
 
         if len(self.payload) >= 6:
@@ -192,7 +166,6 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
         
     def _criar_grafico(self, parent, tabela, custom_title_prefix=None):
         if not tabela or not isinstance(tabela, dict) or not tabela.get("rows"): return
-
         cols = tabela.get("columns") or []
         headings = tabela.get("headings") or {}
         rows = tabela.get("rows") or []
@@ -239,7 +212,6 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
 
         header = ctk.CTkFrame(card, fg_color=color, corner_radius=6)
         header.pack(fill="x")
-        
         nome_tab = tabela.get("nome", "Tabela")
         text_col = "#FFFFFF" if color not in ["#D1D5DB", "#F8D057", "#F0F0F0"] else "#333333"
         ctk.CTkLabel(header, text=str(nome_tab), font=("Arial Bold", 13), text_color=text_col).pack(anchor="center", pady=6)
@@ -280,7 +252,6 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
             s, m = self.service.exportar_pesquisa_pdf(self.nome, self.tipo, self.payload, path)
             messagebox.showinfo("Sucesso" if s else "Erro", m)
 
-
 # ==========================================================
 # VIEW PRINCIPAL (TELA DE RELATÓRIOS E LISTAGEM)
 # ==========================================================
@@ -302,6 +273,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
 
         self.lista_linhas = self.service.obter_linhas()
         
+        # MODIFICAÇÃO: Ordem Perfeita para PARECER
         if self.tipo_doc == "PESQUISA":
             self.colunas_config = {
                 "id": "ID", "titulo": "Linha", "responsavel": "Criador",  
@@ -309,12 +281,10 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 "data_criacao": "Data Criação"
             }
         else:
-            # MODIFICAÇÃO: Nova ordem do Parecer: Origem <-> Linhas, Decisão <-> Responsável
             self.colunas_config = {
-                "id": "ID", "linhas": "Linhas", "assunto": "Assunto",
-                "numero_completo": "N° Parecer", "processo": "Processo", "responsavel": "Responsável", 
-                "solicitante": "Solicitante", "origem": "Origem", 
-                "decisao": "Decisão", "data_criacao": "Data Criação"
+                "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
+                "origem": "Origem", "decisao": "Decisão", "assunto": "Assunto", 
+                "solicitante": "Solicitante", "responsavel": "Responsável", "data_criacao": "Data Criação"
             }
 
         self._configurar_estilos()
@@ -324,7 +294,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
     def _configurar_estilos(self):
         style = ttk.Style()
         style.theme_use("default")
-        style.configure("Modern.Treeview", background="#FFFFFF", fieldbackground="#FFFFFF", rowheight=60, font=("Arial", 11), borderwidth=0)
+        style.configure("Modern.Treeview", background="#FFFFFF", fieldbackground="#FFFFFF", rowheight=40, font=("Arial", 11), borderwidth=0)
         style.configure("Modern.Treeview.Heading", font=("Arial Bold", 11), background="#E9ECEF", foreground="#333333", borderwidth=0, padding=(0, 5))
         style.map("Modern.Treeview", background=[('selected', '#0F8C75')], foreground=[('selected', 'white')])
 
@@ -349,7 +319,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         self.grid_filtros = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         self.grid_filtros.pack(fill="x", padx=15, pady=5)
         
-        campos_ignorar = ["id", "data_criacao"]
+        campos_ignorar = ["id", "data_criacao", "responsavel"]
         row, col = 0, 0
         
         for key, label in self.colunas_config.items():
@@ -361,29 +331,21 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
             if key == "tipo":
-                if self.tipo_doc == "PESQUISA":
-                    widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="PESQUISA", incluir_todos=True, height=35)
-                else:
-                    widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="DECISAO_PARECER", incluir_todos=True, height=35)
-                widget.set("Todos")
+                widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="PESQUISA", incluir_todos=True, height=35)
             elif key == "origem": 
                 widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="ORIGEM", incluir_todos=True, height=35)
-                widget.set("Todos")
             elif key == "decisao":
                 widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="DECISAO_PARECER", incluir_todos=True, height=35)
-                widget.set("Todos")
             elif key == "assunto":
                 widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="ASSUNTO_QUADRO_HORARIO", incluir_todos=True, height=35) 
-                widget.set("Todos")
             elif key == "solicitante":
                 widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35)
-                widget.set("Todos")
-            elif key in ["titulo", "linhas"]: 
+            elif key in ["titulo"]: 
                 widget = Autocomplete(f, values=self.lista_linhas, width=130)
                 widget.bind("<<AutocompleteSelected>>", lambda e: self.acao_buscar())
                 widget.bind("<Return>", lambda e: self.acao_buscar())
             else:
-                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Filtrar {label.lower()}...")
+                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite...")
             
             widget.pack(fill="x")
             self.entradas_filtros[key] = widget
@@ -392,14 +354,14 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
 
         date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
-        ctk.CTkLabel(date_inicio, text="Data Criação Inicial:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
+        ctk.CTkLabel(date_inicio, text="Data Inicial:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
         wrapper_ini, self.date_ini = self._criar_date_wrapper(date_inicio, 450)
         wrapper_ini.pack(anchor="w", pady=(2,0))
         self.date_ini.set_date(date(date.today().year, 1, 1))
 
         date_fim = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_fim.grid(row=row, column=col+1, padx=10, pady=8, sticky="w")
-        ctk.CTkLabel(date_fim, text="Data Criação Final:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
+        ctk.CTkLabel(date_fim, text="Data Final:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
         wrapper_fim, self.date_fim = self._criar_date_wrapper(date_fim, 450)
         wrapper_fim.pack(anchor="w", pady=(2,0))
 
@@ -408,25 +370,41 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         ctk.CTkButton(btn_busca, text="🔍 Buscar", font=("Arial Bold", 13), width=120, height=35, fg_color="#0F8C75", command=self.acao_buscar).pack(side="left", padx=5)
         ctk.CTkButton(btn_busca, text="🧹 Limpar Filtros", font=("Arial", 13), width=120, height=35, fg_color="transparent", text_color="#666", border_width=1, command=self._limpar_filtros).pack(side="left")
 
+        # MODIFICAÇÃO: Padronização completa do rodapé com Paginação e Ações Integradas
         self.frame_bottom = ctk.CTkFrame(self, fg_color="transparent")
         self.frame_bottom.pack(side="bottom", fill="x", padx=20, pady=(5, 20))
         
-        self.lbl_pag = ctk.CTkLabel(self.frame_bottom, text="Página 1", font=("Arial Bold", 13), text_color="#0F8C75")
+        self.frame_paginacao = ctk.CTkFrame(self.frame_bottom, fg_color="transparent")
+        self.frame_paginacao.pack(side="left")
+        
+        self.btn_ant = ctk.CTkButton(self.frame_paginacao, text="< Anterior", font=("Arial Bold", 12), width=90, height=35, fg_color="#E5E7EB", text_color="#374151", hover_color="#D1D5DB", command=self._pagina_anterior)
+        self.btn_ant.pack(side="left", padx=5)
+        self.lbl_pag = ctk.CTkLabel(self.frame_paginacao, text="Página 1 | Total: 0 resultados", font=("Arial Bold", 13), text_color="#0F8C75")
         self.lbl_pag.pack(side="left", padx=15)
+        self.btn_prox = ctk.CTkButton(self.frame_paginacao, text="Próxima >", font=("Arial Bold", 12), width=90, height=35, fg_color="#E5E7EB", text_color="#374151", hover_color="#D1D5DB", command=self._pagina_proxima)
+        self.btn_prox.pack(side="left", padx=5)
 
-        ctk.CTkButton(self.frame_bottom, text="👁️ Ver Detalhes Avançados", font=("Arial Bold", 13), width=220, height=40, fg_color="#374151", command=self.acao_detalhes).pack(side="right", padx=5)
+        self.frame_acoes = ctk.CTkFrame(self.frame_bottom, fg_color="transparent")
+        self.frame_acoes.pack(side="right")
+        ctk.CTkButton(self.frame_acoes, text="👁️ Ver Detalhes", font=("Arial Bold", 13), width=140, height=35, fg_color="#374151", hover_color="#1F2937", command=self.acao_detalhes).pack(side="left", padx=5)
+        
+        if self.tipo_doc == "PARECER":
+            ctk.CTkButton(self.frame_acoes, text="📂 Abrir Documento", font=("Arial Bold", 13), width=160, height=35, fg_color="#0F8C75", hover_color="#0B6B59", command=self.acao_abrir).pack(side="left", padx=5)
+            
+        if self.is_admin:
+            ctk.CTkButton(self.frame_acoes, text="🗑️ Excluir", font=("Arial Bold", 13), width=120, height=35, fg_color="transparent", border_width=1, border_color="#D32F2F", text_color="#D32F2F", hover_color="#FEE2E2", command=self.acao_excluir).pack(side="left", padx=(5, 0))
 
         self.frame_tabela = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
         self.frame_tabela.pack(side="top", fill="both", expand=True, padx=20, pady=5)
 
         cols = list(self.colunas_config.keys())
         self.tree = ttk.Treeview(self.frame_tabela, columns=cols, show="headings", style="Modern.Treeview")
+        self.tree.tag_configure('impar', background="#FFFFFF")
+        self.tree.tag_configure('par', background="#F9FAFB")
         
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
-            if k == "relatorios": self.tree.column(k, width=180, anchor="w") 
-            elif k in ["titulo", "assunto", "solicitante"]: self.tree.column(k, width=250, anchor="w")
-            elif k == "origem": self.tree.column(k, width=100, anchor="center")
+            if k in ["titulo", "assunto", "solicitante"]: self.tree.column(k, width=220, anchor="w")
             else: self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
         
@@ -435,6 +413,20 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         self.tree.pack(side="left", fill="both", expand=True, padx=(15, 0), pady=15)
         scrollbar.pack(side="right", fill="y", padx=(0, 15), pady=15)
         self.tree.bind("<Double-1>", lambda e: self.acao_detalhes())
+
+    def _pagina_anterior(self):
+        if self.pagina_atual > 1:
+            self.pagina_atual -= 1
+            self._executar_busca_banco()
+
+    def _pagina_proxima(self):
+        if self.pagina_atual < self.total_paginas:
+            self.pagina_atual += 1
+            self._executar_busca_banco()
+
+    def acao_buscar(self):
+        self.pagina_atual = 1
+        self._executar_busca_banco()
 
     def _get_filtros_formatados(self):
         filtros = {}
@@ -461,36 +453,120 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             if isinstance(payload, str):
                 try: payload = json.loads(payload)
                 except: payload = {}
-            
             if isinstance(payload, dict):
                 datas_list = payload.get("datas", [])
                 d["relatorios"] = "\n".join([f"  • {dt.strip()}" for dt in datas_list]) if datas_list else "-"
             else:
                 d["relatorios"] = "-"
 
-            # MODIFICAÇÃO: Tratamento de valores None / em branco para exibir '-' na Tabela
             valores = []
             for k in self.colunas_config.keys():
                 val = d.get(k)
-                if val is None or str(val).strip() == "":
+                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none":
                     valores.append("-")
                 else:
                     valores.append(str(val))
                     
-            self.tree.insert("", "end", values=valores, iid=d['id'])
+            tag = 'par' if i % 2 == 0 else 'impar'
+            self.tree.insert("", "end", values=valores, iid=d['id'], tags=(tag,))
             
-        self.lbl_pag.configure(text=f"Total: {total} resultados")
+        self.total_paginas = math.ceil(total / self.itens_por_pagina) or 1
+        self.lbl_pag.configure(text=f"Página {self.pagina_atual} de {self.total_paginas}  |  Total: {total} resultados")
+        if hasattr(self, 'btn_ant'):
+            self.btn_ant.configure(state="normal" if self.pagina_atual > 1 else "disabled")
+            self.btn_prox.configure(state="normal" if self.pagina_atual < self.total_paginas else "disabled")
 
-    def acao_buscar(self):
-        self.pagina_atual = 1
-        self._executar_busca_banco()
+    # MODIFICAÇÃO: Helper para Campos do Parecer copiáveis
+    def _add_detail_field(self, parent, label, value, row, col, pad_x):
+        ctk.CTkLabel(parent, text=f"{label}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
+        val_str = str(value).strip()
+        if not val_str or val_str.lower() == "none": val_str = "-"
+        
+        linhas = max(1, len(val_str) // 35)
+        linhas = max(linhas, val_str.count('\n') + 1)
+        altura = linhas * 20 + 10
+        
+        box = ctk.CTkTextbox(parent, font=("Arial", 12), width=250, height=altura, fg_color="transparent", border_width=0, wrap="word")
+        box.insert("1.0", val_str)
+        box.configure(state="disabled")
+        box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
 
     def acao_detalhes(self):
         sel = self.tree.selection()
         if not sel: return messagebox.showwarning("Aviso", "Selecione um registro.")
         dado = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
-        if dado and self.tipo_doc == "PESQUISA":
+        if not dado: return
+        
+        if self.tipo_doc == "PESQUISA":
             RelatorioDetalhesPesquisa(self, dado, self.service)
+        else: # PARECER
+            modal = ctk.CTkToplevel(self)
+            modal.title(f"Visualização Detalhada - Parecer Nº {dado.get('numero_completo', '')}")
+            modal.geometry("800x650")
+            modal.grab_set()
+
+            scroll = ctk.CTkScrollableFrame(modal, fg_color="#F9FAFB")
+            scroll.pack(fill="both", expand=True, padx=20, pady=20)
+
+            header_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+            header_frame.pack(fill="x", pady=(0, 15))
+            ctk.CTkLabel(header_frame, text="Detalhes Completos do Documento", font=("Arial Black", 20), text_color="#0F8C75").pack(side="left")
+
+            info_frame = ctk.CTkFrame(scroll, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E5E7EB")
+            info_frame.pack(fill="x", pady=10)
+
+            grid = ctk.CTkFrame(info_frame, fg_color="transparent")
+            grid.pack(fill="x", padx=15, pady=15)
+            
+            campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo', 'payload']]
+            
+            row_idx = 0
+            for i in range(0, len(campos_exibir), 2):
+                lbl_key1 = str(campos_exibir[i][0]).replace("_", " ").title()
+                self._add_detail_field(grid, lbl_key1, campos_exibir[i][1], row_idx, 0, (0, 20))
+
+                if i + 1 < len(campos_exibir):
+                    lbl_key2 = str(campos_exibir[i+1][0]).replace("_", " ").title()
+                    self._add_detail_field(grid, lbl_key2, campos_exibir[i+1][1], row_idx, 2, (0, 0))
+                row_idx += 1
+
+            if dado.get('caminho_arquivo'):
+                ctk.CTkLabel(scroll, text="Localização na Rede:", font=("Arial Bold", 12)).pack(anchor="w", pady=(15, 0))
+                path_box = ctk.CTkEntry(scroll, fg_color="#F3F4F6", text_color="#6B7280", border_width=0)
+                path_box.pack(fill="x", pady=5)
+                path_box.insert(0, dado.get('caminho_arquivo'))
+                path_box.configure(state="readonly")
+
+            ctk.CTkButton(scroll, text="Fechar Janela", width=150, height=40, fg_color="#6B7280", hover_color="#4B5563", command=modal.destroy).pack(pady=30)
+
+    # MODIFICAÇÃO: Ação Abrir Documento
+    def acao_abrir(self):
+        sel = self.tree.selection()
+        if not sel: return messagebox.showwarning("Aviso", "Selecione um registro para abrir o arquivo.")
+        item = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
+        if item:
+            sucesso, msg = self.service.abrir_documento(item.get('caminho_arquivo'))
+            if not sucesso: messagebox.showerror("Erro", msg)
+
+    # MODIFICAÇÃO: Ação Excluir com requisição do Motivo de forma elegante
+    def acao_excluir(self):
+        sel = self.tree.selection()
+        if not sel: return messagebox.showwarning("Aviso", "Selecione um registro para excluir.")
+        
+        dialog = ctk.CTkInputDialog(text="Motivo para a exclusão do registro:", title="Auditoria de Exclusão")
+        motivo = dialog.get_input()
+        
+        if motivo is None: return # Clicou em cancelar
+        if not motivo.strip():
+            return messagebox.showwarning("Aviso", "A exclusão foi cancelada pois o motivo é obrigatório.")
+            
+        if messagebox.askyesno("Atenção Crítica", "Esta ação enviará o registro para a Lixeira do Sistema.\\nDeseja prosseguir?"):
+            usr = self.usuario_logado.get('nome') if isinstance(self.usuario_logado, dict) else self.usuario_logado
+            sucesso, msg = self.service.excluir_registro(self.tipo_doc, sel[0], motivo.strip(), usr)
+            if sucesso:
+                self.acao_buscar()
+                messagebox.showinfo("Sucesso", msg)
+            else: messagebox.showerror("Erro", msg)
 
     def acao_excel(self):
         path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
