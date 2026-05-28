@@ -61,7 +61,7 @@ class DashboardPMView(ctk.CTkFrame):
         self.scroll.pack(fill="both", expand=True, padx=10, pady=10)
 
         self.frame_cards = ctk.CTkFrame(self.scroll, fg_color="transparent")
-        self.frame_cards.pack(fill="x", pady=10)
+        self.frame_cards.pack(fill="x", pady=5)
 
         self.frame_tabela = ctk.CTkFrame(self.scroll, fg_color="transparent")
         self.frame_tabela.pack(fill="x", pady=10)
@@ -81,9 +81,9 @@ class DashboardPMView(ctk.CTkFrame):
         tot, def_q, ind_q, top_s = self.service.calcular_kpis(self.df_f)
         
         self._add_card("TOTAL PARECERES", tot, COLOR_PRIMARY)
-        self._add_card("DEFERIDOS", def_q, "#28A745")
+        self._add_card("DEFERIDOS", def_q, COLOR_PRIMARY)
         self._add_card("INDEFERIDOS", ind_q, COLOR_SECONDARY)
-        self._add_card("TOP SOLICITANTE", top_s.split()[0] if isinstance(top_s, str) else top_s, "#F29C1F")
+        self._add_card("TOP SOLICITANTE", top_s.split()[0] if isinstance(top_s, str) else top_s, COLOR_SECONDARY)
 
         # 2. TABELA
         for w in self.frame_tabela.winfo_children(): w.destroy()
@@ -94,29 +94,35 @@ class DashboardPMView(ctk.CTkFrame):
         self._renderizar_graficos()
 
     def _add_card(self, tit, val, cor):
-        c = ctk.CTkFrame(self.frame_cards, fg_color=COLOR_CARD, height=90, corner_radius=10, border_width=1, border_color="#E0E0E0")
+        c = ctk.CTkFrame( self.frame_cards, fg_color=COLOR_CARD, height=90, corner_radius=10, border_width=1,border_color="#E0E0E0")
         c.pack(side="left", fill="x", expand=True, padx=8)
-        ctk.CTkFrame(c, fg_color=cor, width=6, corner_radius=10).pack(side="left", fill="y")
-        ctk.CTkLabel(c, text=tit, font=("Arial Bold", 11), text_color="#777777").pack(anchor="w", padx=15, pady=(10,0))
-        ctk.CTkLabel(c, text=str(val), font=("Arial Black", 22), text_color="#333333").pack(anchor="w", padx=15)
+
+        c.pack_propagate(False)
+        ctk.CTkFrame( c, fg_color=cor, width=6, corner_radius=10).pack(side="left", fill="y")
+
+        ctk.CTkLabel( c, text=tit, font=("Arial Bold", 11), text_color="#777777").pack(anchor="w", padx=15, pady=(4,0))
+        ctk.CTkLabel( c, text=str(val), font=("Arial Black", 18), text_color="#333333").pack(anchor="w", padx=15, pady=(0,2))
 
     def _criar_tabela_balanco(self, parent, titulo, headers, dados):
         container = ctk.CTkFrame(parent, fg_color=COLOR_CARD, corner_radius=10, border_width=1, border_color="#E0E0E0")
         container.pack(fill="x", padx=8)
         ctk.CTkLabel(container, text=titulo, font=("Arial Bold", 14), text_color=COLOR_PRIMARY).pack(pady=10)
         
+        # Cabeçalho da tabela com Grid
         h_frame = ctk.CTkFrame(container, fg_color="#F1F3F5", height=35)
         h_frame.pack(fill="x", padx=15, pady=5)
         for i, h in enumerate(headers):
-            h_frame.columnconfigure(i, weight=1)
-            ctk.CTkLabel(h_frame, text=h, font=("Arial Bold", 11)).grid(row=0, column=i, pady=5)
+            h_frame.columnconfigure(i, weight=1, uniform="col")
+            ctk.CTkLabel(h_frame, text=h, font=("Arial Bold", 11)).grid(row=0, column=i, pady=5, sticky="nsew")
 
-        for row in dados:
+        # Linhas da tabela renderizadas via Grid com correção de sticky="nsew"
+        for r_idx, row in enumerate(dados):
             r_f = ctk.CTkFrame(container, fg_color="transparent")
             r_f.pack(fill="x", padx=15)
-            for i, v in enumerate(row):
-                r_f.columnconfigure(i, weight=1)
-                ctk.CTkLabel(r_f, text=str(v), font=("Arial", 12)).grid(row=0, column=i, pady=2)
+            for c_idx, v in enumerate(row):
+                r_f.columnconfigure(c_idx, weight=1, uniform="col")
+                # CORREÇÃO: sticky="nsew" garante que o layout configure sem erros e centralize o texto nativamente
+                ctk.CTkLabel(r_f, text=str(v), font=("Arial", 12)).grid(row=0, column=c_idx, pady=3, sticky="nsew")
 
     def _renderizar_graficos(self):
         for w in self.frame_graficos.winfo_children(): w.destroy()
@@ -125,7 +131,7 @@ class DashboardPMView(ctk.CTkFrame):
         fig.patch.set_facecolor(COLOR_BG)
         plt.subplots_adjust(left=0.15, bottom=0.08, right=0.95, top=0.92, wspace=0.3, hspace=0.4)
 
-        # G1: Evolução Mensal (Barras Verdes Finas)
+        # G1: Evolução Mensal
         ax = axs[0, 0]
         meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
         s_mes = pd.Series(0, index=range(1,13))
@@ -137,7 +143,7 @@ class DashboardPMView(ctk.CTkFrame):
             if b.get_height() > 0: ax.text(b.get_x()+b.get_width()/2, b.get_height(), int(b.get_height()), ha='center', va='bottom', fontweight='bold')
         self._formatar_eixo(ax, "Pareceres Gerados por Mês", 'y')
 
-        # G2: Decisões (Pizza Laranja/Verde)
+        # G2: Decisões
         ax = axs[0, 1]
         if not self.df_f.empty:
             counts = self.df_f['decisao'].value_counts()
@@ -146,7 +152,7 @@ class DashboardPMView(ctk.CTkFrame):
                        startangle=140, colors=[COLOR_PRIMARY, COLOR_SECONDARY], textprops={'fontweight':'bold'})
         ax.set_title("Proporção de Decisões", fontsize=12, fontweight='bold', pad=15)
 
-        # G3: Top 10 Solicitantes (Barras Horizontais Verdes)
+        # G3: Top 10 Solicitantes
         ax = axs[1, 0]
         if not self.df_f.empty:
             solic = self.df_f['solicitante'].value_counts().head(10)
@@ -157,13 +163,13 @@ class DashboardPMView(ctk.CTkFrame):
                 for i, v in enumerate(solic.values): ax.text(v, i, f' {int(v)}', va='center', fontweight='bold')
         self._formatar_eixo(ax, "Top 10 Solicitantes (Geral)", 'x')
 
-        # G4: Assuntos Mais Frequentes (Pizza Laranja)
+        # G4: Assuntos Mais Frequentes
         ax = axs[1, 1]
         if not self.df_f.empty:
             assuntos = self.df_f['assunto'].value_counts().head(5)
             if not assuntos.empty:
-                ax.pie(assuntos, labels=[textwrap.fill(str(a), 15) for a in assuntos.index], autopct='%1.1f%%', 
-                       startangle=90, colors=plt.cm.Oranges(np.linspace(0.4, 0.7, len(assuntos))), textprops={'fontweight':'bold'})
+                ax.pie(assuntos, labels=[textwrap.fill(str(a), 15) for a in assuntos.index], autopct='%1.1f%%', \
+                       startangle=90, colors=plt.cm.Oranges(np.linspace(0.1, 0.5, len(assuntos))), textprops={'fontweight':'bold'})
         ax.set_title("Top 5 Assuntos Demandados", fontsize=12, fontweight='bold', pad=15)
 
         canvas = FigureCanvasTkAgg(fig, master=self.frame_graficos)
@@ -179,6 +185,5 @@ class DashboardPMView(ctk.CTkFrame):
         ax.set_facecolor(COLOR_CARD)
         ax.grid(axis=eixo_int, linestyle='--', alpha=0.3)
 
-# Função de renderização corretamente indentada fora da classe
 def renderizar(frame_destino, usuario_logado):
     return DashboardPMView(master=frame_destino, usuario_logado=usuario_logado)

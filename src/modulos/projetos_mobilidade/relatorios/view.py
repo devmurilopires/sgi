@@ -21,11 +21,10 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         self.entradas_filtros = {}
         self.dados_atuais = []
 
-        # MODIFICAÇÃO: Inclusão da coluna "Origem" na estrutura da tabela e dos filtros
         self.colunas_config = {
             "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
-            "origem": "Origem", "assunto": "Assunto", "decisao": "Decisão", 
-            "solicitante": "Solicitante", "responsavel": "Responsável", 
+            "solicitante": "Solicitante", "assunto": "Assunto", "decisao": "Decisão", 
+            "origem": "Origem", "responsavel": "Responsável", 
             "data_criacao": "Data Criação"
         }
 
@@ -44,7 +43,7 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         style.map("Modern.Treeview.Heading", background=[('active', '#D1D5DB')])
 
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=30, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
         container.pack_propagate(False) 
         date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
@@ -75,7 +74,6 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
             self.grid_filtros.grid_columnconfigure(col, weight=1)
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            # Geração inteligente de componentes via banco de dados
             if key == "origem":
                 widget = CtkParametrosComboBox(f, setor="Projetos de Mobilidade", campo="ORIGEM", incluir_todos=True, height=35, fg_color="#F9FAFB")
             elif key == "assunto":
@@ -128,6 +126,10 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         self.frame_acoes = ctk.CTkFrame(self.frame_bottom, fg_color="transparent")
         self.frame_acoes.pack(side="right")
         ctk.CTkButton(self.frame_acoes, text="👁️ Ver Detalhes", font=("Arial Bold", 13), width=140, height=35, fg_color="#374151", hover_color="#1F2937", command=self.acao_detalhes).pack(side="left", padx=5)
+        
+        # MODIFICAÇÃO: Botão Abrir Documento
+        ctk.CTkButton(self.frame_acoes, text="📂 Abrir Documento", font=("Arial Bold", 13), width=160, height=35, fg_color="#0F8C75", hover_color="#0B6B59", command=self.acao_abrir).pack(side="left", padx=5)
+        
         if self.is_admin:
             ctk.CTkButton(self.frame_acoes, text="🗑️ Excluir", font=("Arial Bold", 13), width=120, height=35, fg_color="transparent", border_width=1, border_color="#D32F2F", text_color="#D32F2F", hover_color="#FEE2E2", command=self.acao_excluir).pack(side="left", padx=(5, 0))
 
@@ -143,11 +145,11 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
             if k == "assunto":
-                self.tree.column(k, width=270, anchor="w") 
+                self.tree.column(k, width=280, anchor="w") 
             elif k == "solicitante":
                 self.tree.column(k, width=150, anchor="w") 
             elif k == "origem":
-                self.tree.column(k, width=110, anchor="center") 
+                self.tree.column(k, width=120, anchor="center") 
             else:
                 self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
@@ -195,7 +197,15 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
             if d.get("data_criacao"): 
                 d["data_criacao"] = d["data_criacao"].strftime("%d/%m/%Y")
 
-            valores = [d.get(k, "") for k in self.colunas_config.keys()]
+            # BLINDAGEM: Troca valores vazios por "-"
+            valores = []
+            for k in self.colunas_config.keys():
+                val = d.get(k)
+                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none":
+                    valores.append("-")
+                else:
+                    valores.append(str(val))
+                    
             tag = 'par' if i % 2 == 0 else 'impar'
             self.tree.insert("", "end", values=valores, iid=d['id'], tags=(tag,))
             
@@ -204,6 +214,24 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         
         self.btn_ant.configure(state="normal" if self.pagina_atual > 1 else "disabled")
         self.btn_prox.configure(state="normal" if self.pagina_atual < self.total_paginas else "disabled")
+
+    # MODIFICAÇÃO: Helper para texto selecionável (Permite copiar e colar no Modal!)
+    def _add_detail_field(self, parent, label, value, row, col, pad_x):
+        ctk.CTkLabel(parent, text=f"{label}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
+        
+        val_str = str(value).strip()
+        if not val_str or val_str.lower() == "none": val_str = "-"
+        
+        # Calcula a altura baseada na quantidade de texto para não cortar
+        linhas = max(1, len(val_str) // 35)
+        linhas = max(linhas, val_str.count('\\n') + 1)
+        altura = linhas * 20 + 10
+        
+        # Usamos Textbox desabilitado para o usuário poder selecionar e copiar o texto livremente
+        box = ctk.CTkTextbox(parent, font=("Arial", 12), width=250, height=altura, fg_color="transparent", border_width=0, wrap="word")
+        box.insert("1.0", val_str)
+        box.configure(state="disabled")
+        box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
 
     def acao_detalhes(self):
         sel = self.tree.selection()
@@ -231,20 +259,34 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         grid = ctk.CTkFrame(info_frame, fg_color="transparent")
         grid.pack(fill="x", padx=15, pady=15)
         
-        campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id'] and v]
+        campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo']]
         
         for i in range(0, len(campos_exibir), 2):
             lbl_key1 = str(campos_exibir[i][0]).replace("_", " ").title()
-            ctk.CTkLabel(grid, text=f"{lbl_key1}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row_idx, column=0, sticky="w", pady=8, padx=(0, 5))
-            ctk.CTkLabel(grid, text=str(campos_exibir[i][1]), font=("Arial", 12), wraplength=250, justify="left").grid(row=row_idx, column=1, sticky="w", pady=8, padx=(0, 20))
+            self._add_detail_field(grid, lbl_key1, campos_exibir[i][1], row_idx, 0, (0, 20))
 
             if i + 1 < len(campos_exibir):
                 lbl_key2 = str(campos_exibir[i+1][0]).replace("_", " ").title()
-                ctk.CTkLabel(grid, text=f"{lbl_key2}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row_idx, column=2, sticky="w", pady=8, padx=(0, 5))
-                ctk.CTkLabel(grid, text=str(campos_exibir[i+1][1]), font=("Arial", 12), wraplength=250, justify="left").grid(row=row_idx, column=3, sticky="w", pady=8)
+                self._add_detail_field(grid, lbl_key2, campos_exibir[i+1][1], row_idx, 2, (0, 0))
             row_idx += 1
 
+        if dado.get('caminho_arquivo'):
+            ctk.CTkLabel(scroll, text="Localização na Rede:", font=("Arial Bold", 12)).pack(anchor="w", pady=(15, 0))
+            path_box = ctk.CTkEntry(scroll, fg_color="#F3F4F6", text_color="#6B7280", border_width=0)
+            path_box.pack(fill="x", pady=5)
+            path_box.insert(0, dado.get('caminho_arquivo'))
+            path_box.configure(state="readonly")
+
         ctk.CTkButton(scroll, text="Fechar Janela", width=150, height=40, fg_color="#6B7280", hover_color="#4B5563", command=modal.destroy).pack(pady=30)
+
+    # MODIFICAÇÃO: Nova ação para abrir o arquivo gerado
+    def acao_abrir(self):
+        sel = self.tree.selection()
+        if not sel: return messagebox.showwarning("Aviso", "Selecione um registro para abrir o arquivo.")
+        item = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
+        if item:
+            sucesso, msg = self.service.abrir_documento(item.get('caminho_arquivo'))
+            if not sucesso: messagebox.showerror("Erro", msg)
 
     def acao_excluir(self):
         sel = self.tree.selection()
@@ -270,11 +312,11 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
 
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
-            # MODIFICAÇÃO: Verifica de forma genérica o nosso componente base CtkParametrosComboBox
             if isinstance(widget, CtkParametrosComboBox): widget.set("Todos")
             else: widget.delete(0, 'end')
-        self.date_ini.set_date(date(date.today().year, 1, 1))
-        self.date_fim.set_date(date.today())
+
+        self.data_inicio.set_date(date(date.today().year, 1, 1))
+        self.data_fim.set_date(date.today())
         self.acao_buscar()
 
 def renderizar(frame_destino, usuario_logado):
