@@ -3,46 +3,56 @@ from config.database import get_db_connection
 
 class RelatorioProjetosMobilidadeRepository:
     def _construir_query_filtros(self, filtros):
-        # MODIFICAÇÃO: Adicionado o campo o.nome AS origem e o LEFT JOIN com common.origens
+        # MODIFICAÇÃO: Wrapper Query para permitir pesquisa fluida em colunas virtuais
         query = """
-            SELECT p.id, 
-                   pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
-                   p.processo, 
-                   o.nome AS origem, 
-                   p.assunto, t.nome AS decisao, p.solicitante, 
-                   pb.created_at AS data_criacao, u.nome_completo AS responsavel
-            FROM projetos_mobilidade.pareceres p
-            JOIN common.pareceres_base pb ON p.id = pb.id
-            LEFT JOIN common.tipos t ON pb.tipo_id = t.id
-            LEFT JOIN common.origens o ON p.origem_id = o.id
-            LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
+            SELECT * FROM (
+                SELECT p.id, 
+                       pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
+                       p.processo, 
+                       o.nome AS origem, 
+                       p.assunto, t.nome AS decisao, p.solicitante, 
+                       pb.created_at AS data_criacao, u.nome_completo AS responsavel,
+                       pb.caminho_arquivo
+                FROM projetos_mobilidade.pareceres p
+                JOIN common.pareceres_base pb ON p.id = pb.id
+                LEFT JOIN common.tipos t ON pb.tipo_id = t.id
+                LEFT JOIN common.origens o ON p.origem_id = o.id
+                LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
+            ) AS base
             WHERE 1=1
         """
         params = []
-        # MODIFICAÇÃO: Inclusão do filtro de Origem
+        
+        # MODIFICAÇÃO: O número_completo agora está mapeado corretamente!
         mapeamento = {
-            "processo": "p.processo", 
-            "origem": "o.nome",
-            "assunto": "p.assunto",
-            "decisao": "t.nome", 
-            "solicitante": "p.solicitante"
+            "numero_completo": "numero_completo",
+            "processo": "processo", 
+            "origem": "origem",
+            "assunto": "assunto",
+            "decisao": "decisao", 
+            "solicitante": "solicitante"
         }
 
         for chave, valor in filtros.items():
             if valor and chave in mapeamento:
-                # Blindagem ILIKE para evitar problemas de case/acentuação
-                query += f" AND {mapeamento[chave]} ILIKE %s"
-                params.append(f"%{valor}%")
+                coluna = mapeamento[chave]
+                
+                # BLINDAGEM: Decisão usa match exato para DEFERIDO não puxar INDEFERIDO
+                if chave == "decisao":
+                    query += f" AND translate(lower(COALESCE({coluna}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') = translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
+                    params.append(valor)
+                else:
+                    query += f" AND translate(lower(COALESCE({coluna}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
+                    params.append(f"%{valor}%")
 
-        # Filtro de Data
         if filtros.get("data_inicio"):
-            query += " AND pb.created_at::date >= %s"
+            query += " AND data_criacao::date >= %s"
             params.append(filtros["data_inicio"])
         if filtros.get("data_fim"):
-            query += " AND pb.created_at::date <= %s"
+            query += " AND data_criacao::date <= %s"
             params.append(filtros["data_fim"])
 
-        query += " ORDER BY pb.created_at DESC"
+        query += " ORDER BY data_criacao DESC"
         return query, params
 
     def buscar_dados_paginados(self, filtros, limit=50, offset=0):

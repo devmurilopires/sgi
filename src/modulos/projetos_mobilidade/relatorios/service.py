@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import landscape, A4
@@ -9,6 +10,16 @@ class RelatorioProjetosMobilidadeService:
     def __init__(self):
         self.repo = RelatorioProjetosMobilidadeRepository()
 
+    # MODIFICAÇÃO: Função de Abertura Inserida!
+    def abrir_documento(self, caminho):
+        if not caminho or not os.path.exists(caminho):
+            return False, "Arquivo não encontrado no diretório de rede."
+        try:
+            os.startfile(caminho)
+            return True, "Abrindo documento..."
+        except Exception as e:
+            return False, f"Erro ao abrir o arquivo: {e}"
+
     def excluir(self, registro_id):
         return self.repo.excluir_registro(registro_id)
 
@@ -17,8 +28,8 @@ class RelatorioProjetosMobilidadeService:
         if not dados: return False, "Nenhum dado encontrado para os filtros atuais."
         try:
             df = pd.DataFrame(dados)
-            # Removemos apenas o ID, já que motivo_indeferimento não vem mais do BD
             if 'id' in df.columns: df.drop(columns=['id'], inplace=True)
+            if 'caminho_arquivo' in df.columns: df.drop(columns=['caminho_arquivo'], inplace=True)
             
             if 'data_criacao' in df.columns:
                 df['data_criacao'] = pd.to_datetime(df['data_criacao']).dt.strftime("%d/%m/%Y")
@@ -40,7 +51,6 @@ class RelatorioProjetosMobilidadeService:
             elementos.append(Paragraph("Relatório Gerencial - Pareceres (Projetos de Mobilidade)", estilos['Title']))
             elementos.append(Spacer(1, 20))
 
-            # MODIFICAÇÃO: Cabeçalho com 'Origem'
             cabecalho = ["Nº Parecer", "Processo", "Origem", "Assunto", "Decisão", "Solicitante", "Data Criação"]
             dados_tabela = [cabecalho]
             
@@ -49,8 +59,8 @@ class RelatorioProjetosMobilidadeService:
                 dados_tabela.append([
                     str(d.get('numero_completo', '')), 
                     str(d.get('processo', '')), 
-                    str(d.get('origem', '')),         # <-- NOVO DADO
-                    str(d.get('assunto', ''))[:35],   # Reduzido de 40 para 35 para caber a origem
+                    str(d.get('origem', '')),
+                    str(d.get('assunto', ''))[:35],
                     str(d.get('decisao', '')), 
                     str(d.get('solicitante', ''))[:20], 
                     dt
