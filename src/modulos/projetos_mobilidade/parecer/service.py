@@ -21,7 +21,6 @@ class ParecerProjetosMobilidadeService:
         solicitante = dados_form.get('solicitante', '').upper()
         motivo = dados_form.get('motivo', '') if tipo == "INDEFERIDO" else None
         
-        # CORREÇÃO: Pega diretamente o nome do usuário como string blindada
         if not usuario_logado:
             return False, "Erro de autenticação: Usuário não identificado na sessão."
         criado_por = f"%{usuario_logado}%"
@@ -66,6 +65,37 @@ class ParecerProjetosMobilidadeService:
         except Exception as e:
             return False, f"Parecer registrado no banco, mas falhou ao criar o Word:\n{e}"
 
+    def _substituir_texto_com_runs(self, paragrafo, mapeamento):
+        """
+        Substitui as tags de forma segura mantendo a formatação exata de cada fragmento (run).
+        Isso impede que trechos normais fiquem em negrito sem querer.
+        """
+        # Primeiro verifica se alguma tag está presente no texto consolidado do parágrafo
+        texto_completo = "".join(run.text for run in paragrafo.runs)
+        
+        possui_tag = any(chave in texto_completo for chave in mapeamento)
+        if not possui_tag:
+            return
+
+        # Substituição direta mantendo a estrutura de runs originais
+        for chave, valor in mapeamento.items():
+            if chave in texto_completo:
+                # Se a tag está contida perfeitamente em um único run (caso mais comum)
+                for run in paragrafo.runs:
+                    if chave in run.text:
+                        run.text = run.text.replace(chave, valor)
+                
+                # Atualiza o texto consolidado caso a tag estivesse dividida entre runs
+                texto_completo = "".join(run.text for run in paragrafo.runs)
+                if chave in texto_completo:
+                    # Fallback de segurança para tags fragmentadas: reconstrói preservando o primeiro run
+                    texto_completo = texto_completo.replace(chave, valor)
+                    for i, run in enumerate(paragrafo.runs):
+                        if i == 0:
+                            run.text = texto_completo
+                        else:
+                            run.text = ""
+
     def _gerar_documento(self, modelo_path, destino_path, num_parecer, processo, assunto, solicitante, data_str, motivo):
         doc = Document(modelo_path)
         mapeamento = {
@@ -75,15 +105,18 @@ class ParecerProjetosMobilidadeService:
             "{{SOLICITANTE}}": solicitante,
             "{{DATA}}": data_str
         }
-        if motivo: mapeamento["{{MOTIVO}}"] = motivo
+        if motivo: 
+            mapeamento["{{MOTIVO}}"] = motivo
 
+        # 1. Substituição nos parágrafos normais do documento
         for paragrafo in doc.paragraphs:
-            texto_original = "".join(run.text for run in paragrafo.runs)
-            novo_texto = texto_original
-            for chave, valor in mapeamento.items():
-                if chave in novo_texto: novo_texto = novo_texto.replace(chave, valor)
-            if novo_texto != texto_original:
-                for run in paragrafo.runs: run.text = ""
-                if paragrafo.runs: paragrafo.runs[0].text = novo_texto
+            self._substituir_texto_com_runs(paragrafo, mapeamento)
+                
+        # 2. Varredura recursiva dentro de tabelas e células do Word
+        for tabela in doc.tables:
+            for linha in tabela.rows:
+                for celula in linha.cells:
+                    for paragrafo in celula.paragraphs:
+                        self._substituir_texto_com_runs(paragrafo, mapeamento)
                 
         doc.save(destino_path)

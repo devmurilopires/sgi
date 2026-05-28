@@ -10,7 +10,6 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         self.pack(fill="both", expand=True)
 
         self.service = ParecerProjetosMobilidadeService()
-        # CORREÇÃO: Garante que extrai apenas a string do nome, independente do que o roteador mandar
         self.usuario_logado = usuario_logado.get('nome') if isinstance(usuario_logado, dict) else usuario_logado
 
         self._construir_interface()
@@ -32,10 +31,7 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row1.pack(fill="x", pady=(20, 10), padx=20)
 
-        # MODIFICAÇÃO: "Tipo de Parecer" agora usa o componente do Banco de Dados
         self.tipo_parecer_combo = self._criar_param_combo(row1, "Decisão", "Projetos de Mobilidade", "DECISAO_PARECER", width=400, command=self._on_tipo_change)
-        
-        # MODIFICAÇÃO: Atribuindo à variável self.origem_combo para podermos ler com .get()
         self.origem_combo = self._criar_param_combo(row1, "Origem do Processo", "Projetos de Mobilidade", "ORIGEM", width=400)
 
         self.processo_var = ctk.StringVar()
@@ -73,7 +69,6 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
         ctk.CTkEntry(container, textvariable=variable, width=width, height=38, fg_color="#F9FAFB", border_color="#D1D5DB").pack(anchor="w", pady=(2,0))
 
-    # MODIFICAÇÃO: Helper atualizado para suportar callback 'command'
     def _criar_param_combo(self, parent, label_text, setor, campo, width, command=None):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side="left", padx=10, fill="x")
@@ -84,7 +79,6 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
 
     # --- LÓGICAS DE INTERFACE ---
     def _on_tipo_change(self, *args):
-        # Validação blindada lendo direto do componente
         if self.tipo_parecer_combo.get().upper() == "INDEFERIDO":
             self.frame_motivo.pack(fill="x", pady=10, padx=10, before=self.scroll_frame.winfo_children()[-1])
             self.btn_gerar.configure(fg_color="#C21010", hover_color="#9E0D0D")
@@ -93,16 +87,16 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
             self.btn_gerar.configure(fg_color="#0F8C75", hover_color="#0B6B59")
 
     def _formatar_processo(self, *args):
-        val = self.processo_var.get().upper()
-        val = re.sub(r'[^a-zA-Z0-9]', '', val)
-        if len(val) > 5: val = f"{val[:-4]}/{val[-4:]}"
-        self.processo_var.set(val)
+        texto_original = self.processo_var.get()
+        val = texto_original.upper()
+        if texto_original != val:
+            self.processo_var.set(val)
 
     # --- AÇÃO PRINCIPAL ---
     def _acao_gerar_parecer(self):
         dados_form = {
             'tipo': self.tipo_parecer_combo.get().strip(),
-            'origem': self.origem_combo.get().strip(), # Coletando a Origem
+            'origem': self.origem_combo.get().strip(),
             'processo': self.processo_var.get().strip(),
             'solicitante': self.solicitante_combo.get().strip(),
             'assunto': self.assunto_combo.get().strip(),
