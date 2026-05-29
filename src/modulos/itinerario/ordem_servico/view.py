@@ -143,7 +143,6 @@ class OSItinerarioView(ctk.CTkFrame):
         linha_fixa = ctk.CTkFrame(form_frame, fg_color="transparent")
         linha_fixa.pack(fill="x", pady=(15, 0), padx=15)
         
-        # MODIFICAÇÃO: Aplicando Grade de 6 colunas na linha fixa
         for i in range(6):
             linha_fixa.grid_columnconfigure(i, weight=1, uniform="col")
 
@@ -166,7 +165,6 @@ class OSItinerarioView(ctk.CTkFrame):
         self.container_dinamico = ctk.CTkFrame(form_frame, fg_color="transparent")
         self.container_dinamico.pack(fill="x", pady=0, padx=15)
         
-        # MODIFICAÇÃO: Aplicando Grade de 6 colunas no contêiner dinâmico
         for i in range(6):
             self.container_dinamico.grid_columnconfigure(i, weight=1, uniform="col")
 
@@ -213,7 +211,6 @@ class OSItinerarioView(ctk.CTkFrame):
         ctk.CTkLabel(footer_frame, text=f"Responsável pelo Documento: {self.usuario_logado}", font=("Arial Bold", 12), text_color="#777").pack(side="left", padx=10)
         ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color="#0F8C75", hover_color="#0B6B59", font=("Arial Black", 16), height=50, width=320, command=self.acao_criar_os).pack(side="right", padx=10)
 
-    # --- HELPERS DE GRID UI/UX (AGORA COM RESIZING INTELIGENTE) ---
     def _criar_campo_grid(self, parent, label, row, col, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
@@ -281,7 +278,6 @@ class OSItinerarioView(ctk.CTkFrame):
         tipo = self.tipo_os_combo.get().upper()
         self.campos_dinamicos = {}
 
-        # MODIFICAÇÃO: Distribuição inteligente no grid de 6 colunas
         if tipo == "EVENTOS":
             self.campos_dinamicos['evento'] = self._criar_param_combo_grid(self.container_dinamico, "Nome do Evento", "Itinerário", "EVENTO", 0, 0, 2)
             self.campos_dinamicos['endereco'] = self._criar_campo_grid(self.container_dinamico, "Endereço/Logradouro", 0, 2, 4)
@@ -289,7 +285,6 @@ class OSItinerarioView(ctk.CTkFrame):
         elif tipo == "CORRIDA":
             self.campos_dinamicos['nome_corrida'] = self._criar_campo_grid(self.container_dinamico, "Nome da Corrida", 0, 0, 2)
             self.campos_dinamicos['km'] = self._criar_campo_grid(self.container_dinamico, "Quilometragem (KM)", 0, 2, 1)
-            # Solicitante GIGANTE (Ocupa 3 colunas, garantindo leitura total)
             self.campos_dinamicos['solicitante'] = self._criar_param_combo_grid(self.container_dinamico, "Solicitante", "Itinerário", "SOLICITANTE_PARECER", 0, 3, 3)
             self.container_listas.pack_forget()
         elif tipo == "OBRAS":
@@ -299,20 +294,20 @@ class OSItinerarioView(ctk.CTkFrame):
 
         HORARIOS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
 
+        # MODIFICAÇÃO DE LAYOUT: LINHA 1 (Seleção de Datas + Datas juntas na mesma linha)
         self.modo_combo = self._criar_combo_estatico_grid(self.container_dinamico, "Seleção de Datas", ["Período (Início-Fim)", "Dias Isolados"], 1, 0, 2, command=self._on_modo_data_change)
         self.modo_combo.set("Período (Início-Fim)")
 
-        self.campos_dinamicos['hr_inicio'] = self._criar_combo_estatico_grid(self.container_dinamico, "Hora Início", HORARIOS, 1, 2, 2)
-        self.campos_dinamicos['hr_fim'] = self._criar_combo_estatico_grid(self.container_dinamico, "Hora Fim", HORARIOS, 1, 4, 2)
-
-        # Container interno de datas
         self.container_datas = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
-        self.container_datas.grid(row=2, column=0, columnspan=3, sticky="ew", padx=0, pady=0)
+        self.container_datas.grid(row=1, column=2, columnspan=4, sticky="ew", padx=0, pady=0)
         self._on_modo_data_change()
 
-        # Container de Empresas
+        # MODIFICAÇÃO DE LAYOUT: LINHA 2 (Horários e Empresa descem para baixo)
+        self.campos_dinamicos['hr_inicio'] = self._criar_combo_estatico_grid(self.container_dinamico, "Hora Início", HORARIOS, 2, 0, 1)
+        self.campos_dinamicos['hr_fim'] = self._criar_combo_estatico_grid(self.container_dinamico, "Hora Fim", HORARIOS, 2, 1, 1)
+
         self.frame_empresas = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
-        self.frame_empresas.grid(row=2, column=3, columnspan=3, sticky="new", padx=0, pady=0)
+        self.frame_empresas.grid(row=2, column=2, columnspan=4, sticky="new", padx=0, pady=0)
         self.frame_empresas.grid_columnconfigure(0, weight=1)
         
         self.lista_empresas = self.service.buscar_sugestoes("EMPRESAS")

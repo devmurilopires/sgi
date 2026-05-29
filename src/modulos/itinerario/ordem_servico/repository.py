@@ -6,7 +6,6 @@ class OSItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # MODIFICAÇÃO: ativo -> is_ativo
                     cur.execute("SELECT nome FROM common.empresas WHERE is_ativo = TRUE ORDER BY nome;")
                     return [r[0] for r in cur.fetchall()]
         except Exception as e: 
@@ -17,7 +16,6 @@ class OSItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # MODIFICAÇÃO: ativo -> is_ativo
                     cur.execute("SELECT codigo || ' - ' || nome FROM common.linhas WHERE is_ativo = TRUE ORDER BY codigo;")
                     return [r[0] for r in cur.fetchall()]
         except Exception as e:
@@ -28,7 +26,6 @@ class OSItinerarioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # MODIFICAÇÃO: schema iga -> itinerario
                     cur.execute("SELECT COALESCE(MAX(numero), 0) + 1 FROM itinerario.ordens_servico WHERE ano = EXTRACT(YEAR FROM CURRENT_DATE)")
                     resultado = cur.fetchone()
                     return resultado[0] if resultado else 1
@@ -37,7 +34,7 @@ class OSItinerarioRepository:
             return 1
 
     def salvar_os_itinerario(self, dados_db):
-        # 1. MODIFICAÇÃO: Filtro cravado no contexto TIPO_EVENTO_OS e blindado com ILIKE
+        # MODIFICAÇÃO: A coluna KM agora recebe o valor cru sem forçar a conversão (::NUMERIC), permitindo texto livre!
         query_os = """
             INSERT INTO itinerario.ordens_servico (
                 numero, ano, origem_id, tipo_evento_id, processo_adm, endereco,
@@ -50,13 +47,12 @@ class OSItinerarioRepository:
                 %(processo)s, %(endereco)s,
                 NULLIF(%(horario_inicio)s, '')::TIME, NULLIF(%(horario_final)s, '')::TIME, 
                 %(evento)s, %(nome_corrida)s, %(tipo_obra)s,
-                NULLIF(%(km)s, '')::NUMERIC, %(docx_path)s, 
+                NULLIF(%(km)s, ''), %(docx_path)s, 
                 (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1),
                 NOW()
             ) RETURNING id;
         """
 
-        # 2. MODIFICAÇÃO: ILIKE nas relações M:N para evitar erros de case sensitivity
         query_empresas = """
             INSERT INTO itinerario.os_empresas (os_id, empresa_id)
             SELECT %(os_id)s, id FROM common.empresas WHERE nome ILIKE %(empresa_nome)s LIMIT 1;

@@ -137,7 +137,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
         grid_master = ctk.CTkFrame(form_frame, fg_color="transparent")
         grid_master.pack(fill="x", expand=True, pady=15, padx=15)
         
-        # MODIFICAÇÃO: Criando Grade de 6 colunas para dar espaço ao Solicitante e Assunto
+        # Criando Grade de 6 colunas
         for i in range(6):
             grid_master.grid_columnconfigure(i, weight=1, uniform="col")
 
@@ -145,8 +145,6 @@ class ParecerItinerarioView(ctk.CTkFrame):
         self.processo_entry = self._criar_campo_grid(grid_master, "Nº Processo", 0, 0, 1)
         self.tipo_combo = self._criar_param_combo_grid(grid_master, "Decisão", "Itinerário", "DECISAO_PARECER", 0, 1, 1, command=self._on_tipo_change)
         self.origem_combo = self._criar_param_combo_grid(grid_master, "Origem", "Itinerário", "ORIGEM", 0, 2, 1)
-        
-        # Solicitante GIGANTE (Ocupa 3 colunas, garantindo leitura total)
         self.solicitante_combo = self._criar_param_combo_grid(grid_master, "Solicitante", "Itinerário", "SOLICITANTE_PARECER", 0, 3, 3)
 
         def upper_processo_par(event):
@@ -161,7 +159,6 @@ class ParecerItinerarioView(ctk.CTkFrame):
         self.processo_entry.bind("<KeyRelease>", upper_processo_par)
 
         # --- LINHA 1 ---
-        # Assunto GIGANTE (Ocupa 3 colunas)
         self.assunto_combo = self._criar_param_combo_grid(grid_master, "Assunto", "Itinerário", "ASSUNTO_ITINERARIO", 1, 0, 3)
         self.endereco_entry = self._criar_campo_grid(grid_master, "Endereço / Logradouro", 1, 3, 3)
 
@@ -180,23 +177,26 @@ class ParecerItinerarioView(ctk.CTkFrame):
         self.no_hora_var = ctk.BooleanVar(value=False)
         ctk.CTkCheckBox(cb_frame, text="Sem Horário", variable=self.no_hora_var, command=self._toggle_hora, font=("Arial Bold", 12)).pack(side="left", pady=(24,0))
 
-        # --- LINHA 3 ---
-        HORARIOS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
+        # --- LINHA 3: REORGANIZADA (SELEÇÃO DE DATAS + CONTÊINER DE DATAS LADO A LADO) ---
+        # Modo combo ocupa as colunas 0 e 1
         self.modo_combo = self._criar_combo_estatico_grid(grid_master, "Seleção de Datas", ["Período (Início-Fim)", "Dias Isolados"], 3, 0, 2, command=self._on_modo_data_change)
         self.modo_combo.set("Período (Início-Fim)")
-        self.hr_inicio = self._criar_combo_estatico_grid(grid_master, "Hora Início", HORARIOS, 3, 2, 2)
-        self.hr_fim = self._criar_combo_estatico_grid(grid_master, "Hora Fim", HORARIOS, 3, 4, 2)
 
-        # --- LINHA 4 ---
+        # Contêiner dinâmico de datas acoplado diretamente do lado, ocupando as colunas 2, 3, 4 e 5!
         self.container_datas = ctk.CTkFrame(grid_master, fg_color="transparent")
-        self.container_datas.grid(row=4, column=0, columnspan=6, sticky="ew", padx=0, pady=5)
+        self.container_datas.grid(row=3, column=2, columnspan=4, sticky="ew", padx=0, pady=0)
         self._on_modo_data_change()
 
+        # --- LINHA 4: HORÁRIOS TRANSFERIDOS ---
+        HORARIOS = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 30)]
+        self.hr_inicio = self._criar_combo_estatico_grid(grid_master, "Hora Início", HORARIOS, 4, 0, 3)
+        self.hr_fim = self._criar_combo_estatico_grid(grid_master, "Hora Fim", HORARIOS, 4, 3, 3)
+
         # =====================================================================
-        # CONTAINER DINÂMICO
+        # CONTAINER DINÂMICO DE LINHAS AFETADAS / MOTIVOS
         # =====================================================================
         self.container_dinamico = ctk.CTkFrame(form_frame, fg_color="transparent")
-        self.container_dinamico.pack(fill="x", expand=True, pady=(0, 15), padx=15)
+        self.container_dinamico.pack(fill="x", expand=True, pady=(15, 15), padx=15)
         self.container_dinamico.grid_columnconfigure(0, weight=1)
         self._on_tipo_change()
 
@@ -204,9 +204,9 @@ class ParecerItinerarioView(ctk.CTkFrame):
         footer_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         footer_frame.pack(fill="x", pady=20)
         ctk.CTkLabel(footer_frame, text=f"Responsável pelo Documento: {self.usuario_logado}", font=("Arial Bold", 12), text_color="#777").pack(side="left", padx=10)
-        ctk.CTkButton(footer_frame, text="✅ GERAR PARECER TÉCNICO", fg_color="#0F8C75", hover_color="#0B6B59", font=("Arial Black", 16), height=50, width=320, command=self.acao_gerar).pack(side="right", padx=10)
+        ctk.CTkButton(footer_frame, text="✅ GERAR PARECER TÉCNICO", fg_color="#0F8C75", hover_color="#0B6B59", font=("Arial Black", 16), height=50, width=320, command=self.acao_generar).pack(side="right", padx=10)
 
-    # --- HELPERS DE GRID UI/UX (AGORA COM RESIZING INTELIGENTE) ---
+    # --- HELPERS DE GRID UI/UX ---
     def _criar_campo_grid(self, parent, label, row, col, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
@@ -277,23 +277,26 @@ class ParecerItinerarioView(ctk.CTkFrame):
         modo = self.modo_combo.get()
 
         if "Período" in modo:
+            # Divide uniformemente as 4 colunas em 2 frames
+            self.container_datas.grid_columnconfigure((0, 1), weight=1, uniform="inner_col")
+
             f_ini = ctk.CTkFrame(self.container_datas, fg_color="transparent")
             f_ini.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
-            self.container_datas.grid_columnconfigure(0, weight=1)
             ctk.CTkLabel(f_ini, text="Data Inicial:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-            wrapper_ini, self.data_inicio = self._criar_date_wrapper(f_ini, 250)
+            wrapper_ini, self.data_inicio = self._criar_date_wrapper(f_ini, 200)
             wrapper_ini.pack(fill="x", expand=True, pady=(2,0))
 
             f_fim = ctk.CTkFrame(self.container_datas, fg_color="transparent")
             f_fim.grid(row=0, column=1, padx=10, pady=10, sticky="ew")
-            self.container_datas.grid_columnconfigure(1, weight=1)
             ctk.CTkLabel(f_fim, text="Data Final:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-            wrapper_fim, self.data_fim = self._criar_date_wrapper(f_fim, 250)
+            wrapper_fim, self.data_fim = self._criar_date_wrapper(f_fim, 200)
             wrapper_fim.pack(fill="x", expand=True, pady=(2,0))
         else:
-            f_iso = ctk.CTkFrame(self.container_datas, fg_color="transparent")
-            f_iso.grid(row=0, column=0, columnspan=2, padx=10, pady=10, sticky="ew")
             self.container_datas.grid_columnconfigure(0, weight=1)
+            self.container_datas.grid_columnconfigure(1, weight=0)
+
+            f_iso = ctk.CTkFrame(self.container_datas, fg_color="transparent")
+            f_iso.grid(row=0, column=0, padx=10, pady=10, sticky="ew")
             
             input_row = ctk.CTkFrame(f_iso, fg_color="transparent")
             input_row.pack(side="top", fill="x")
@@ -388,7 +391,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
             ctk.CTkLabel(chip, text=lin, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
             ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda l=lin: self._remove_linha(l)).pack(side="right", padx=5)
 
-    def acao_gerar(self):
+    def acao_generar(self):
         tipo = self.tipo_combo.get().upper()
         
         datas_selecionadas = []
