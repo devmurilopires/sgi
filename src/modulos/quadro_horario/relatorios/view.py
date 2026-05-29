@@ -283,8 +283,8 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         else:
             self.colunas_config = {
                 "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
-                "origem": "Origem", "decisao": "Decisão", "assunto": "Assunto", 
-                "solicitante": "Solicitante", "responsavel": "Responsável", "data_criacao": "Data Criação"
+                "solicitante": "Solicitante", "decisao": "Decisão", "assunto": "Assunto", 
+                "origem": "Origem", "responsavel": "Responsável", "data_criacao": "Data Criação"
             }
 
         self._configurar_estilos()
