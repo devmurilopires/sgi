@@ -3,6 +3,9 @@ from tkinter import messagebox
 from src.modulos.admin.parametros.view import AdminParametrosView
 from src.modulos.admin.usuarios.service import UsuariosService
 
+# NOVA IMPORTAÇÃO DO MÓDULO DE LINHAS
+from src.modulos.admin.linhas.view import AdminLinhasView
+
 class AdminUsuariosView:
     def __init__(self, master, usuario_dados):
         self.master = master
@@ -150,7 +153,6 @@ class AdminUsuariosView:
             novos_perfis = [k for k, v in vars_perfil.items() if v.get()]
             perfil_string = ",".join(novos_perfis)
             
-            # MODIFICAÇÃO: Ajuste para receber (sucesso, mensagem) do service
             sucesso, msg = self.service.atualizar_perfil_acesso(user['id'], perfil_string)
             if sucesso:
                 messagebox.showinfo("Sucesso", msg)
@@ -163,7 +165,6 @@ class AdminUsuariosView:
         ctk.CTkButton(footer, text="Salvar Alterações", width=180, fg_color=self.color_accent, command=salvar).pack(side="right", padx=5)
 
     def acao_toggle_admin(self, uid, novo_status):
-        # MODIFICAÇÃO: Tratamento em tupla
         sucesso, msg = self.service.alterar_status_admin(uid, novo_status)
         if sucesso:
             self.carregar_usuarios()
@@ -173,7 +174,6 @@ class AdminUsuariosView:
     def acao_toggle_ativo(self, uid, novo_status):
         msg_confirmacao = "Inativar este usuário impedirá seu acesso ao sistema. Continuar?" if not novo_status else "Reativar acesso deste usuário?"
         if messagebox.askyesno("Confirmação", msg_confirmacao):
-            # MODIFICAÇÃO: Tratamento em tupla
             sucesso, msg = self.service.alterar_status_ativo(uid, novo_status)
             if sucesso:
                 self.carregar_usuarios()
@@ -195,10 +195,16 @@ class AdminCentralView:
         # Adicionando Abas
         self.tabview.add("Configurações")
         self.tabview.add("Usuários")
+        
+        # MODIFICAÇÃO: Nova Aba adicionada
+        self.tabview.add("Linhas de Ônibus")
 
         # Renderizando Sub-Views
         AdminParametrosView(self.tabview.tab("Configurações"), self.usuario_dados)
         AdminUsuariosView(self.tabview.tab("Usuários"), self.usuario_dados)
+        
+        # MODIFICAÇÃO: Instanciando a nova view das linhas dentro da aba
+        AdminLinhasView(self.tabview.tab("Linhas de Ônibus"))
 
 def renderizar(container, usuario_dados):
     return AdminCentralView(container, usuario_dados)
