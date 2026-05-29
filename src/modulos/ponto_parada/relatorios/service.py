@@ -11,7 +11,6 @@ class RelatorioService:
         self.repo = RelatorioRepository()
 
     def obter_bairros(self): return self.repo.obter_bairros()
-
     def obter_todos_itens(self): return self.repo.obter_todos_itens()
 
     def abrir_documento(self, caminho):
@@ -57,13 +56,22 @@ class RelatorioService:
                     dados_tabela.append([str(d.get('numero_os','')), str(d.get('ponto_principal_id','')), str(d.get('origem','')), str(d.get('acao','')), str(d.get('item','')), str(d.get('bairro',''))[:20], str(d.get('status','')), dt])
                 col_widths = [60, 80, 80, 110, 150, 120, 80, 80]
             else:
-                cabecalho = ["Nº Parecer", "Processo", "Origem", "Assunto", "Decisão", "Solicitante", "Data"]
+                # MODIFICAÇÃO: Nova ordem no PDF para casar com a Tabela
+                cabecalho = ["Nº Parecer", "Processo", "Origem", "Decisão", "Assunto", "Solicitante", "Responsável", "Data"]
                 dados_tabela = [cabecalho]
                 for d in dados:
                     dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
-                    # MODIFICAÇÃO: numero_parecer_ano -> numero_completo
-                    dados_tabela.append([str(d.get('numero_completo','')), str(d.get('processo','')), str(d.get('origem','')), str(d.get('assunto',''))[:40], str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
-                col_widths = [80, 100, 80, 240, 90, 150, 80]
+                    dados_tabela.append([
+                        str(d.get('numero_completo','')), 
+                        str(d.get('processo','')), 
+                        str(d.get('origem','')), 
+                        str(d.get('decisao','')), 
+                        str(d.get('assunto',''))[:30], 
+                        str(d.get('solicitante',''))[:20], 
+                        str(d.get('responsavel',''))[:15], 
+                        dt
+                    ])
+                col_widths = [65, 80, 75, 75, 170, 120, 95, 70]
 
             tabela = Table(dados_tabela, colWidths=col_widths)
             tabela.setStyle(TableStyle([

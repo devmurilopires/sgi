@@ -4,66 +4,80 @@ from config.database import get_db_connection
 class RelatorioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
+            # MODIFICAÇÃO: Wrapper Query para destravar busca por Nº Parecer
             query = """
-                SELECT p.id, pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
-                       p.processo, o.nome AS origem, p.assunto, t.nome AS decisao, 
-                       p.solicitante, p.endereco_vistoria AS endereco, 
-                       pb.created_at AS data_criacao, u.nome_completo AS responsavel,
-                       pb.caminho_arquivo, p.motivo_indeferimento
-                FROM ponto_parada.pareceres p
-                JOIN common.pareceres_base pb ON p.id = pb.id
-                LEFT JOIN common.tipos t ON pb.tipo_id = t.id
-                LEFT JOIN common.origens o ON p.origem_id = o.id
-                LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
+                SELECT * FROM (
+                    SELECT p.id, pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
+                           p.processo, o.nome AS origem, p.assunto, t.nome AS decisao, 
+                           p.solicitante, p.endereco_vistoria AS endereco, 
+                           pb.created_at AS data_criacao, u.nome_completo AS responsavel,
+                           pb.caminho_arquivo, p.motivo_indeferimento
+                    FROM ponto_parada.pareceres p
+                    JOIN common.pareceres_base pb ON p.id = pb.id
+                    LEFT JOIN common.tipos t ON pb.tipo_id = t.id
+                    LEFT JOIN common.origens o ON p.origem_id = o.id
+                    LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
+                ) AS base
                 WHERE 1=1
             """
         else: # ORDEM DE SERVIÇO
+            # MODIFICAÇÃO: Wrapper Query para destravar busca por Nº OS
             query = """
-                SELECT os.id, os.numero AS numero_os, o.nome AS origem, 
-                       ta.nome AS acao, ti.nome AS item, os.ponto_principal_id, 
-                       (SELECT string_agg(pa.ponto_id, ', ') 
-                        FROM ponto_parada.os_pontos_adicionais pa 
-                        WHERE pa.os_id = os.id) AS pontos_adicionais, 
-                       (e.logradouro || COALESCE(', ' || e.numero, '') || COALESCE(' - ' || e.complemento, '')) AS endereco, 
-                       e.bairro, os.status_conclusao AS status,
-                       os.data_criacao, u.nome_completo AS responsavel, os.caminho_arquivo
-                FROM ponto_parada.ordens_servico os
-                LEFT JOIN ponto_parada.enderecos_cadastrados e ON os.ponto_principal_id = e.id
-                LEFT JOIN common.origens o ON os.origem_id = o.id
-                LEFT JOIN common.tipos ta ON os.tipo_acao_id = ta.id
-                LEFT JOIN common.tipos ti ON os.tipo_item_id = ti.id
-                LEFT JOIN common.usuarios u ON os.responsavel_id = u.id
+                SELECT * FROM (
+                    SELECT os.id, os.numero AS numero_os, o.nome AS origem, 
+                           ta.nome AS acao, ti.nome AS item, os.ponto_principal_id, 
+                           (SELECT string_agg(pa.ponto_id, ', ') 
+                            FROM ponto_parada.os_pontos_adicionais pa 
+                            WHERE pa.os_id = os.id) AS pontos_adicionais, 
+                           (e.logradouro || COALESCE(', ' || e.numero, '') || COALESCE(' - ' || e.complemento, '')) AS endereco, 
+                           e.bairro, os.status_conclusao AS status,
+                           os.data_criacao, u.nome_completo AS responsavel, os.caminho_arquivo
+                    FROM ponto_parada.ordens_servico os
+                    LEFT JOIN ponto_parada.enderecos_cadastrados e ON os.ponto_principal_id = e.id
+                    LEFT JOIN common.origens o ON os.origem_id = o.id
+                    LEFT JOIN common.tipos ta ON os.tipo_acao_id = ta.id
+                    LEFT JOIN common.tipos ti ON os.tipo_item_id = ti.id
+                    LEFT JOIN common.usuarios u ON os.responsavel_id = u.id
+                ) AS base
                 WHERE 1=1
             """
 
         params = []
         mapeamento = {
             "PARECER": {
-                "processo": "p.processo", "origem": "o.nome", "assunto": "p.assunto",
-                "decisao": "t.nome", "solicitante": "p.solicitante", "responsavel": "u.nome_completo"
+                "numero_completo": "numero_completo", "processo": "processo", "origem": "origem", 
+                "assunto": "assunto", "decisao": "decisao", "solicitante": "solicitante", "responsavel": "responsavel"
             },
             "OS": {
-                "origem": "o.nome", "acao": "ta.nome", "item": "ti.nome",
-                "status": "os.status_conclusao", "bairro": "e.bairro", "responsavel": "u.nome_completo"
+                "numero_os": "numero_os", "origem": "origem", "acao": "acao", "item": "item",
+                "status": "status", "bairro": "bairro", "responsavel": "responsavel",
+                "id_ponto": "ponto_principal_id"
             }
         }
 
         doc_map = mapeamento[tipo_doc]
         for chave, valor in filtros.items():
             if valor and chave in doc_map:
-                # SOLUÇÃO NATIVA 100% BLINDADA: Ignora acentos e maiúsculas sem precisar de extensões
-                query += f" AND translate(lower(COALESCE({doc_map[chave]}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
-                params.append(f"%{valor}%")
+                coluna = doc_map[chave]
                 
-            elif valor and chave == "id_ponto" and tipo_doc == "OS":
-                query += """ AND (
-                    translate(lower(os.ponto_principal_id), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') OR 
-                    EXISTS (SELECT 1 FROM ponto_parada.os_pontos_adicionais pa WHERE pa.os_id = os.id AND translate(lower(pa.ponto_id), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc'))
-                )"""
-                params.extend([f"%{valor}%", f"%{valor}%"])
+                # BLINDAGEM: Decisão usa = para que "Deferido" não puxe "Indeferido"
+                if chave == "decisao":
+                    query += f" AND translate(lower(COALESCE({coluna}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') = translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
+                    params.append(valor)
+                # BLINDAGEM: Busca por ID do Ponto de Parada (Principal ou Adicionais)
+                elif chave == "id_ponto" and tipo_doc == "OS":
+                    query += f""" AND (
+                        translate(lower(COALESCE(ponto_principal_id::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') OR 
+                        translate(lower(COALESCE(pontos_adicionais::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')
+                    )"""
+                    params.extend([f"%{valor}%", f"%{valor}%"])
+                # BLINDAGEM: Qualquer outro campo livre (LIKE Ignorando maiúsculas e acentos)
+                else:
+                    query += f" AND translate(lower(COALESCE({coluna}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
+                    params.append(f"%{valor}%")
 
         # Filtro de Data
-        col_data = "pb.created_at" if tipo_doc == "PARECER" else "os.data_criacao"
+        col_data = "data_criacao"
         if filtros.get("data_inicio"):
             query += f" AND ({col_data} IS NULL OR {col_data}::date >= %s)"
             params.append(filtros["data_inicio"])
@@ -85,7 +99,8 @@ class RelatorioRepository:
                     colunas = [desc[0] for desc in cur.description]
                     return [dict(zip(colunas, row)) for row in cur.fetchall()]
         except Exception as e:
-            print(f"Erro ao buscar dados: {e}"); return []
+            print(f"[LOG DB] Erro ao buscar dados: {e}")
+            return []
 
     def contar_total(self, tipo_doc, filtros):
         query, params = self._construir_query_filtros(tipo_doc, filtros)
@@ -117,7 +132,6 @@ class RelatorioRepository:
                     return [row[0] for row in cur.fetchall()]
         except: return []
 
-    # NOVA FUNÇÃO: Busca itens de ambos os modelos para o Relatório
     def obter_todos_itens(self):
         query = "SELECT nome FROM common.tipos WHERE contexto IN ('ITEM_URBMIDIA', 'ITEM_MCMENSAGEM') ORDER BY nome"
         try:

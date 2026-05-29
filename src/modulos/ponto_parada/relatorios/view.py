@@ -25,7 +25,6 @@ class RelatorioView(ctk.CTkFrame):
         self.lista_bairros = self.service.obter_bairros()
         self.lista_itens = self.service.obter_todos_itens()
 
-        # Definição de Colunas SIGP
         if self.tipo_doc == "OS":
             self.colunas_config = {
                 "id": "ID", "numero_os": "N° OS", "id_ponto": "ID Ponto", 
@@ -34,16 +33,16 @@ class RelatorioView(ctk.CTkFrame):
                 "data_criacao": "Data Criação"
             }
         else:
-            # MODIFICAÇÃO: Ordem alterada e alinhada conforme sua solicitação
+            # MODIFICAÇÃO: Nova ordem requisitada
             self.colunas_config = {
                 "id": "ID", 
                 "numero_completo": "N° Parecer", 
-                "processo": "Processo", 
+                "processo": "N° Processo", 
+                "assunto": "Assunto",  
                 "decisao": "Decisão", 
-                "responsavel": "Responsável", 
-                "origem": "Origem", 
-                "assunto": "Assunto", 
+                "origem": "Origem",
                 "solicitante": "Solicitante", 
+                "responsavel": "Responsável", 
                 "data_criacao": "Data Criação"
             }
 
@@ -62,14 +61,13 @@ class RelatorioView(ctk.CTkFrame):
         style.map("Modern.Treeview.Heading", background=[('active', '#D1D5DB')])
 
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=30, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
         container.pack_propagate(False) 
         date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
 
     def _construir_interface(self):
-        # --- 1. TOPO (FILTROS) ---
         self.frame_top = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
         self.frame_top.pack(side="top", fill="x", padx=20, pady=(20, 10))
         
@@ -83,7 +81,6 @@ class RelatorioView(ctk.CTkFrame):
         self.grid_filtros = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         self.grid_filtros.pack(fill="x", padx=15, pady=5)
         
-        # MODIFICAÇÃO: Criando uma grade exata de 6 colunas para permitir redimensionamento amplo
         for i in range(6):
             self.grid_filtros.grid_columnconfigure(i, weight=1)
             
@@ -93,59 +90,44 @@ class RelatorioView(ctk.CTkFrame):
         for key, label in self.colunas_config.items():
             if key in campos_ignorar: continue
             
-            # MODIFICAÇÃO: Assunto, Solicitante e Origem receberão 2 colunas de largura (dobro do tamanho)
             colspan = 1
-            if self.tipo_doc == "PARECER" and key in ["assunto", "solicitante", "origem"]:
-                colspan = 2
-            elif self.tipo_doc == "OS" and key in ["item", "bairro"]:
-                colspan = 2
+            if self.tipo_doc == "PARECER" and key in ["assunto", "solicitante", "origem"]: colspan = 2
+            elif self.tipo_doc == "OS" and key in ["item", "bairro"]: colspan = 2
             
             f = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
             f.grid(row=row, column=col, columnspan=colspan, padx=10, pady=8, sticky="ew")
             ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
             
-            if key == "origem":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35)
-            elif key == "acao":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", incluir_todos=True, height=35)
-            elif key == "item":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ITEM_GLOBAL", incluir_todos=True, height=35)
-            elif key == "solicitante":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35)
-            elif key == "status":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="STATUS_OS", incluir_todos=True, height=35)
-            elif key == "decisao":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="DECISAO_PARECER", incluir_todos=True, height=35)
-            elif key == "assunto":
-                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ASSUNTO_PARECER", incluir_todos=True, height=35)
-            else:
-                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color="#D1D5DB", fg_color="#F9FAFB")
+            if key == "origem": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35)
+            elif key == "acao": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", incluir_todos=True, height=35)
+            elif key == "item": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ITEM_GLOBAL", incluir_todos=True, height=35)
+            elif key == "solicitante": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35)
+            elif key == "status": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="STATUS_OS", incluir_todos=True, height=35)
+            elif key == "decisao": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="DECISAO_PARECER", incluir_todos=True, height=35)
+            elif key == "assunto": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ASSUNTO_PARECER", incluir_todos=True, height=35)
+            else: widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color="#D1D5DB", fg_color="#F9FAFB")
             
             widget.pack(fill="x")
             self.entradas_filtros[key] = widget
             
             col += colspan
             if col >= 6: 
-                col = 0
-                row += 1
+                col = 0; row += 1
 
-        # MODIFICAÇÃO: Datas fluindo perfeitamente com a lógica de 6 colunas
         date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="ew")
         ctk.CTkLabel(date_inicio, text="Data Inicial:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
-        wrapper_ini, self.date_ini = self._criar_date_wrapper(date_inicio, 150)
+        wrapper_ini, self.data_inicio = self._criar_date_wrapper(date_inicio, 150)
         wrapper_ini.pack(fill="x", pady=(2,0))
-        self.date_ini.set_date(date(date.today().year, 1, 1))
+        self.data_inicio.set_date(date(date.today().year, 1, 1))
 
         col += 1
-        if col >= 6: 
-            col = 0
-            row += 1
+        if col >= 6: col = 0; row += 1
 
         date_fim = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_fim.grid(row=row, column=col, padx=10, pady=8, sticky="ew")
         ctk.CTkLabel(date_fim, text="Data Final:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
-        wrapper_fim, self.date_fim = self._criar_date_wrapper(date_fim, 150)
+        wrapper_fim, self.data_fim = self._criar_date_wrapper(date_fim, 150)
         wrapper_fim.pack(fill="x", pady=(2,0))
 
         btn_busca = ctk.CTkFrame(self.frame_top, fg_color="transparent")
@@ -153,7 +135,7 @@ class RelatorioView(ctk.CTkFrame):
         ctk.CTkButton(btn_busca, text="🔍 Buscar Registros", font=("Arial Bold", 13), width=150, height=35, fg_color="#0F8C75", command=self.acao_buscar).pack(side="left", padx=(5, 10))
         ctk.CTkButton(btn_busca, text="Limpar Filtros", font=("Arial", 13), width=120, height=35, fg_color="transparent", text_color="#666666", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", command=self._limpar_filtros).pack(side="left")
 
-        # --- 2. RODAPÉ ---
+        # --- RODAPÉ ---
         self.frame_bottom = ctk.CTkFrame(self, fg_color="transparent")
         self.frame_bottom.pack(side="bottom", fill="x", padx=20, pady=(5, 20))
         
@@ -174,7 +156,7 @@ class RelatorioView(ctk.CTkFrame):
         if self.is_admin:
             ctk.CTkButton(self.frame_acoes, text="🗑️ Excluir", font=("Arial Bold", 13), width=120, height=35, fg_color="transparent", border_width=1, border_color="#D32F2F", text_color="#D32F2F", hover_color="#FEE2E2", command=self.acao_excluir).pack(side="left", padx=(5, 0))
 
-        # --- 3. TABELA ---
+        # --- TABELA ---
         self.frame_tabela = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
         self.frame_tabela.pack(side="top", fill="both", expand=True, padx=20, pady=5)
 
@@ -185,12 +167,9 @@ class RelatorioView(ctk.CTkFrame):
         
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
-            if k == "assunto":
-                self.tree.column(k, width=280, anchor="w") 
-            elif k == "solicitante":
-                self.tree.column(k, width=200, anchor="w")
-            else:
-                self.tree.column(k, width=100, anchor="center")
+            if k == "assunto": self.tree.column(k, width=280, anchor="w") 
+            elif k == "solicitante": self.tree.column(k, width=200, anchor="w")
+            else: self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
         
         scrollbar = ttk.Scrollbar(self.frame_tabela, orient="vertical", command=self.tree.yview)
@@ -220,8 +199,8 @@ class RelatorioView(ctk.CTkFrame):
             val = v.get().strip()
             if val == "Todos": val = "" 
             filtros[k] = val
-        filtros["data_inicio"] = self.date_ini.get_date()
-        filtros["data_fim"] = self.date_fim.get_date()
+        filtros["data_inicio"] = self.data_inicio.get_date()
+        filtros["data_fim"] = self.data_fim.get_date()
         return filtros
 
     def _executar_busca_banco(self):
@@ -238,13 +217,18 @@ class RelatorioView(ctk.CTkFrame):
             if self.tipo_doc == "OS":
                 p_principal = str(d.get("ponto_principal_id") or "").strip()
                 p_adicionais = str(d.get("pontos_adicionais") or "").strip()
+                if p_adicionais: d["id_ponto"] = f"{p_principal} (+ {p_adicionais})"
+                else: d["id_ponto"] = p_principal
 
-                if p_adicionais:
-                    d["id_ponto"] = f"{p_principal} (+ {p_adicionais})"
+            # BLINDAGEM: Converte valores vazios/None para "-"
+            valores = []
+            for k in self.colunas_config.keys():
+                val = d.get(k)
+                if val is None or str(val).strip() == "" or str(val).strip().lower() == "none":
+                    valores.append("-")
                 else:
-                    d["id_ponto"] = p_principal
+                    valores.append(str(val))
 
-            valores = [d.get(k, "") for k in self.colunas_config.keys()]
             tag = 'par' if i % 2 == 0 else 'impar'
             self.tree.insert("", "end", values=valores, iid=d['id'], tags=(tag,))
             
@@ -253,6 +237,22 @@ class RelatorioView(ctk.CTkFrame):
         
         self.btn_ant.configure(state="normal" if self.pagina_atual > 1 else "disabled")
         self.btn_prox.configure(state="normal" if self.pagina_atual < self.total_paginas else "disabled")
+
+    # MODIFICAÇÃO: Helper para textos selecionáveis (copiáveis)
+    def _add_detail_field(self, parent, label, value, row, col, pad_x):
+        ctk.CTkLabel(parent, text=f"{label}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
+        
+        val_str = str(value).strip()
+        if not val_str or val_str.lower() == "none": val_str = "-"
+        
+        linhas = max(1, len(val_str) // 35)
+        linhas = max(linhas, val_str.count('\n') + 1)
+        altura = linhas * 20 + 10
+        
+        box = ctk.CTkTextbox(parent, font=("Arial", 12), width=250, height=altura, fg_color="transparent", border_width=0, wrap="word")
+        box.insert("1.0", val_str)
+        box.configure(state="disabled")
+        box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
 
     def acao_detalhes(self):
         sel = self.tree.selection()
@@ -265,8 +265,7 @@ class RelatorioView(ctk.CTkFrame):
         
         if self.tipo_doc == "OS":
             p_principal = str(dado.get("ponto_principal_id", "")).strip()
-            if "id_ponto" in dado: 
-                dado['id_ponto'] = p_principal
+            if "id_ponto" in dado: dado['id_ponto'] = p_principal
 
         modal = ctk.CTkToplevel(self)
         titulo_num = dado.get('numero_os') if self.tipo_doc == "OS" else dado.get('numero_completo')
@@ -284,21 +283,19 @@ class RelatorioView(ctk.CTkFrame):
         info_frame = ctk.CTkFrame(scroll, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E5E7EB")
         info_frame.pack(fill="x", pady=10)
 
-        row_idx = 0
         grid = ctk.CTkFrame(info_frame, fg_color="transparent")
         grid.pack(fill="x", padx=15, pady=15)
         
-        campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo', 'id_ponto'] and v]
+        campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo', 'id_ponto', 'pontos_adicionais']]
         
+        row_idx = 0
         for i in range(0, len(campos_exibir), 2):
             lbl_key1 = str(campos_exibir[i][0]).replace("_", " ").title()
-            ctk.CTkLabel(grid, text=f"{lbl_key1}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row_idx, column=0, sticky="w", pady=8, padx=(0, 5))
-            ctk.CTkLabel(grid, text=str(campos_exibir[i][1]), font=("Arial", 12), wraplength=250, justify="left").grid(row=row_idx, column=1, sticky="w", pady=8, padx=(0, 20))
+            self._add_detail_field(grid, lbl_key1, campos_exibir[i][1], row_idx, 0, (0, 20))
 
             if i + 1 < len(campos_exibir):
                 lbl_key2 = str(campos_exibir[i+1][0]).replace("_", " ").title()
-                ctk.CTkLabel(grid, text=f"{lbl_key2}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row_idx, column=2, sticky="w", pady=8, padx=(0, 5))
-                ctk.CTkLabel(grid, text=str(campos_exibir[i+1][1]), font=("Arial", 12), wraplength=250, justify="left").grid(row=row_idx, column=3, sticky="w", pady=8)
+                self._add_detail_field(grid, lbl_key2, campos_exibir[i+1][1], row_idx, 2, (0, 0))
             row_idx += 1
 
         if dado.get('caminho_arquivo'):
@@ -342,13 +339,11 @@ class RelatorioView(ctk.CTkFrame):
 
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
-            if isinstance(widget, CtkParametrosComboBox):
-                widget.set("Todos")
-            else:
-                widget.delete(0, 'end')
+            if isinstance(widget, CtkParametrosComboBox): widget.set("Todos")
+            else: widget.delete(0, 'end')
                 
-        self.date_ini.set_date(date(date.today().year, 1, 1))
-        self.date_fim.set_date(date.today())
+        self.data_inicio.set_date(date(date.today().year, 1, 1))
+        self.data_fim.set_date(date.today())
         self.acao_buscar()
 
 def renderizar(frame_destino, usuario_logado, tipo_relatorio):
