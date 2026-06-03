@@ -283,7 +283,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         else:
             self.colunas_config = {
                 "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
-                "solicitante": "Solicitante", "decisao": "Decisão", "assunto": "Assunto", 
+                "solicitante": "Solicitante", "assunto": "Assunto","decisao": "Decisão", 
                 "origem": "Origem", "responsavel": "Responsável", "data_criacao": "Data Criação"
             }
 
@@ -341,7 +341,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             elif key == "solicitante":
                 widget = CtkParametrosComboBox(f, setor="Quadro de Horário", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35)
             elif key in ["titulo"]: 
-                widget = Autocomplete(f, values=self.lista_linhas, width=130)
+                widget = Autocomplete(f, values=self.lista_linhas, width=430)
                 widget.bind("<<AutocompleteSelected>>", lambda e: self.acao_buscar())
                 widget.bind("<Return>", lambda e: self.acao_buscar())
             else:
@@ -404,7 +404,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
-            if k in ["titulo", "assunto", "solicitante"]: self.tree.column(k, width=220, anchor="w")
+            if k in ["titulo", "assunto", "solicitante"]: self.tree.column(k, width=190, anchor="w")
             else: self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
         

@@ -13,13 +13,9 @@ class PesquisaQuadroHorarioService:
         return self.repo.buscar_linhas()
 
     def salvar_dados(self, linha, tipo, dados_completos, usuario):
-        # 1. PREPARAÇÃO: Extrair o código da linha ("052 - Grande Circular" -> "052")
         codigo_linha = linha.split(" - ")[0].strip() if " - " in linha else linha.strip()
-
-        # 2. PREPARAÇÃO: Mapear o tipo ("tempo" / "demanda") para o DB
         nome_tipo = "TEMPO DE VIAGEM" if tipo == "tempo" else "DEMANDA"
 
-        # 3. PREPARAÇÃO: Extrair as datas e converter para objeto date do Python
         datas_raw = dados_completos.get("datas", [])
         datas_formatadas = []
         for d in datas_raw:
@@ -29,7 +25,6 @@ class PesquisaQuadroHorarioService:
             except Exception:
                 pass
 
-        # Enviamos os dados já mastigados para o banco
         return self.repo.salvar_pesquisa(codigo_linha, nome_tipo, datas_formatadas, dados_completos, usuario)
 
     # --- Utilitários Internos ---
@@ -72,26 +67,48 @@ class PesquisaQuadroHorarioService:
         if not df.iloc[start:].empty: blocks.append(df.iloc[start:].copy())
         return blocks
 
+    # --- NOVO: Caçador de Colunas Flexível ---
+    def _encontrar_coluna(self, colunas, chaves):
+        """Procura o nome real da coluna no Excel a partir de palavras-chave, ignorando maiúsculas e acentos."""
+        col_map = {self._normalizar_nome(str(c)): c for c in colunas}
+        
+        # 1. Tenta encontrar a palavra exata
+        for chave in chaves:
+            if chave in col_map: return col_map[chave]
+            
+        # 2. Se não encontrou exato, tenta encontrar parte da palavra (ex: "Partida Real" encontra "partida")
+        for chave in chaves:
+            for norm_col, orig_col in col_map.items():
+                if chave in norm_col:
+                    return orig_col
+        return None
+
     # --- PROCESSAMENTO: TEMPO DE VIAGEM ---
     def processar_excel_tempo(self, caminho, nomes_sentidos):
         df = pd.read_excel(caminho)
-        req = ["Trajeto", "Partida Real", "Tempo Viagem"]
-        if not all(c in df.columns for c in req): return False, "Colunas Trajeto, Partida Real, Tempo Viagem não encontradas."
         
-        blocos = self._separar_blocos(df[req].copy(), "Trajeto")
-        if not blocos: return False, "Nenhum dado válido."
+        # Busca inteligente das colunas
+        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido"])
+        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora"])
+        tv_col = self._encontrar_coluna(df.columns, ["tempoviagem", "tempo", "tv"])
+        
+        if not (t_col and p_col and tv_col): 
+            return False, f"Colunas necessárias não encontradas.\nColunas identificadas no Excel: {', '.join(str(c) for c in df.columns)}"
+        
+        blocos = self._separar_blocos(df[[t_col, p_col, tv_col]].copy(), t_col)
+        if not blocos: return False, "Nenhum dado válido encontrado para separação."
 
         sentidos = {}
         for i, bloco in enumerate(blocos, start=1):
-            bloco["Hora"] = bloco["Partida Real"].apply(self._extrair_hora)
-            bloco["TempoStr"] = bloco["Tempo Viagem"].apply(self._normalizar_tempo)
+            bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
+            bloco["TempoStr"] = bloco[tv_col].apply(self._normalizar_tempo)
             bloco["TempoMin"] = pd.to_timedelta(bloco["TempoStr"], errors='coerce').dt.total_seconds() / 60.0
             
             bloco = bloco[bloco["Hora"].notna() & bloco["TempoMin"].notna()]
             if bloco.empty: continue
 
             medias = bloco.groupby("Hora")["TempoMin"].mean()
-            nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco["Trajeto"].iloc[0]))
+            nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
             col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
 
             sentidos[col_alvo] = {int(h): math.ceil(float(m)) for h, m in medias.items()}
@@ -99,18 +116,23 @@ class PesquisaQuadroHorarioService:
 
     def processar_excel_verde(self, caminho, nomes_sentidos):
         df = pd.read_excel(caminho)
-        req = ["Trajeto", "Partida Planejada", "TV"]
-        if not all(c in df.columns for c in req): return False, "Colunas Trajeto, Partida Planejada, TV ausentes."
         
-        blocos = self._separar_blocos(df[req].copy(), "Trajeto")
+        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido"])
+        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida"])
+        tv_col = self._encontrar_coluna(df.columns, ["tv", "tempoviagem", "tempo"])
+        
+        if not (t_col and p_col and tv_col): 
+            return False, f"Colunas necessárias não encontradas.\nColunas identificadas no Excel: {', '.join(str(c) for c in df.columns)}"
+        
+        blocos = self._separar_blocos(df[[t_col, p_col, tv_col]].copy(), t_col)
         sentidos = {}
         for i, bloco in enumerate(blocos, start=1):
-            bloco["Hora"] = bloco["Partida Planejada"].apply(self._extrair_hora)
-            bloco = bloco[bloco["Hora"].notna() & bloco["TV"].notna()]
+            bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
+            bloco = bloco[bloco["Hora"].notna() & bloco[tv_col].notna()]
             if bloco.empty: continue
 
-            medias = bloco.groupby("Hora")["TV"].mean()
-            nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco["Trajeto"].iloc[0]))
+            medias = bloco.groupby("Hora")[tv_col].mean()
+            nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
             col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
 
             sentidos[col_alvo] = {int(h): math.ceil(float(m)) for h, m in medias.items()}
@@ -119,11 +141,15 @@ class PesquisaQuadroHorarioService:
     # --- PROCESSAMENTO: DEMANDA ---
     def processar_excel_demanda(self, caminho, nomes_sentidos):
         df = pd.read_excel(caminho)
-        col_map = {self._normalizar_nome(c): c for c in df.columns}
-        t_col, p_col, pass_col = col_map.get("trajeto"), col_map.get("partida"), col_map.get("passageiro")
-        if not (t_col and p_col and pass_col): return False, "Colunas Trajeto, Partida e Passageiro ausentes."
         
-        blocos = self._separar_blocos(df, t_col)
+        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido"])
+        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora"])
+        pass_col = self._encontrar_coluna(df.columns, ["passageiro", "passag", "pax", "total"])
+        
+        if not (t_col and p_col and pass_col): 
+            return False, f"Colunas necessárias não encontradas.\nColunas identificadas no Excel: {', '.join(str(c) for c in df.columns)}"
+        
+        blocos = self._separar_blocos(df[[t_col, p_col, pass_col]].copy(), t_col)
         sentidos = {}
         for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
@@ -140,11 +166,14 @@ class PesquisaQuadroHorarioService:
 
     def processar_excel_viagens(self, caminho, nomes_sentidos):
         df = pd.read_excel(caminho)
-        col_map = {self._normalizar_nome(c): c for c in df.columns}
-        t_col, p_col = col_map.get("trajeto"), col_map.get("partidaplanejada") or col_map.get("partida")
-        if not (t_col and p_col): return False, "Colunas Trajeto e Partida ausentes."
+        
+        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido"])
+        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida"])
+        
+        if not (t_col and p_col): 
+            return False, f"Colunas necessárias não encontradas.\nColunas identificadas no Excel: {', '.join(str(c) for c in df.columns)}"
 
-        blocos = self._separar_blocos(df, t_col)
+        blocos = self._separar_blocos(df[[t_col, p_col]].copy(), t_col)
         viagens = {}
         for i, bloco in enumerate(blocos, start=1):
             bloco["Hora"] = bloco[p_col].apply(self._extrair_hora)
