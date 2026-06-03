@@ -56,12 +56,16 @@ class RelatoriosItinerarioService:
                     dados_tabela.append([str(d.get('numero_os','')), str(d.get('solicitante',''))[:25], str(d.get('processo','')), str(d.get('tipo','')), str(d.get('evento',''))[:25], str(d.get('empresa',''))[:30], str(d.get('responsavel','')), dt])
                 col_widths = [60, 110, 90, 80, 120, 150, 120, 70]
             else:
-                cabecalho = ["Nº Parecer", "Assunto", "Processo", "Decisão", "Solicitante", "Data"]
+                # MODIFICAÇÃO: Inclusão das "Linhas" no cabeçalho e nos dados do PDF do Parecer
+                cabecalho = ["Nº Parecer", "Assunto", "Processo", "Decisão", "Solicitante", "Linhas", "Data"]
                 dados_tabela = [cabecalho]
                 for d in dados:
                     dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
-                    dados_tabela.append([str(d.get('numero_completo','')), str(d.get('assunto',''))[:30], str(d.get('processo','')), str(d.get('decisao','')), str(d.get('solicitante',''))[:25], dt])
-                col_widths = [80, 220, 100, 90, 180, 80]
+                    linhas_txt = str(d.get('linhas', '-'))
+                    if not linhas_txt or linhas_txt.lower() == "none": linhas_txt = "-"
+                    
+                    dados_tabela.append([str(d.get('numero_completo','')), str(d.get('assunto',''))[:30], str(d.get('processo','')), str(d.get('decisao','')), str(d.get('solicitante',''))[:20], linhas_txt[:25], dt])
+                col_widths = [70, 170, 85, 75, 140, 140, 75]
 
             tabela = Table(dados_tabela, colWidths=col_widths)
             tabela.setStyle(TableStyle([

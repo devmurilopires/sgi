@@ -8,7 +8,7 @@ class OSItinerarioRepository:
                 with conn.cursor() as cur:
                     cur.execute("SELECT nome FROM common.empresas WHERE is_ativo = TRUE ORDER BY nome;")
                     return [r[0] for r in cur.fetchall()]
-        except Exception as e: 
+        except Exception as e:
             print(f"Erro ao buscar empresas: {e}")
             return []
 
@@ -58,9 +58,13 @@ class OSItinerarioRepository:
             SELECT %(os_id)s, id FROM common.empresas WHERE nome ILIKE %(empresa_nome)s LIMIT 1;
         """
 
+        # A query vai juntar o código e o nome com o traço no meio apenas para visualização
         query_linhas = """
-            INSERT INTO itinerario.os_linhas (os_id, linha_id, ruas_ida, ruas_volta)
-            SELECT %(os_id)s, id, '', '' FROM common.linhas WHERE codigo ILIKE %(codigo_linha)s LIMIT 1;
+            SELECT 
+                codigo || ' - ' || nome AS linha_formatada
+            FROM common.linhas 
+            WHERE is_ativo = TRUE 
+            ORDER BY codigo;
         """
 
         try:

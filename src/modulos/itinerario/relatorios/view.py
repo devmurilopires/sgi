@@ -131,19 +131,19 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         self.lista_empresas = self.service.obter_empresas()
         self.lista_linhas = self.service.obter_linhas()
 
-        # MODIFICAÇÃO: Ordem dos campos perfeitamente trocada! E Inclusão do 'Evento'
         if self.tipo_doc == "OS":
             self.colunas_config = {
-                "id": "ID", "numero_os": "N° OS", "solicitante": "Solicitante", "processo": "Processo",
+                "id": "ID", "numero_os": "N° OS", "solicitante": "Solicitante","linhas": "Linhas", 
                 "tipo": "Tipo", "evento": "Evento/Obra", "origem": "Origem", "empresa": "Empresa", 
-                "linhas": "Linhas", "responsavel": "Responsável", 
+                "processo": "Processo", "responsavel": "Responsável", 
                 "data_criacao": "Data Criação", "endereco": "Endereço"
             }
         else:
+            # MODIFICAÇÃO: Ordem alterada com a inserção de 'Linhas' após o 'Evento'
             self.colunas_config = {
-                "id": "ID", "numero_completo": "N° Parecer", "assunto": "Assunto", "processo": "Processo", 
+                "id": "ID", "numero_completo": "N° Parecer", "assunto": "Assunto", "linhas": "Linhas", 
                 "origem": "Origem", "decisao": "Decisão", "solicitante": "Solicitante", "endereco": "Endereço", 
-                "evento": "Evento", "data_criacao": "Data Criação", "responsavel": "Responsável"
+                "evento": "Evento", "processo": "Processo", "data_criacao": "Data Criação", "responsavel": "Responsável"
             }
 
         self._configurar_estilos()
@@ -208,6 +208,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
             elif key == "empresa":
                 widget = Autocomplete(f, values=self.lista_empresas, height=35, placeholder_text="Pesquise o nome...")
             elif key == "linhas":
+                # Como a chave 'linhas' foi adicionada ao dicionário do Parecer, ele instanciará automaticamente o Autocomplete!
                 widget = Autocomplete(f, values=self.lista_linhas, height=35, placeholder_text="Código ou Nome...")
             else:
                 widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...")
@@ -273,7 +274,7 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
-            if k in ["assunto", "solicitante"]:
+            if k in ["assunto", "solicitante", "linhas"]:
                 self.tree.column(k, width=180, anchor="w")
             else:
                 self.tree.column(k, width=100, anchor="center")
@@ -321,7 +322,6 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         for i, d in enumerate(self.dados_atuais):
             if d.get("data_criacao"): d["data_criacao"] = d["data_criacao"].strftime("%d/%m/%Y")
             
-            # BLINDAGEM: Trocar tudo que for nulo ou vazio por um traço elegante
             valores = []
             for k in self.colunas_config.keys():
                 val = d.get(k)
@@ -338,6 +338,21 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         
         self.btn_ant.configure(state="normal" if self.pagina_atual > 1 else "disabled")
         self.btn_prox.configure(state="normal" if self.pagina_atual < self.total_paginas else "disabled")
+
+    # MODIFICAÇÃO: Helper inserido para garantir que o texto possa ser selecionado e copiado
+    def _add_detail_field(self, parent, label, value, row, col, pad_x):
+        ctk.CTkLabel(parent, text=f"{label}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
+        val_str = str(value).strip() if value is not None else ""
+        if not val_str or val_str.lower() == "none": val_str = "-"
+        
+        linhas = max(1, len(val_str) // 35)
+        linhas = max(linhas, val_str.count('\n') + 1)
+        altura = linhas * 20 + 10
+        
+        box = ctk.CTkTextbox(parent, font=("Arial", 12), width=250, height=altura, fg_color="transparent", border_width=0, wrap="word")
+        box.insert("1.0", val_str)
+        box.configure(state="disabled") # Disabled allows selection/copying, but no typing
+        box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
 
     def acao_detalhes(self):
         sel = self.tree.selection()
@@ -362,28 +377,20 @@ class RelatoriosItinerarioView(ctk.CTkFrame):
         info_frame = ctk.CTkFrame(scroll, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E5E7EB")
         info_frame.pack(fill="x", pady=10)
 
-        row_idx = 0
         grid = ctk.CTkFrame(info_frame, fg_color="transparent")
         grid.pack(fill="x", padx=15, pady=15)
         
-        # BLINDAGEM NOS DETALHES: Valores Nulos viram traço (-)
-        campos_exibir = []
-        for k, v in dado.items():
-            if k not in ['id', 'caminho_arquivo']:
-                val_str = str(v).strip() if v is not None else ""
-                if val_str == "" or val_str.lower() == "none":
-                    val_str = "-"
-                campos_exibir.append((k, val_str))
+        campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo']]
         
+        # MODIFICAÇÃO: Utilizando TextBoxes invisíveis para permitir que o usuário copie textos livres
+        row_idx = 0
         for i in range(0, len(campos_exibir), 2):
             lbl_key1 = str(campos_exibir[i][0]).replace("_", " ").title()
-            ctk.CTkLabel(grid, text=f"{lbl_key1}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row_idx, column=0, sticky="w", pady=8, padx=(0, 5))
-            ctk.CTkLabel(grid, text=str(campos_exibir[i][1]), font=("Arial", 12), wraplength=250, justify="left").grid(row=row_idx, column=1, sticky="w", pady=8, padx=(0, 20))
+            self._add_detail_field(grid, lbl_key1, campos_exibir[i][1], row_idx, 0, (0, 20))
 
             if i + 1 < len(campos_exibir):
                 lbl_key2 = str(campos_exibir[i+1][0]).replace("_", " ").title()
-                ctk.CTkLabel(grid, text=f"{lbl_key2}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row_idx, column=2, sticky="w", pady=8, padx=(0, 5))
-                ctk.CTkLabel(grid, text=str(campos_exibir[i+1][1]), font=("Arial", 12), wraplength=250, justify="left").grid(row=row_idx, column=3, sticky="w", pady=8)
+                self._add_detail_field(grid, lbl_key2, campos_exibir[i+1][1], row_idx, 2, (0, 0))
             row_idx += 1
 
         if dado.get('caminho_arquivo'):
