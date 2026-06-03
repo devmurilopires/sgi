@@ -1,9 +1,19 @@
+#Python 3.12.9
+
 import sys
-from tkinter import messagebox
-import customtkinter as ctk
-from PIL import Image
-import tkinter as tk
 import os
+
+# =====================================================================
+# BLINDAGEM DE ESCOPO: Garante que o Python encontre a raiz 'src' e os submódulos
+# =====================================================================
+diretorio_atual = os.path.dirname(os.path.abspath(__file__))
+if diretorio_atual not in sys.path:
+    sys.path.append(diretorio_atual)
+
+import customtkinter as ctk
+from tkinter import messagebox
+import tkinter as tk
+from PIL import Image
 
 # =====================================================================
 # 1. IMPORTS DA NOVA ARQUITETURA (DDD)
@@ -34,11 +44,11 @@ try:
     from src.modulos.projetos_mobilidade.dashboard.view import renderizar as renderizar_dashboard_pm
     from src.modulos.projetos_mobilidade.parecer.view import renderizar as renderizar_parecer_pm
     from src.modulos.projetos_mobilidade.relatorios.view import renderizar as renderizar_relatorios_pm
-    # ---------------------------------------------
     
     from src.modulos.admin.view import renderizar as renderizar_admin_central
     from src.core.shared.utils import resource_path
-except ImportError:
+except ImportError as e:
+    print(f"[Aviso] Falha ao importar submódulos: {e}")
     print("Core modules ou shared utils não encontrados. Fallback para resource_path básico.")
     def resource_path(path): return path
 
