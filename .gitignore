@@ -1,5 +1,6 @@
 # --- SENHAS E CONFIGURAÇÕES SENSÍVEIS ---
 # Nunca suba o .env, pois ele contém a senha do seu banco de dados
+.venv/
 .env
 login_salvo.json
 settings.py

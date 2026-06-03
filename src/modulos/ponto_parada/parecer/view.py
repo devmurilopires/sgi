@@ -42,7 +42,7 @@ class ParecerView(ctk.CTkFrame):
         
         self.processo_var = ctk.StringVar()
         self.processo_var.trace_add("write", self._converter_maiusculas)
-        self._criar_entry(row1, "Nº do Processo", self.processo_var, width=450)
+        self._criar_entry(row1, "Nº do Processo", self.processo_var, width=425)
 
         row2 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row2.pack(fill="x", pady=(5, 15), padx=15)
