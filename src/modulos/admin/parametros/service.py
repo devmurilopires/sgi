@@ -68,3 +68,7 @@ class ParametrosService:
         # Comportamento padrão (slug)
         slug_categoria = f"{s_key}_{c_key}".lower().replace(' ', '_')
         return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": slug_categoria, "col_val": "valor"}
+    
+    def reordenar_parametros(self, routing, lista_ids):
+        if not lista_ids: return False, "Nenhum dado para ordenar."
+        return self.repository.atualizar_ordem_lote(routing, lista_ids)
