@@ -129,7 +129,10 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
         self.service = service
         self.nome = dado.get("titulo", "Pesquisa")
         self.tipo = dado.get("tipo", "tempo")
-        self.payload = ensure_payload_list(dado.get("payload"))
+        
+        # Guardamos o payload original para o PDF/Excel não falharem
+        self.raw_payload = dado.get("payload") 
+        self.payload = ensure_payload_list(self.raw_payload)
         
         container = ctk.CTkScrollableFrame(self, fg_color="#F9FAFB")
         container.pack(fill="both", expand=True, padx=10, pady=10)
@@ -216,15 +219,17 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
         text_col = "#FFFFFF" if color not in ["#D1D5DB", "#F8D057", "#F0F0F0"] else "#333333"
         ctk.CTkLabel(header, text=str(nome_tab), font=("Arial Bold", 13), text_color=text_col).pack(anchor="center", pady=6)
 
-        tbl_frame = tk.Frame(card, bg="white", height=240)
-        tbl_frame.pack(fill="both", expand=False, padx=6, pady=6)
+        # Aumentamos o height e mudamos expand para True
+        tbl_frame = tk.Frame(card, bg="white", height=400)
+        tbl_frame.pack(fill="both", expand=True, padx=6, pady=6)
         tbl_frame.pack_propagate(False)
 
         cols = tabela.get("columns") or []
         headings = tabela.get("headings") or {}
         rows = tabela.get("rows") or []
 
-        tv = ttk.Treeview(tbl_frame, columns=cols, show="headings", height=10)
+        # Aumentamos o height do Treeview de 10 para 18 linhas
+        tv = ttk.Treeview(tbl_frame, columns=cols, show="headings", height=18)
         vsb = ttk.Scrollbar(tbl_frame, orient="vertical", command=tv.yview)
         tv.configure(yscrollcommand=vsb.set)
 
@@ -243,13 +248,15 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
     def acao_exportar_excel(self):
         path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")], initialfile=f"Pesquisa_{self.nome}.xlsx")
         if path:
-            s, m = self.service.exportar_pesquisa_excel(self.nome, self.tipo, self.payload, path)
+            # Enviando raw_payload!
+            s, m = self.service.exportar_pesquisa_excel(self.nome, self.tipo, self.raw_payload, path)
             messagebox.showinfo("Sucesso" if s else "Erro", m)
 
     def acao_exportar_pdf(self):
         path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")], initialfile=f"Pesquisa_{self.nome}.pdf")
         if path:
-            s, m = self.service.exportar_pesquisa_pdf(self.nome, self.tipo, self.payload, path)
+            # Enviando raw_payload!
+            s, m = self.service.exportar_pesquisa_pdf(self.nome, self.tipo, self.raw_payload, path)
             messagebox.showinfo("Sucesso" if s else "Erro", m)
 
 # ==========================================================

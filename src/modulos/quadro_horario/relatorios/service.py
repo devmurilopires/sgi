@@ -137,10 +137,8 @@ def _normalize_table_static(table, override_name=None):
     except Exception as e: 
         return {"nome": override_name or "Tabela", "columns": [], "headings": {}, "rows": []}
     
-def _create_combined_bar_figure_for_export(tabelas):
+def _create_combined_bar_figure_for_export(t):
     try:
-        # Pega especificamente a ÚLTIMA tabela do bloco (A Tabela Azul)
-        t = tabelas[-1] if tabelas and len(tabelas) > 0 else None
         if not t or not t.get("rows"): return None
 
         cols = t.get("columns", [])
@@ -274,6 +272,13 @@ class RelatorioQuadroHorarioService:
     # ==========================================
     def exportar_pesquisa_excel(self, nome, tipo, payload, caminho):
         try:
+            # --- BLINDAGEM JSON: Garante que strings JSONB sejam convertidas em dicionários ---
+            if isinstance(payload, str):
+                import json
+                try: payload = json.loads(payload)
+                except: pass
+            # ---------------------------------------------------------------------------------
+
             norm = ensure_payload_list(payload)
             if not norm: return False, "Não há dados estruturados para exportar."
 
@@ -330,19 +335,35 @@ class RelatorioQuadroHorarioService:
                         ws.column_dimensions[get_column_letter(curr_col + j)].width = 15
                     curr_col += num_cols + 1
 
-            fig = _create_combined_bar_figure_for_export(norm[3:6])
-            if fig:
-                temp_dir = tempfile.mkdtemp()
-                img_path = os.path.join(temp_dir, "chart.png")
-                fig.savefig(img_path, bbox_inches="tight")
-                plt.close(fig)
+            # =====================================================================
+            # MODIFICAÇÃO SÊNIOR: GERAÇÃO E POSICIONAMENTO DOS DOIS GRÁFICOS LADO A LADO
+            # =====================================================================
+            if len(norm) >= 6:
+                fig_media = _create_combined_bar_figure_for_export(norm[3]) # Tabela de Média (Amarela)
+                fig_dif = _create_combined_bar_figure_for_export(norm[5])   # Tabela de Diferença (Azul)
                 
+                # Define a linha inicial para os gráficos ficarem abaixo do segundo bloco de tabelas
                 row_img = block_starts[1] + max([len(t.get("rows", [])) for t in norm[3:6]] + [0]) + 3
-                ws.add_image(XLImage(img_path), f"A{row_img}")
+                temp_dir = tempfile.mkdtemp()
+                
+                # Salva e anexa o Gráfico de Média por Sentido na coluna A
+                if fig_media:
+                    img_path1 = os.path.join(temp_dir, "chart_media.png")
+                    fig_media.savefig(img_path1, bbox_inches="tight")
+                    plt.close(fig_media)
+                    ws.add_image(XLImage(img_path1), f"A{row_img}")
+                
+                # Salva e anexa o Gráfico de Diferença Operacional na coluna K
+                if fig_dif:
+                    img_path2 = os.path.join(temp_dir, "chart_dif.png")
+                    fig_dif.savefig(img_path2, bbox_inches="tight")
+                    plt.close(fig_dif)
+                    ws.add_image(XLImage(img_path2), f"K{row_img}") # Deslocado para o lado para não sobrepor
 
             wb.save(caminho)
             return True, "Exportação Avançada em Excel concluída com sucesso!"
-        except Exception as e: return False, f"Falha na exportação Excel: {e}"
+        except Exception as e: 
+            return False, f"Falha na exportação Excel: {e}"
 
     def exportar_pesquisa_pdf(self, nome_pesquisa, tipo_pesquisa, payload, destino):
         try:

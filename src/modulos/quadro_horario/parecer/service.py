@@ -68,7 +68,6 @@ class ParecerQuadroHorarioService:
         shutil.rmtree(temp_dir)
 
     def processar_parecer(self, tipo, dados_form, linhas, usuario):
-        # ATUALIZADO: Remoção do parâmetro 'tipo' na contagem, agora unificada.
         numero = self.repo.obter_proximo_numero_parecer()
         data_str = datetime.now().strftime("%d/%m/%Y")
         
@@ -80,10 +79,14 @@ class ParecerQuadroHorarioService:
         modo_data = dados_form.get("modo_data", "PERIODO")
 
         if evento and datas_raw:
-            if modo_data == "ISOLADOS":
-                data_text = "nos dias " + self.formatar_lista_com_e(datas_raw) if len(datas_raw) > 1 else f"no dia {datas_raw[0]}"
+            # Reconhece corretamente a palavra "ISOLADA"
+            if "ISOLADA" in modo_data:
+                datas_formatadas = self.formatar_lista_com_e(datas_raw)
+                # Gramática corrigida para: "nos dias X, Y e Z" ou "no dia X"
+                data_text = f"nos dias {datas_formatadas}" if len(datas_raw) > 1 else f"no dia {datas_raw[0]}"
             else:
                 data_text = f"no dia {datas_raw[0]}" if len(datas_raw) == 1 else f"do dia {datas_raw[0]} até o dia {datas_raw[1]}"
+
 
         # --- PREPARAÇÃO DE DADOS PARA O BANCO DE DADOS ---
         # 1. Converter primeira data string para objeto Date (Coluna data_evento)

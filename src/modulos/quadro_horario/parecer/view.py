@@ -288,6 +288,13 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
             btn = ctk.CTkButton(chip, text="✕", width=20, height=20, fg_color="transparent", text_color="#EF4444", hover_color="#D1D5DB", command=lambda l=linha: self._remover_linha(l))
             btn.pack(side="left", padx=(0, 5))
 
+    def _criar_date_wrapper(self, parent, width=150):
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container.pack_propagate(False) 
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry.pack(fill="both", expand=True, padx=2, pady=2)
+        return container, date_entry
+
     def _on_modo_data_change(self, *args):
         for widget in self.frame_data_container.winfo_children(): widget.destroy()
         modo = self.modo_data_var.get()
@@ -295,17 +302,17 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         inner.pack(fill="both", expand=True)
 
         if modo == "Isolada":
-            self.data_isolada_entry = DateEntry(inner, width=15, background='#0F8C75', foreground='white', borderwidth=0, font=("Arial", 12))
-            self.data_isolada_entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
-            self.btn_add_data = ctk.CTkButton(inner, text="➕", fg_color="#10B981", hover_color="#059669", height=40, width=40, command=self._adicionar_data_isolada)
+            wrapper, self.data_isolada_entry = self._criar_date_wrapper(inner, 150)
+            wrapper.pack(side="left", fill="x", expand=True, padx=(0, 10))
+            self.btn_add_data = ctk.CTkButton(inner, text="➕", fg_color="#10B981", hover_color="#059669", height=35, width=40, command=self._adicionar_data_isolada)
             self.btn_add_data.pack(side="right")
             self.frame_chips_datas.grid() 
         else:
-            self.data_ini_entry = DateEntry(inner, width=14, background='#0F8C75', foreground='white', borderwidth=0, font=("Arial", 12))
-            self.data_ini_entry.pack(side="left", fill="x", expand=True)
+            wrapper_ini, self.data_ini_entry = self._criar_date_wrapper(inner, 140)
+            wrapper_ini.pack(side="left", fill="x", expand=True)
             ctk.CTkLabel(inner, text="até", text_color="#6B7280", font=("Arial Bold", 12)).pack(side="left", padx=10)
-            self.data_fim_entry = DateEntry(inner, width=14, background='#0F8C75', foreground='white', borderwidth=0, font=("Arial", 12))
-            self.data_fim_entry.pack(side="left", fill="x", expand=True)
+            wrapper_fim, self.data_fim_entry = self._criar_date_wrapper(inner, 140)
+            wrapper_fim.pack(side="left", fill="x", expand=True)
             self.frame_chips_datas.grid_remove() 
         self._aplicar_regras_negocio()
 
@@ -362,7 +369,6 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
                 self.btn_add_linha.configure(state="normal")
 
     def _acao_gerar(self):
-        # MODIFICAÇÃO: Captura do novo componente dinâmico
         tipo = self.tipo_parecer_combo.get().upper()
         modo_data = self.modo_data_var.get()
         datas_selecionadas = self.datas_isoladas_add.copy() if modo_data == "Isolada" else [self.data_ini_entry.get(), self.data_fim_entry.get()]
@@ -377,6 +383,7 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
             "assunto": self.assunto_combo.get().strip(),
             "evento": evento_selecionado,
             "datas": datas_selecionadas,
+            "modo_data": modo_data.upper(), # A MÁGICA ACONTECE AQUI! O serviço agora vai saber.
             "motivo": self.motivo_text.get("1.0", "end").strip() if tipo == "INDEFERIDO" else ""
         }
 
