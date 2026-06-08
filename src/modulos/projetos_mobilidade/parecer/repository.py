@@ -30,11 +30,11 @@ class ParecerProjetosMobilidadeRepository:
         
         query_especifica = """
             INSERT INTO projetos_mobilidade.pareceres (
-                id, origem_id, processo, assunto, solicitante, motivo_indeferimento
+                id, origem_id, processo, assunto, solicitante
             ) VALUES (
                 %(id_base)s,
                 (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
-                %(processo)s, %(assunto)s, %(solicitante)s, %(motivo)s
+                %(processo)s, %(assunto)s, %(solicitante)s
             );
         """
 
