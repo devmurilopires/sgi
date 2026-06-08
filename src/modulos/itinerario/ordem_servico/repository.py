@@ -39,7 +39,7 @@ class OSItinerarioRepository:
             INSERT INTO itinerario.ordens_servico (
                 numero, ano, origem_id, tipo_evento_id, processo_adm, endereco,
                 horario_inicio, horario_fim, evento, nome_corrida, tipo_obra,
-                km_impactado, caminho_arquivo, responsavel_id, data_emissao
+                km, caminho_arquivo, responsavel_id, data_emissao
             ) VALUES (
                 %(num_os)s, %(ano)s, 
                 (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
