@@ -14,7 +14,8 @@ class PesquisaQuadroHorarioService:
 
     def salvar_dados(self, linha, tipo, dados_completos, usuario):
         codigo_linha = linha.split(" - ")[0].strip() if " - " in linha else linha.strip()
-        nome_tipo = "TEMPO DE VIAGEM" if tipo == "tempo" else "DEMANDA"
+        
+        nome_tipo = "%TEMPO%" if tipo == "tempo" else "%DEMANDA%"
 
         datas_raw = dados_completos.get("datas", [])
         datas_formatadas = []
@@ -26,7 +27,7 @@ class PesquisaQuadroHorarioService:
                 pass
 
         return self.repo.salvar_pesquisa(codigo_linha, nome_tipo, datas_formatadas, dados_completos, usuario)
-
+    
     # --- Utilitários Internos ---
     def _normalizar_nome(self, s):
         if not isinstance(s, str): return ""

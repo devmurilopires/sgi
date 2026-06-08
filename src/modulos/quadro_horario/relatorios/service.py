@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import landscape, A4
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image as RLImage
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
 from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Font, Alignment
@@ -344,52 +344,124 @@ class RelatorioQuadroHorarioService:
             return True, "Exportação Avançada em Excel concluída com sucesso!"
         except Exception as e: return False, f"Falha na exportação Excel: {e}"
 
-    def exportar_pesquisa_pdf(self, nome, tipo, payload, destino):
+    def exportar_pesquisa_pdf(self, nome_pesquisa, tipo_pesquisa, payload, destino):
         try:
-            norm = ensure_payload_list(payload)
-            if not norm: return False, "Não há dados estruturados para exportar."
+            # --- BLINDAGEM JSON ---
+            if isinstance(payload, str):
+                import json
+                try: payload = json.loads(payload)
+                except: pass
+            # ----------------------
 
-            doc = SimpleDocTemplate(destino, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
+            if not payload or not isinstance(payload, dict) or 'tabelas' not in payload:
+                return False, "O payload da pesquisa está vazio ou inválido."
+
+            # Folha A4 Paisagem (Landscape) para caber as 3 tabelas lado a lado
+            doc = SimpleDocTemplate(destino, pagesize=landscape(A4), rightMargin=15, leftMargin=15, topMargin=15, bottomMargin=15)
             elementos = []
             estilos = getSampleStyleSheet()
             
-            elementos.append(Paragraph(f"Relatório Analítico de Pesquisa: {nome}", estilos['Heading1']))
-            elementos.append(Paragraph(f"Tipo: {tipo.upper()}", estilos['Heading3']))
+            # Cabeçalho do PDF
+            elementos.append(Paragraph(f"Relatório Analítico de Pesquisa: {nome_pesquisa}", estilos['Heading1']))
+            elementos.append(Paragraph(f"Tipo: {str(tipo_pesquisa).upper()}", estilos['Heading3']))
             elementos.append(Spacer(1, 15))
 
-            for t_idx, tab in enumerate(norm):
-                if not tab or not tab.get('rows'): continue
+            tabelas_payload = payload.get('tabelas', [])
+            datas_pesquisa = payload.get('datas', [])
+            
+            # =========================================================
+            # BLOCO 1: As 3 Tabelas Principais (Relatórios 1, 2 e 3)
+            # =========================================================
+            celulas_horizontais_superiores = []
+            for idx, tab in enumerate(tabelas_payload[:3]): 
+                nome_tab = tab.get('tabela', f'Relatório {idx+1}')
+                colunas = tab.get('colunas', [])
+                linhas = tab.get('linhas', [])
                 
-                elementos.append(Paragraph(tab.get('nome', 'Tabela'), estilos['Heading4']))
-                cols = tab.get('columns', [])
-                headings = tab.get('headings', {})
-                headers = [headings.get(c, c) for c in cols]
-                
-                tabela_dados = [headers] + tab.get('rows', [])
-                
-                cor_cabecalho = "#3498DB" if t_idx >= 3 else "#7F8C8D"
+                # MÁGICA 1: Substitui a palavra "Horário" pela Data correspondente do Banco
+                if colunas and idx < len(datas_pesquisa):
+                    colunas[0] = str(datas_pesquisa[idx])
+                    
+                tabela_dados = [colunas] + linhas
+                cor_cabecalho = "#3498DB" if tipo_pesquisa.lower() == "demanda" else "#0F8C75"
                 
                 t = Table(tabela_dados)
                 t.setStyle(TableStyle([
                     ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(cor_cabecalho)),
                     ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                     ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                     ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                    ('FONTSIZE', (0, 0), (-1, 0), 9),
-                    ('FONTSIZE', (0, 1), (-1, -1), 8),
-                    ('BOTTOMPADDING', (0, 0), (-1, 0), 6),
+                    ('FONTSIZE', (0, 0), (-1, 0), 8),
+                    ('FONTSIZE', (0, 1), (-1, -1), 7),
+                    ('TOPPADDING', (0, 0), (-1, -1), 3),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
                     ('GRID', (0, 0), (-1, -1), 0.5, colors.silver),
                 ]))
-                elementos.append(t)
-                elementos.append(Spacer(1, 15))
                 
-            fig = _create_combined_bar_figure_for_export(norm[3:6])
-            if fig:
-                img_path = tempfile.mktemp(suffix=".png")
-                fig.savefig(img_path, bbox_inches="tight")
-                plt.close(fig)
-                elementos.append(RLImage(img_path, width=700, height=220, kind='proportional'))
+                titulo_tab = Paragraph(f"<para align='center'><b>{nome_tab}</b></para>", estilos['Normal'])
+                celulas_horizontais_superiores.append([titulo_tab, Spacer(1, 5), t])
+
+            # Agrupa as 3 tabelas numa "Tabela Mestre Invisível" para ficarem lado a lado
+            if celulas_horizontais_superiores:
+                largura_coluna = 800 / len(celulas_horizontais_superiores)
+                tabela_mestre_sup = Table([celulas_horizontais_superiores], colWidths=[largura_coluna]*len(celulas_horizontais_superiores))
+                tabela_mestre_sup.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                ]))
+                elementos.append(tabela_mestre_sup)
                 
+            # =========================================================
+            # BLOCO 2: As Tabelas de Baixo (Média, Quadro, Diferença)
+            # =========================================================
+            celulas_horizontais_inferiores = []
+            for idx, tab in enumerate(tabelas_payload[3:6]):
+                nome_tab = tab.get('tabela', f'Resumo {idx+1}')
+                colunas = tab.get('colunas', [])
+                linhas = tab.get('linhas', [])
+                
+                tabela_dados = [colunas] + linhas
+                
+                # MÁGICA 2: Mapeia as cores idênticas às da interface do usuário
+                if "Média" in nome_tab: 
+                    cor = "#F8D057" # Amarelo
+                elif "Quadro" in nome_tab or "Passageiro" in nome_tab: 
+                    cor = "#96D37A" # Verde
+                else: 
+                    cor = "#70ADE7" # Azul
+                
+                t = Table(tabela_dados)
+                t.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(cor)),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 8),
+                    ('FONTSIZE', (0, 1), (-1, -1), 7),
+                    ('TOPPADDING', (0, 0), (-1, -1), 3),
+                    ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                    ('GRID', (0, 0), (-1, -1), 0.5, colors.silver),
+                ]))
+                
+                titulo_tab = Paragraph(f"<para align='center'><b>{nome_tab}</b></para>", estilos['Normal'])
+                celulas_horizontais_inferiores.append([titulo_tab, Spacer(1, 5), t])
+                
+            if celulas_horizontais_inferiores:
+                elementos.append(Spacer(1, 15)) # Espaço entre a linha de cima e a de baixo
+                tabela_mestre_inf = Table([celulas_horizontais_inferiores], colWidths=[largura_coluna]*len(celulas_horizontais_inferiores))
+                tabela_mestre_inf.setStyle(TableStyle([
+                    ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                    ('LEFTPADDING', (0, 0), (-1, -1), 5),
+                    ('RIGHTPADDING', (0, 0), (-1, -1), 5),
+                ]))
+                elementos.append(tabela_mestre_inf)
+
+            # Renderiza e Salva o PDF
             doc.build(elementos)
-            return True, "Exportação Avançada em PDF (com Gráficos) concluída com sucesso!"
-        except Exception as e: return False, f"Falha na exportação PDF: {e}"
+            return True, "Relatório exportado em PDF com sucesso!"
+            
+        except Exception as e:
+            return False, f"Erro ao gerar o PDF: {e}"
