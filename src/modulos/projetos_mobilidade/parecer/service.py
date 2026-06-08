@@ -19,7 +19,6 @@ class ParecerProjetosMobilidadeService:
         processo = dados_form.get('processo', '').upper()
         assunto = dados_form.get('assunto', '').upper()
         solicitante = dados_form.get('solicitante', '').upper()
-        motivo = dados_form.get('motivo', '') if tipo == "INDEFERIDO" else None
         
         if not usuario_logado:
             return False, "Erro de autenticação: Usuário não identificado na sessão."
@@ -46,7 +45,6 @@ class ParecerProjetosMobilidadeService:
             "origem": origem,
             "assunto": assunto,
             "solicitante": solicitante,
-            "motivo": motivo,
             "caminho_arquivo": destino_docx,
             "criado_por": criado_por
         }
@@ -60,7 +58,7 @@ class ParecerProjetosMobilidadeService:
 
         try:
             os.makedirs(caminho_pasta, exist_ok=True)
-            self._gerar_documento(caminho_modelo, destino_docx, numero_parecer_ano, processo, assunto, solicitante, datetime.now().strftime('%d/%m/%Y'), motivo)
+            self._gerar_documento(caminho_modelo, destino_docx, numero_parecer_ano, processo, assunto, solicitante, datetime.now().strftime('%d/%m/%Y'))
             return True, f"Parecer Técnico Nº {numero_parecer_ano} gerado com sucesso!\nSalvo em:\n{destino_docx}"
         except Exception as e:
             return False, f"Parecer registrado no banco, mas falhou ao criar o Word:\n{e}"
@@ -70,25 +68,20 @@ class ParecerProjetosMobilidadeService:
         Substitui as tags de forma segura mantendo a formatação exata de cada fragmento (run).
         Isso impede que trechos normais fiquem em negrito sem querer.
         """
-        # Primeiro verifica se alguma tag está presente no texto consolidado do parágrafo
         texto_completo = "".join(run.text for run in paragrafo.runs)
         
         possui_tag = any(chave in texto_completo for chave in mapeamento)
         if not possui_tag:
             return
 
-        # Substituição direta mantendo a estrutura de runs originais
         for chave, valor in mapeamento.items():
             if chave in texto_completo:
-                # Se a tag está contida perfeitamente em um único run (caso mais comum)
                 for run in paragrafo.runs:
                     if chave in run.text:
                         run.text = run.text.replace(chave, valor)
                 
-                # Atualiza o texto consolidado caso a tag estivesse dividida entre runs
                 texto_completo = "".join(run.text for run in paragrafo.runs)
                 if chave in texto_completo:
-                    # Fallback de segurança para tags fragmentadas: reconstrói preservando o primeiro run
                     texto_completo = texto_completo.replace(chave, valor)
                     for i, run in enumerate(paragrafo.runs):
                         if i == 0:
@@ -96,7 +89,7 @@ class ParecerProjetosMobilidadeService:
                         else:
                             run.text = ""
 
-    def _gerar_documento(self, modelo_path, destino_path, num_parecer, processo, assunto, solicitante, data_str, motivo):
+    def _gerar_documento(self, modelo_path, destino_path, num_parecer, processo, assunto, solicitante, data_str ):
         doc = Document(modelo_path)
         mapeamento = {
             "{{NUM_PARECER}}": num_parecer,
@@ -105,14 +98,10 @@ class ParecerProjetosMobilidadeService:
             "{{SOLICITANTE}}": solicitante,
             "{{DATA}}": data_str
         }
-        if motivo: 
-            mapeamento["{{MOTIVO}}"] = motivo
-
-        # 1. Substituição nos parágrafos normais do documento
+        
         for paragrafo in doc.paragraphs:
             self._substituir_texto_com_runs(paragrafo, mapeamento)
                 
-        # 2. Varredura recursiva dentro de tabelas e células do Word
         for tabela in doc.tables:
             for linha in tabela.rows:
                 for celula in linha.cells:

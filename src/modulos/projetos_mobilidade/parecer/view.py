@@ -45,13 +45,6 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         self.solicitante_combo = self._criar_param_combo(row2, "Solicitante", "Projetos de Mobilidade", "SOLICITANTE_PARECER", width=610)
         self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Projetos de Mobilidade", "ASSUNTO_PROJETOS_MOBILIDADE", width=610)
 
-        # --- MOTIVO DE INDEFERIMENTO (Oculto por Padrão) ---
-        self.frame_motivo = ctk.CTkFrame(self.scroll_frame, fg_color="#FFF0F0", corner_radius=10, border_width=1, border_color="#FFD6D6")
-        
-        ctk.CTkLabel(self.frame_motivo, text="Motivo do Indeferimento:", font=("Arial Bold", 13), text_color="#C21010").pack(anchor="w", padx=20, pady=(15, 5))
-        self.motivo_text = ctk.CTkTextbox(self.frame_motivo, height=120, fg_color="#FFFFFF", border_color="#FFD6D6", border_width=1)
-        self.motivo_text.pack(fill="x", padx=20, pady=(0, 20))
-
         # --- RODAPÉ COM BOTÃO ---
         footer_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         footer_frame.pack(fill="x", pady=30)
@@ -79,11 +72,10 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
 
     # --- LÓGICAS DE INTERFACE ---
     def _on_tipo_change(self, *args):
+        # Apenas altera a cor do botão, o painel de motivo foi removido
         if self.tipo_parecer_combo.get().upper() == "INDEFERIDO":
-            self.frame_motivo.pack(fill="x", pady=10, padx=10, before=self.scroll_frame.winfo_children()[-1])
             self.btn_gerar.configure(fg_color="#C21010", hover_color="#9E0D0D")
         else:
-            self.frame_motivo.pack_forget()
             self.btn_gerar.configure(fg_color="#0F8C75", hover_color="#0B6B59")
 
     def _formatar_processo(self, *args):
@@ -99,15 +91,11 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
             'origem': self.origem_combo.get().strip(),
             'processo': self.processo_var.get().strip(),
             'solicitante': self.solicitante_combo.get().strip(),
-            'assunto': self.assunto_combo.get().strip(),
-            'motivo': self.motivo_text.get("1.0", "end").strip()
+            'assunto': self.assunto_combo.get().strip()
         }
 
         if not all([dados_form['processo'], dados_form['origem'], dados_form['solicitante'], dados_form['assunto']]):
             return messagebox.showwarning("Aviso", "Por favor, preencha Processo, Origem, Solicitante e Assunto.")
-
-        if dados_form['tipo'].upper() == "INDEFERIDO" and not dados_form['motivo']:
-            return messagebox.showwarning("Aviso", "É obrigatório informar o Motivo para pareceres Indeferidos.")
 
         sucesso, msg = self.service.processar_geracao_parecer(dados_form, self.usuario_logado)
         
@@ -122,7 +110,6 @@ class ParecerProjetosMobilidadeView(ctk.CTkFrame):
         self.origem_combo.set("")
         self.solicitante_combo.set("")
         self.assunto_combo.set("")
-        self.motivo_text.delete("1.0", "end")
         self.tipo_parecer_combo.set("DEFERIDO")
 
 def renderizar(frame_destino, usuario_logado):
