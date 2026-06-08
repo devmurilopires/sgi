@@ -126,13 +126,51 @@ class OSItinerarioView(ctk.CTkFrame):
         self.no_evento_var = ctk.BooleanVar(value=False)
         self.no_data_var = ctk.BooleanVar(value=False)
         self.no_hora_var = ctk.BooleanVar(value=False)
-
+    
         self._construir_interface()
 
-    def _construir_interface(self):
-        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#F8F9FA")
-        self.scroll_frame.pack(padx=20, pady=20, fill="both", expand=True)
+    def _fechar_modais_on_scroll(self, *args, **kwargs):
+        """Oculta dropdowns e autocompletes instantaneamente ao rolar a tela"""
+        try:
+            self.winfo_toplevel().focus_set()
+            
+            # Fecha os autocompletes clássicos
+            if hasattr(self, 'linha_combo') and self.linha_combo: self.linha_combo.esconder_lista()
+            if hasattr(self, 'empresa_combo') and self.empresa_combo: self.empresa_combo.esconder_lista()
+            
+            # Varre a tela e fecha TODOS os novos CtkParametrosComboBox que estiverem abertos
+            def varrer_e_fechar(widget):
+                for child in widget.winfo_children():
+                    if isinstance(child, CtkParametrosComboBox):
+                        if getattr(child, '_popup_open', False):
+                            child._close_popup()
+                    elif len(child.winfo_children()) > 0:
+                        varrer_e_fechar(child)
+            
+            varrer_e_fechar(self)
+        except: 
+            pass
 
+    def _construir_interface(self):
+        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#F4F6F9")
+        self.scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # --- A GRANDE SACADA SÊNIOR: INTERCEPTAR O MOTOR DE ROLAGEM ---
+        _yview_scroll_original = self.scroll_frame._parent_canvas.yview_scroll
+        _yview_original = self.scroll_frame._parent_canvas.yview
+
+        def _motor_rolagem_hook(*args, **kwargs):
+            self._fechar_modais_on_scroll()
+            return _yview_scroll_original(*args, **kwargs)
+
+        def _barra_rolagem_hook(*args, **kwargs):
+            self._fechar_modais_on_scroll()
+            return _yview_original(*args, **kwargs)
+
+        self.scroll_frame._parent_canvas.yview_scroll = _motor_rolagem_hook
+        self.scroll_frame._parent_canvas.yview = _barra_rolagem_hook
+        # --------------------------------------------------------------
+        
         header_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 15))
         ctk.CTkLabel(header_frame, text="Gerador de Ordem de Serviço (Itinerário)", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
@@ -230,9 +268,17 @@ class OSItinerarioView(ctk.CTkFrame):
     def _criar_combo_estatico_grid(self, parent, label, values, row, col, columnspan=1, command=None):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
+        
         ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        
+        # Mantendo a NOSSA arquitetura moderna (CtkParametrosComboBox)
         combo = CtkParametrosComboBox(frame, values=values, height=35, command=command)
         combo.pack(fill="x", expand=True, pady=(2,0))
+        
+        # Trava de Segurança Sênior: Impede que o scroll do mouse vaze para a tela de fundo
+        # sem precisar abandonar o nosso componente customizado!
+        combo.bind("<MouseWheel>", lambda e: "break")
+        
         return combo
 
     def _criar_autocomplete_grid(self, parent, label, values, row, col, columnspan=1):
@@ -427,14 +473,19 @@ class OSItinerarioView(ctk.CTkFrame):
     def _render_linhas_chips(self):
         for w in self.frame_chips_linhas.winfo_children(): w.destroy()
         if not self.linhas_add:
-            ctk.CTkLabel(self.frame_chips_linhas, text="Nenhuma linha.", text_color="gray", font=("Arial", 11)).pack(anchor="w", padx=10)
+            ctk.CTkLabel(self.frame_chips_linhas, text="Nenhuma linha vinculada.", text_color="gray", font=("Arial", 11)).pack(anchor="w", padx=10)
             return
+            
         for lin in self.linhas_add:
             chip = ctk.CTkFrame(self.frame_chips_linhas, fg_color="#F1F3F5", corner_radius=6, height=32)
-            chip.pack(side="left", padx=(0,5), pady=3) 
-            chip.pack_propagate(False)
-            ctk.CTkLabel(chip, text=lin, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
+            chip.pack(side="top", fill="x", pady=3)
+            chip.pack_propagate(False) # Mantém a altura travada em 32
+            
+            # 1º MUDANÇA: Renderiza o botão X PRIMEIRO na direita. Isso garante que ele nunca será esmagado.
             ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda l=lin: self._remove_linha(l)).pack(side="right", padx=5)
+
+            # 2º MUDANÇA: Renderiza o texto DEPOIS, com anchor="w" (alinhado à esquerda) e expand=True
+            ctk.CTkLabel(chip, text=lin, text_color="#333", font=("Arial Bold", 12), anchor="w").pack(side="left", fill="x", expand=True, padx=(10, 5))
 
     def _add_anexo(self, vazio=False):
         caminho = ""
