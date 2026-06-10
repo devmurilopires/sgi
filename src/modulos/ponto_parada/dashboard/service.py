@@ -166,8 +166,8 @@ class DashboardService:
 
             def add_graficos_lado_a_lado(k1, k2):
                 imagens[k1].seek(0); imagens[k2].seek(0)
-                c1 = [Paragraph(graficos_meta[k1][0], heading_side), Paragraph(graficos_meta[k1][1], normal_side), Spacer(1, 5), RLImage(imagens[k1], width=360, height=200)]
-                c2 = [Paragraph(graficos_meta[k2][0], heading_side), Paragraph(graficos_meta[k2][1], normal_side), Spacer(1, 5), RLImage(imagens[k2], width=360, height=200)]
+                c1 = [Paragraph(graficos_meta[k1][0], heading_side), Paragraph(graficos_meta[k1][1], normal_side), Spacer(1, 5), RLImage(imagens[k1], width=360, height=200, kind='proportional')]
+                c2 = [Paragraph(graficos_meta[k2][0], heading_side), Paragraph(graficos_meta[k2][1], normal_side), Spacer(1, 5), RLImage(imagens[k2], width=360, height=200, kind='proportional')]
                 t = Table([[c1, c2]], colWidths=[385, 385])
                 t.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP'), ('LEFTPADDING', (0,0), (-1,-1), 0), ('RIGHTPADDING', (0,0), (-1,-1), 0)]))
                 elements.append(KeepTogether([t]))

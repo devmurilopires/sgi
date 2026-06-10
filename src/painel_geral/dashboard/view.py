@@ -52,8 +52,11 @@ class DashboardGeralView(ctk.CTkFrame):
         self.btn_pdf = ctk.CTkButton(frame_filtros, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color=COLOR_SECONDARY, width=120, height=35, command=self.exportar_pdf)
         self.btn_pdf.pack(side="right", padx=15, pady=17)
 
-        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 Aplicar Filtro", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, width=120, height=35, command=self.atualizar_dashboard)
+        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 Atualizar", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, width=120, height=35, command=self.atualizar_dashboard)
         self.btn_filtrar.pack(side="right", padx=10, pady=17)
+
+        self.btn_limpar_filtro = ctk.CTkButton(frame_filtros, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color="#777777", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", width=110, height=35, command=self.limpar_filtros_data)
+        self.btn_limpar_filtro.pack(side="right", padx=10)
 
         # Filtros de Data com calendário estilizado
         f_data = ctk.CTkFrame(frame_filtros, fg_color="transparent")
@@ -78,6 +81,18 @@ class DashboardGeralView(ctk.CTkFrame):
 
         self.frame_graficos = ctk.CTkFrame(self.scroll_area, fg_color="transparent")
         self.frame_graficos.pack(fill="both", expand=True, pady=10)
+
+    def limpar_filtros_data(self):
+        """Reseta as datas para o padrão (início do ano até hoje) e reaplica os filtros."""
+        hoje = date.today()
+        primeiro_dia_ano = date(hoje.year, 1, 1)
+        
+        # Reseta os calendários
+        self.date_ini.set_date(primeiro_dia_ano)
+        self.date_fim.set_date(hoje)
+        
+        # Chama a função que atualiza os gráficos
+        self.atualizar_completo()
 
     def criar_card(self, parent, titulo, valor, cor_destaque, icone):
         card = ctk.CTkFrame(parent, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E0E0E0")

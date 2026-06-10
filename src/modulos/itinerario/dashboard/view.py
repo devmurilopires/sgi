@@ -53,6 +53,9 @@ class DashboardItinerarioView(ctk.CTkFrame):
 
         ctk.CTkButton(frame_topo, text="🔄 Atualizar", fg_color=COLOR_PRIMARY, font=("Arial Bold", 13), width=100, height=35, command=self.atualizar_completo).pack(side="right", padx=10)
         
+        self.btn_limpar_filtro = ctk.CTkButton(frame_topo, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color="#777777", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", width=110, height=35, command=self.limpar_filtros_data)
+        self.btn_limpar_filtro.pack(side="right", padx=10)
+
         datas_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
         datas_frame.pack(side="right", padx=10, pady=17)
 
@@ -78,6 +81,19 @@ class DashboardItinerarioView(ctk.CTkFrame):
 
         self.frame_graficos = ctk.CTkFrame(self.scroll, fg_color="transparent")
         self.frame_graficos.pack(fill="both", expand=True, pady=(5, 10))
+
+    def limpar_filtros_data(self):
+        """Reseta as datas para o padrão (início do ano até hoje) e reaplica os filtros."""
+        hoje = date.today()
+        primeiro_dia_ano = date(hoje.year, 1, 1)
+        
+        # Reseta os calendários
+        self.data_inicio.set_date(primeiro_dia_ano)
+        self.data_fim.set_date(hoje)
+        
+        # Chama a função que atualiza os gráficos
+        self.atualizar_completo()
+
 
     # =====================================================================
     # MÓDULO DE EXPORTAÇÃO PDF (POPUP COM RODAPÉ FIXO)
