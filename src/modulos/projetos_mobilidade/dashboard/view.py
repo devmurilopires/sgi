@@ -5,8 +5,11 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.ticker import MaxNLocator
 import textwrap
+import os
 from datetime import date
 from tkcalendar import DateEntry
+from tkinter import filedialog, messagebox
+
 from src.modulos.projetos_mobilidade.dashboard.service import DashboardPMService
 from src.modulos.projetos_mobilidade.dashboard.repository import DashboardPMRepository
 
@@ -23,6 +26,9 @@ class DashboardPMView(ctk.CTkFrame):
         self.service = DashboardPMService(DashboardPMRepository())
         self.df_raw = pd.DataFrame()
         self.df_f = pd.DataFrame()
+        
+        self.fig = None
+        self.axs = None
 
         self._construir_interface()
         self.atualizar_completo()
@@ -41,6 +47,9 @@ class DashboardPMView(ctk.CTkFrame):
         topo.pack_propagate(False)
 
         ctk.CTkLabel(topo, text="DASHBOARD ESTRATÉGICO | PROJETOS DE MOBILIDADE", font=("Arial Black", 18), text_color=COLOR_PRIMARY).pack(side="left", padx=20)
+
+        self.btn_exportar = ctk.CTkButton(topo, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color=COLOR_SECONDARY, width=120, height=35, command=self.abrir_popup_exportacao)
+        self.btn_exportar.pack(side="right", padx=10)
 
         ctk.CTkButton(topo, text="🔄 Atualizar", font=("Arial Bold", 12), fg_color=COLOR_PRIMARY, width=100, height=35, command=self.atualizar_completo).pack(side="right", padx=20)
 
@@ -73,15 +82,9 @@ class DashboardPMView(ctk.CTkFrame):
         self.frame_graficos.pack(fill="both", expand=True)
 
     def limpar_filtros_data(self):
-        """Reseta as datas para o padrão (início do ano até hoje) e reaplica os filtros."""
         hoje = date.today()
-        primeiro_dia_ano = date(hoje.year, 1, 1)
-        
-        # Reseta os calendários
-        self.data_ini.set_date(primeiro_dia_ano)
+        self.data_ini.set_date(date(hoje.year, 1, 1))
         self.data_fim.set_date(hoje)
-        
-        # Chama a função que atualiza os gráficos
         self.atualizar_completo()
 
     def atualizar_completo(self):
@@ -109,40 +112,38 @@ class DashboardPMView(ctk.CTkFrame):
         self._renderizar_graficos()
 
     def _add_card(self, tit, val, cor):
-        c = ctk.CTkFrame( self.frame_cards, fg_color=COLOR_CARD, height=90, corner_radius=10, border_width=1,border_color="#E0E0E0")
+        c = ctk.CTkFrame(self.frame_cards, fg_color=COLOR_CARD, height=90, corner_radius=10, border_width=1, border_color="#E0E0E0")
         c.pack(side="left", fill="x", expand=True, padx=8)
-
         c.pack_propagate(False)
-        ctk.CTkFrame( c, fg_color=cor, width=6, corner_radius=10).pack(side="left", fill="y")
-
-        ctk.CTkLabel( c, text=tit, font=("Arial Bold", 11), text_color="#777777").pack(anchor="w", padx=15, pady=(4,0))
-        ctk.CTkLabel( c, text=str(val), font=("Arial Black", 18), text_color="#333333").pack(anchor="w", padx=15, pady=(0,2))
+        ctk.CTkFrame(c, fg_color=cor, width=6, corner_radius=10).pack(side="left", fill="y")
+        ctk.CTkLabel(c, text=tit, font=("Arial Bold", 11), text_color="#777777").pack(anchor="w", padx=15, pady=(4,0))
+        ctk.CTkLabel(c, text=str(val), font=("Arial Black", 18), text_color="#333333").pack(anchor="w", padx=15, pady=(0,2))
 
     def _criar_tabela_balanco(self, parent, titulo, headers, dados):
         container = ctk.CTkFrame(parent, fg_color=COLOR_CARD, corner_radius=10, border_width=1, border_color="#E0E0E0")
         container.pack(fill="x", padx=8)
         ctk.CTkLabel(container, text=titulo, font=("Arial Bold", 14), text_color=COLOR_PRIMARY).pack(pady=10)
         
-        # Cabeçalho da tabela com Grid
         h_frame = ctk.CTkFrame(container, fg_color="#F1F3F5", height=35)
         h_frame.pack(fill="x", padx=15, pady=5)
         for i, h in enumerate(headers):
             h_frame.columnconfigure(i, weight=1, uniform="col")
             ctk.CTkLabel(h_frame, text=h, font=("Arial Bold", 11)).grid(row=0, column=i, pady=5, sticky="nsew")
 
-        # Linhas da tabela renderizadas via Grid com correção de sticky="nsew"
         for r_idx, row in enumerate(dados):
             r_f = ctk.CTkFrame(container, fg_color="transparent")
             r_f.pack(fill="x", padx=15)
             for c_idx, v in enumerate(row):
                 r_f.columnconfigure(c_idx, weight=1, uniform="col")
-                # CORREÇÃO: sticky="nsew" garante que o layout configure sem erros e centralize o texto nativamente
                 ctk.CTkLabel(r_f, text=str(v), font=("Arial", 12)).grid(row=0, column=c_idx, pady=3, sticky="nsew")
 
     def _renderizar_graficos(self):
         for w in self.frame_graficos.winfo_children(): w.destroy()
         
         fig, axs = plt.subplots(2, 2, figsize=(14, 12), facecolor=COLOR_BG)
+        self.fig = fig
+        self.axs = axs
+        
         fig.patch.set_facecolor(COLOR_BG)
         plt.subplots_adjust(left=0.15, bottom=0.08, right=0.95, top=0.92, wspace=0.3, hspace=0.4)
 
@@ -187,7 +188,7 @@ class DashboardPMView(ctk.CTkFrame):
                        startangle=90, colors=plt.cm.Oranges(np.linspace(0.5, 0.7, len(assuntos))), textprops={'fontweight':'bold'})
         ax.set_title("Top 5 Assuntos Demandados", fontsize=12, fontweight='bold', pad=15)
 
-        canvas = FigureCanvasTkAgg(fig, master=self.frame_graficos)
+        canvas = FigureCanvasTkAgg(self.fig, master=self.frame_graficos)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
@@ -199,6 +200,87 @@ class DashboardPMView(ctk.CTkFrame):
         else: ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.set_facecolor(COLOR_CARD)
         ax.grid(axis=eixo_int, linestyle='--', alpha=0.3)
+
+    # --- MÉTODOS DE EXPORTAÇÃO EXECUTIVA ---
+    def abrir_popup_exportacao(self):
+        if self.fig is None:
+            messagebox.showwarning("Aviso", "Não há gráficos gerados para exportar.")
+            return
+
+        popup = ctk.CTkToplevel(self)
+        popup.title("Exportar Relatório PDF")
+        popup.geometry("450x380")
+        popup.transient(self.winfo_toplevel())
+        popup.grab_set()
+
+        ctk.CTkLabel(popup, text="Selecione os gráficos para o Relatório:", font=("Arial", 14, "bold")).pack(pady=15)
+
+        self.vars_export = {}
+        
+        self.graficos_meta = {
+            "g1": ("Pareceres Gerados por Mês", "Apresenta o volume de pareceres técnicos emitidos ao longo de cada mês do período selecionado, permitindo identificar picos de demanda e sazonalidades no setor de Projetos de Mobilidade."),
+            "g2": ("Proporção de Decisões", "Ilustra o percentual de pareceres deferidos e indeferidos, fornecendo uma visão macro sobre a taxa de aprovação das solicitações analisadas pelo departamento."),
+            "g3": ("Top 10 Solicitantes (Geral)", "Destaca os dez requerentes com o maior volume de solicitações, facilitando o mapeamento dos principais atores que demandam serviços e avaliações do setor."),
+            "g4": ("Top 5 Assuntos Demandados", "Exibe os cinco temas mais recorrentes nos processos analisados, evidenciando as principais frentes de trabalho da equipe de Projetos.")
+        }
+
+        for key, meta in self.graficos_meta.items():
+            var = ctk.BooleanVar(value=True)
+            self.vars_export[key] = var
+            chk = ctk.CTkCheckBox(popup, text=meta[0], variable=var, fg_color=COLOR_PRIMARY)
+            chk.pack(anchor="w", padx=40, pady=8)
+
+        ctk.CTkButton(popup, text="Gerar Relatório Completo", fg_color=COLOR_PRIMARY, command=lambda: self.iniciar_geracao_pdf(popup)).pack(pady=25)
+
+    def iniciar_geracao_pdf(self, popup):
+        selecionados = {k: v.get() for k, v in self.vars_export.items()}
+        if not any(selecionados.values()):
+            messagebox.showwarning("Aviso", "Selecione pelo menos um gráfico.")
+            return
+
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            title="Salvar Relatório PDF",
+            initialfile="Relatorio_Executivo_Mobilidade.pdf"  # NOVO: Nome Fixo Estático
+        )
+        if not filepath: return
+
+        popup.destroy()
+
+        import tempfile
+        import os
+        temp_dir = tempfile.gettempdir()
+        imagens_salvas = {}
+        
+        # Mapeamento Seguro por Linha e Coluna EXATA
+        axs_map = {"g1": (0,0), "g2": (0,1), "g3": (1,0), "g4": (1,1)}
+
+        try:
+            for key in selecionados:
+                if selecionados[key]:
+                    # Acessando linha e coluna individualmente (BLINDAGEM CONTRA O SLICE ERROR)
+                    linha, coluna = axs_map[key]
+                    ax = self.axs[linha, coluna]
+                    
+                    caminho_img = os.path.join(temp_dir, f"temp_pm_{key}.png")
+                    extent = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+                    self.fig.savefig(caminho_img, bbox_inches=extent.expanded(1.25, 1.25), dpi=150)
+                    imagens_salvas[key] = caminho_img
+            
+            kpis = self.service.calcular_kpis(self.df_f)
+            d_ini = self.data_ini.get_date()
+            d_fim = self.data_fim.get_date()
+            
+            self.service.gerar_relatorio_pdf(filepath, imagens_salvas, self.graficos_meta, kpis, d_ini, d_fim)
+            messagebox.showinfo("Sucesso", "Relatório Executivo gerado com sucesso!")
+            os.startfile(filepath) # Abre o arquivo final automaticamente!
+            
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao gerar PDF: {e}")
+        finally:
+            for img in imagens_salvas.values():
+                if os.path.exists(img): os.remove(img)
 
 def renderizar(frame_destino, usuario_logado):
     return DashboardPMView(master=frame_destino, usuario_logado=usuario_logado)
