@@ -100,7 +100,7 @@ class RelatorioView(ctk.CTkFrame):
             
             if key == "origem": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ORIGEM", incluir_todos=True, height=35)
             elif key == "acao": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ACAO_OS", incluir_todos=True, height=35)
-            elif key == "item": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ITEM_GLOBAL", incluir_todos=True, height=35)
+            elif key == "item": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ITENS", incluir_todos=True, height=35)
             elif key == "solicitante": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="SOLICITANTE_PARECER", incluir_todos=True, height=35)
             elif key == "status": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="STATUS_OS", incluir_todos=True, height=35)
             elif key == "decisao": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="DECISAO_PARECER", incluir_todos=True, height=35)
@@ -265,7 +265,7 @@ class RelatorioView(ctk.CTkFrame):
                 w = CtkParametrosComboBox(parent, setor="Ponto de Parada", campo="ACAO_OS", width=250, height=35)
                 w.set(val_str if val_str != "-" else "– Selecione –")
             elif key == "item":
-                w = CtkParametrosComboBox(parent, setor="Ponto de Parada", campo="ITEM_GLOBAL", width=250, height=35)
+                w = CtkParametrosComboBox(parent, setor="Ponto de Parada", campo="ITENS", width=250, height=35)
                 w.set(val_str if val_str != "-" else "– Selecione –")
             elif key == "status":
                 w = CtkParametrosComboBox(parent, setor="Ponto de Parada", campo="STATUS_OS", width=250, height=35)

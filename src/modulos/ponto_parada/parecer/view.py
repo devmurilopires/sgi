@@ -28,7 +28,7 @@ class ParecerView(ctk.CTkFrame):
         row1 = ctk.CTkFrame(bloco1, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        self.origem_combo = self._criar_param_combo(row1, "Origem", "Ponto de Parada", "ORIGEM_DEMANDA", width=300)
+        self.origem_combo = self._criar_param_combo(row1, "Origem", "Ponto de Parada", "ORIGEM", width=300)
 
         self.tipo_parecer_combo = self._criar_param_combo(
             row1, 
@@ -38,7 +38,7 @@ class ParecerView(ctk.CTkFrame):
             width=500, 
             command=self._atualizar_campos
         )
-        self.tipo_parecer_combo.set("Deferido")
+        self.tipo_parecer_combo.set("DEFERIDO")
         
         self.processo_var = ctk.StringVar()
         self.processo_var.trace_add("write", self._converter_maiusculas)
