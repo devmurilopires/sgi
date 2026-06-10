@@ -111,18 +111,179 @@ class RelatorioRepository:
                     return cur.fetchone()[0]
         except: return 0
 
-    def excluir_registro(self, tipo_doc, registro_id):
+    def excluir_registro(self, tipo_doc, registro_id, motivo, excluido_por_nome):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # 1. Pega o ID do usuário que está excluindo
+                    cur.execute("SELECT id FROM common.usuarios WHERE nome_completo = %s LIMIT 1", (excluido_por_nome,))
+                    user_row = cur.fetchone()
+                    excluido_por_id = user_row[0] if user_row else None
+
+                    import json
+                    if tipo_doc == "PARECER":
+                        # CONSTRUÇÃO DO JSON COMPLETO COM NOME DO GERADOR (PARECER)
+                        cur.execute("""
+                            SELECT pb.numero_parecer_ano, json_build_object(
+                                'id', p.id, 'processo', p.processo, 'assunto', p.assunto,
+                                'solicitante', p.solicitante, 'origem', o.nome, 'decisao', t.nome,
+                                'endereco', p.endereco_vistoria, 'motivo_indeferimento', p.motivo_indeferimento,
+                                'gerado_por', u.nome_completo, 'caminho_arquivo', pb.caminho_arquivo,
+                                'data_criacao', pb.created_at
+                            )
+                            FROM ponto_parada.pareceres p
+                            JOIN common.pareceres_base pb ON p.id = pb.id
+                            LEFT JOIN common.tipos t ON pb.tipo_id = t.id
+                            LEFT JOIN common.origens o ON p.origem_id = o.id
+                            LEFT JOIN common.usuarios u ON pb.criado_por_id = u.id
+                            WHERE p.id = %s
+                        """, (registro_id,))
+                        
+                        res = cur.fetchone()
+                        if res:
+                            numero, dados_json = res
+                            cur.execute("""
+                                INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por_id, data_exclusao)
+                                VALUES ('PARECER_ponto_parada', %s, %s, %s, %s, NOW())
+                            """, (numero, json.dumps(dados_json), motivo, excluido_por_id))
+
+                        # Deleta em cascata a partir da base
+                        cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
+                        
+                    else:
+                        # CONSTRUÇÃO DO JSON COMPLETO COM NOME DO GERADOR (ORDEM DE SERVIÇO)
+                        cur.execute("""
+                            SELECT os.numero, json_build_object(
+                                'id', os.id, 'numero_os', os.numero, 'origem', o.nome,
+                                'acao', ta.nome, 'item', ti.nome, 'ponto_principal_id', os.ponto_principal_id,
+                                'bairro', e.bairro, 'endereco', (e.logradouro || COALESCE(', ' || e.numero, '') || COALESCE(' - ' || e.complemento, '')),
+                                'status', os.status_conclusao, 'gerado_por', u.nome_completo, 
+                                'caminho_arquivo', os.caminho_arquivo, 'data_criacao', os.data_criacao
+                            )
+                            FROM ponto_parada.ordens_servico os
+                            LEFT JOIN ponto_parada.enderecos_cadastrados e ON os.ponto_principal_id = e.id
+                            LEFT JOIN common.origens o ON os.origem_id = o.id
+                            LEFT JOIN common.tipos ta ON os.tipo_acao_id = ta.id
+                            LEFT JOIN common.tipos ti ON os.tipo_item_id = ti.id
+                            LEFT JOIN common.usuarios u ON os.responsavel_id = u.id
+                            WHERE os.id = %s
+                        """, (registro_id,))
+                        
+                        res = cur.fetchone()
+                        if res:
+                            numero, dados_json = res
+                            cur.execute("""
+                                INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por_id, data_exclusao)
+                                VALUES ('OS_ponto_parada', %s, %s, %s, %s, NOW())
+                            """, (numero, json.dumps(dados_json), motivo, excluido_por_id))
+                            
+                        # Deleta a OS
+                        cur.execute("DELETE FROM ponto_parada.ordens_servico WHERE id = %s", (registro_id,))
+                        
+                    conn.commit()
+                    return True, "Registro excluído e arquivado no histórico com sucesso."
+        except Exception as e:
+            print(f"[LOG DB] Erro ao excluir no Ponto de Parada: {e}")
+            return False, f"Erro ao excluir: {e}"
+        
+    def atualizar_registro(self, tipo_doc, registro_id, dados):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if tipo_doc == "PARECER":
-                        cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
-                    else:
-                        cur.execute("DELETE FROM ponto_parada.ordens_servico WHERE id = %s", (registro_id,))
+                        # 1. Atualiza dados da Tabela Base (Responsável, Data, Decisão, Número)
+                        if dados.get("numero_completo"):
+                            try:
+                                num = int(str(dados["numero_completo"]).split('/')[0])
+                                cur.execute("UPDATE common.pareceres_base SET numero_parecer_ano = %s WHERE id = %s", (num, registro_id))
+                            except: pass
+
+                        cur.execute("""
+                            UPDATE common.pareceres_base pb
+                            SET tipo_id = COALESCE((SELECT id FROM common.tipos WHERE contexto IN ('PARECER', 'DECISAO_PARECER') AND nome = %(decisao)s LIMIT 1), pb.tipo_id),
+                                criado_por_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), pb.criado_por_id),
+                                created_at = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), pb.created_at)
+                            FROM ponto_parada.pareceres p
+                            WHERE pb.id = p.id AND p.id = %(id)s
+                        """, {
+                            "id": registro_id,
+                            "decisao": dados.get("decisao"),
+                            "responsavel": dados.get("responsavel"),
+                            "data_criacao": dados.get("data_criacao")
+                        })
+
+                        # 2. Atualiza dados específicos do Parecer de Ponto de Parada
+                        cur.execute("""
+                            UPDATE ponto_parada.pareceres
+                            SET processo = COALESCE(%(processo)s, processo),
+                                assunto = COALESCE(%(assunto)s, assunto),
+                                solicitante = COALESCE(%(solicitante)s, solicitante),
+                                endereco_vistoria = COALESCE(%(endereco)s, endereco_vistoria),
+                                motivo_indeferimento = COALESCE(%(motivo)s, motivo_indeferimento),
+                                origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id)
+                            WHERE id = %(id)s
+                        """, {
+                            "id": registro_id,
+                            "processo": dados.get("processo"),
+                            "assunto": dados.get("assunto"),
+                            "solicitante": dados.get("solicitante"),
+                            "endereco": dados.get("endereco"),
+                            "motivo": dados.get("motivo_indeferimento"),
+                            "origem": dados.get("origem")
+                        })
+                        
+                    else: # ORDEM DE SERVIÇO
+                        # Filtra caso o usuário digite o ID do ponto no formato "12 (+ 45)" e pega só o principal
+                        if "id_ponto" in dados and dados["id_ponto"]:
+                            import re
+                            ponto_str = str(dados["id_ponto"]).split('(')[0]
+                            ponto_id = re.sub(r'\D', '', ponto_str)
+                            dados["ponto_id_clean"] = int(ponto_id) if ponto_id else None
+                        else:
+                            dados["ponto_id_clean"] = None
+
+                        cur.execute("""
+                            UPDATE ponto_parada.ordens_servico
+                            SET numero = COALESCE(%(numero_os)s, numero),
+                                ponto_principal_id = COALESCE(%(ponto_id_clean)s, ponto_principal_id),
+                                origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id),
+                                tipo_acao_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'ACAO_OS' AND nome = %(acao)s LIMIT 1), tipo_acao_id),
+                                tipo_item_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'ITEM_GLOBAL' AND nome = %(item)s LIMIT 1), tipo_item_id),
+                                status_conclusao = COALESCE(%(status)s, status_conclusao),
+                                responsavel_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), responsavel_id),
+                                data_criacao = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), data_criacao)
+                            WHERE id = %(id)s
+                            RETURNING ponto_principal_id
+                        """, {
+                            "id": registro_id,
+                            "numero_os": dados.get("numero_os"),
+                            "ponto_id_clean": dados.get("ponto_id_clean"),
+                            "origem": dados.get("origem"),
+                            "acao": dados.get("acao"),
+                            "item": dados.get("item"),
+                            "status": dados.get("status"),
+                            "responsavel": dados.get("responsavel"),
+                            "data_criacao": dados.get("data_criacao")
+                        })
+                        
+                        # Bônus: Atualiza as strings do endereço (Tabela Pai de Endereços)
+                        res = cur.fetchone()
+                        if res and res[0] and (dados.get("bairro") or dados.get("endereco")):
+                            cur.execute("""
+                                UPDATE ponto_parada.enderecos_cadastrados
+                                SET bairro = COALESCE(%(bairro)s, bairro),
+                                    logradouro = COALESCE(%(endereco)s, logradouro)
+                                WHERE id = %(p_id)s
+                            """, {
+                                "bairro": dados.get("bairro"),
+                                "endereco": dados.get("endereco"),
+                                "p_id": res[0]
+                            })
                     conn.commit()
-                    return True, "Registro excluído com sucesso."
+            return True, "Registro atualizado com sucesso no banco de dados."
         except Exception as e:
-            return False, f"Erro ao excluir: {e}"
+            print(f"[LOG DB] Erro atualizar_registro Ponto Parada: {e}")
+            return False, "Erro ao atualizar registro. Verifique se as informações digitadas são válidas."
 
     def obter_bairros(self):
         try:

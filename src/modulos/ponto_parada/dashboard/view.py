@@ -18,7 +18,7 @@ COLOR_WHITE = "#FFFFFF"
 COLOR_PRIMARY = "#0F8C75"     # Verde Petróleo
 COLOR_SECONDARY = "#F24822"   # Laranja/Vermelho
 COLOR_TEXT = "#333333"
-COLOR_WARNING = "#F29C1F"     # Amarelo
+COLOR_TERTIARY = "#1F8CF2"    # Azul
 
 
 class DashboardView(ctk.CTkFrame):
@@ -426,7 +426,7 @@ class DashboardView(ctk.CTkFrame):
         elif tipo == "g4": desenhar_barras_horiz(d["g4_labels"], d["g4_val"], COLOR_SECONDARY, "Top 8 Solicitantes (Pareceres)")
         
         elif tipo == "g5": 
-            c_map = {"SIM": COLOR_PRIMARY, "NÃO": COLOR_SECONDARY, "NÃO AUTORIZADA": COLOR_WARNING}
+            c_map = {"CONCLUÍDA": COLOR_PRIMARY, "PENDENTE": COLOR_SECONDARY, "NÃO AUTORIZADA": COLOR_TERTIARY}
             desenhar_pizza(d["g5_labels"], d["g5_val"], c_map, "Status das Ordens de Serviço")
         elif tipo == "g6": 
             c_map = {"DEFERIDO": COLOR_PRIMARY, "INDEFERIDO": COLOR_SECONDARY}

@@ -4,7 +4,7 @@ from config.database import get_db_connection
 class ParecerRepository:
 
     def obter_proximo_numero(self, ano):
-        query = "SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 FROM common.pareceres_base WHERE ano = %s AND sistema_origem = 'Ponto de Parada'"
+        query = "SELECT COALESCE(MAX(numero_parecer_ano), 0) + 1 FROM common.pareceres_base WHERE ano = %s"
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
@@ -16,7 +16,7 @@ class ParecerRepository:
             raise Exception("Falha ao calcular a numeração do parecer.")
 
     def salvar_parecer(self, dados_db):
-        # CORREÇÃO AQUI: Ampliamos a busca do contexto para 'PARECER' e 'DECISAO_PARECER' para blindar a query
+        # busca do contexto para 'PARECER' e 'DECISAO_PARECER' para blindar a query
         query_mae = """
             INSERT INTO common.pareceres_base (
                 sistema_origem, numero_parecer_ano, ano, tipo_id, caminho_arquivo, criado_por_id
