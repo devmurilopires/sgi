@@ -2,8 +2,6 @@ from config.database import get_db_connection
 
 class HistoricoRepository:
     def buscar_historico(self, filtros):
-        # MODIFICAÇÃO CRÍTICA: 
-        # Uso do LEFT JOIN com common.usuarios para converter 'excluido_por_id' no 'nome_completo'
         query = """
             SELECT l.modulo, 
                    l.numero, 
@@ -17,16 +15,19 @@ class HistoricoRepository:
         """
         params = []
         
-        # O uso de ALIAS (l. e u.) impede ambiguidade no banco
+        
         if filtros.get("modulo") and filtros["modulo"] != "Todos":
-            query += " AND l.modulo = %s"
-            params.append(filtros["modulo"].upper())
+            # CORREÇÃO: Transforma os espaços do filtro em curingas (%). 
+            # Exemplo: "Projetos de Mobilidade" vira "%Projetos%Mobilidade%"
+            # O banco vai encontrar "PARECER_projetos_mobilidade" com facilidade!
+            termo_busca = filtros["modulo"].replace(" de ", "%").replace(" ", "%")
+            query += " AND l.modulo ILIKE %s"
+            params.append(f"%{termo_busca}%")
             
         if filtros.get("numero"):
             query += " AND l.numero = %s"
             params.append(int(filtros["numero"]))
             
-        # MODIFICAÇÃO: A busca agora acontece no nome do usuário e não na lixeira diretamente
         if filtros.get("excluido_por"):
             query += " AND u.nome_completo ILIKE %s"
             params.append(f"%{filtros['excluido_por']}%")
@@ -41,7 +42,6 @@ class HistoricoRepository:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     cur.execute(query, params)
-                    # Retornamos as tuplas exatamente na ordem que a View espera
                     return cur.fetchall()
         except Exception as e:
             print(f"[LOG DB] Erro na Auditoria/Lixeira: {e}")
