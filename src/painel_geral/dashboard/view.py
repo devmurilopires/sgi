@@ -2,13 +2,14 @@ import customtkinter as ctk
 import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.ticker import MaxNLocator
 import textwrap
 import os
+import tempfile
 from datetime import date
 from tkcalendar import DateEntry
 from tkinter import filedialog, messagebox
+
 from src.painel_geral.dashboard.service import DashboardGeralService
 
 # --- Cores Definidas ---
@@ -16,7 +17,7 @@ COLOR_BG = "#F4F6F9"
 COLOR_WHITE = "#FFFFFF"       
 COLOR_PRIMARY = "#0F8C75"     # Verde
 COLOR_SECONDARY = "#F24822"   # Laranja
-COLOR_TERTIARY = "#1F8CF2"   # Azul
+COLOR_TERTIARY = "#1F8CF2"    # Azul
 COLOR_TEXT = "#333333"
 
 class DashboardGeralView(ctk.CTkFrame):
@@ -30,12 +31,12 @@ class DashboardGeralView(ctk.CTkFrame):
         self.df_pesq_raw = pd.DataFrame()
         
         self.fig = None 
+        self.axs = None
 
         self._construir_interface()
         self.atualizar_completo()
 
     def _criar_date_wrapper(self, parent, width):
-        """Cria um contorno estilizado em volta do calendário"""
         container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
         container.pack_propagate(False) 
         date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background="#0F8C75", foreground="white", borderwidth=0)
@@ -49,7 +50,7 @@ class DashboardGeralView(ctk.CTkFrame):
 
         ctk.CTkLabel(frame_filtros, text="DASHBOARD EXECUTIVO - Produtividade Global", font=("Arial Black", 20), text_color=COLOR_PRIMARY).pack(side="left", padx=20, pady=20)
         
-        self.btn_pdf = ctk.CTkButton(frame_filtros, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color=COLOR_SECONDARY, width=120, height=35, command=self.exportar_pdf)
+        self.btn_pdf = ctk.CTkButton(frame_filtros, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color=COLOR_SECONDARY, width=120, height=35, command=self.abrir_popup_exportacao)
         self.btn_pdf.pack(side="right", padx=15, pady=17)
 
         self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 Atualizar", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, width=120, height=35, command=self.atualizar_dashboard)
@@ -58,10 +59,8 @@ class DashboardGeralView(ctk.CTkFrame):
         self.btn_limpar_filtro = ctk.CTkButton(frame_filtros, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color="#777777", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", width=110, height=35, command=self.limpar_filtros_data)
         self.btn_limpar_filtro.pack(side="right", padx=10)
 
-        # Filtros de Data com calendário estilizado
         f_data = ctk.CTkFrame(frame_filtros, fg_color="transparent")
         f_data.pack(side="right", padx=10, pady=17)
-
 
         ctk.CTkLabel(f_data, text="Data Início:", text_color=COLOR_TEXT, font=("Arial Bold", 12)).pack(side="left", padx=(10, 5))
         wrapper_ini, self.date_ini = self._criar_date_wrapper(f_data, 120)
@@ -83,15 +82,9 @@ class DashboardGeralView(ctk.CTkFrame):
         self.frame_graficos.pack(fill="both", expand=True, pady=10)
 
     def limpar_filtros_data(self):
-        """Reseta as datas para o padrão (início do ano até hoje) e reaplica os filtros."""
         hoje = date.today()
-        primeiro_dia_ano = date(hoje.year, 1, 1)
-        
-        # Reseta os calendários
-        self.date_ini.set_date(primeiro_dia_ano)
+        self.date_ini.set_date(date(hoje.year, 1, 1))
         self.date_fim.set_date(hoje)
-        
-        # Chama a função que atualiza os gráficos
         self.atualizar_completo()
 
     def criar_card(self, parent, titulo, valor, cor_destaque, icone):
@@ -114,25 +107,9 @@ class DashboardGeralView(ctk.CTkFrame):
             ax.spines['left'].set_color('#DDDDDD')
             ax.spines['bottom'].set_color('#DDDDDD')
             ax.grid(axis=grid_axis, linestyle='--', alpha=0.4, color='#EEEEEE')
-            
-            # Força o eixo a ter apenas números inteiros (sem decimais)
-            if grid_axis == 'y':
-                ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-            elif grid_axis == 'x':
-                ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-                
+            if grid_axis == 'y': ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+            elif grid_axis == 'x': ax.xaxis.set_major_locator(MaxNLocator(integer=True))
         ax.set_facecolor(COLOR_WHITE)
-
-    def exportar_pdf(self):
-        if self.fig is None: return messagebox.showwarning("Aviso", "Não há gráficos gerados.")
-        filepath = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")])
-        if filepath:
-            try:
-                with PdfPages(filepath) as pdf:
-                    pdf.savefig(self.fig, bbox_inches='tight', pad_inches=0.3)  
-                messagebox.showinfo("Sucesso", "Relatório PDF Executivo Gerado!")
-                os.startfile(filepath)
-            except Exception as e: messagebox.showerror("Erro", str(e))
 
     def atualizar_completo(self):
         self.df_os_raw, self.df_par_raw, self.df_pesq_raw = self.service.carregar_dados_brutos()
@@ -156,24 +133,20 @@ class DashboardGeralView(ctk.CTkFrame):
 
         for w in self.frame_graficos.winfo_children(): w.destroy()
         
-        # GRID 5x2 (2 COLUNAS LARGAS) PARA 10 GRÁFICOS
         self.fig, axs = plt.subplots(5, 2, figsize=(16, 26), facecolor=COLOR_WHITE)
+        self.axs = axs 
         self.fig.patch.set_facecolor(COLOR_WHITE)
         
-        # Ajuste de Layout para não cortar textos
         plt.subplots_adjust(left=0.18, right=0.95, top=0.96, bottom=0.04, wspace=0.3, hspace=0.6) 
 
-        # --- FUNÇÕES DE DESENHO COM COR ÚNICA FIXA E MESES COMPLETOS ---
         def plotar_colunas_mes(ax, df, titulo, cor):
             meses_labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-            s = pd.Series(0, index=range(1, 13)) # Garante 12 posições
-            
+            s = pd.Series(0, index=range(1, 13)) 
             if not df.empty and 'data_dt' in df.columns:
                 df_valid = df.dropna(subset=['data_dt'])
                 if not df_valid.empty:
                     counts = df_valid['data_dt'].dt.month.value_counts()
-                    s = counts.reindex(range(1, 13), fill_value=0) # Preenche os meses sem dados com 0
-                    
+                    s = counts.reindex(range(1, 13), fill_value=0) 
             bars = ax.bar(meses_labels, s.values, width=0.35, color=cor)
             for bar in bars:
                 h = bar.get_height()
@@ -183,7 +156,6 @@ class DashboardGeralView(ctk.CTkFrame):
 
         def plotar_barras_horizontais(ax, s_dados, titulo, cor):
             if not s_dados.empty:
-                # Textwrap maior e labelsize reduzido evitam que os nomes se sobreponham verticalmente
                 labels = [textwrap.fill(str(n), width=28) for n in s_dados.index]
                 bars = ax.barh(labels, s_dados.values, height=0.35, color=cor) 
                 ax.invert_yaxis()
@@ -201,15 +173,8 @@ class DashboardGeralView(ctk.CTkFrame):
             else: ax.text(0.5, 0.5, "Sem dados", ha='center')
             self._configurar_eixo(ax, titulo, is_pie=True)
 
-        # =========================================================
-        # LINHA 1 (Evoluções Mensais OS e Parecer)
-        # =========================================================
         plotar_colunas_mes(axs[0, 0], df_os_f, "Evolução de OS por Mês", COLOR_PRIMARY)
         plotar_colunas_mes(axs[0, 1], df_par_f, "Evolução de Pareceres por Mês", COLOR_SECONDARY)
-
-        # =========================================================
-        # LINHA 2 (Evolução Pesquisas e Quantidade de Origem)
-        # =========================================================
         plotar_colunas_mes(axs[1, 0], df_pesq_f, "Evolução de Pesquisas por Mês", COLOR_PRIMARY)
         
         origens = pd.concat([
@@ -218,9 +183,6 @@ class DashboardGeralView(ctk.CTkFrame):
         ]).dropna().value_counts()
         plotar_barras_horizontais(axs[1, 1], origens, "Quantidade Total por Origem", COLOR_SECONDARY)
 
-        # =========================================================
-        # LINHA 3 (Setor e Decisões)
-        # =========================================================
         vols = [
             len(df_os_f[df_os_f['modulo'] == 'Ponto de Parada']) + len(df_par_f[df_par_f['modulo'] == 'Ponto de Parada']) if not df_os_f.empty else 0,
             len(df_os_f[df_os_f['modulo'] == 'Itinerário']) + len(df_par_f[df_par_f['modulo'] == 'Itinerário']) if not df_os_f.empty else 0,
@@ -239,18 +201,12 @@ class DashboardGeralView(ctk.CTkFrame):
                 plot_pizza(ax_decisao, c_dec.values, c_dec.index, cores_decisao, "Decisões: Deferido vs Indeferido")
         else: self._configurar_eixo(ax_decisao, "Decisões: Deferido vs Indeferido", is_pie=True)
 
-        # =========================================================
-        # LINHA 4 (Top 5 OS Lado a Lado com Top 5 Pareceres)
-        # =========================================================
         s_os_tec = df_os_f['criado_por'].value_counts().head(5) if not df_os_f.empty else pd.Series(dtype=int)
         plotar_barras_horizontais(axs[3, 0], s_os_tec, "Top 5 Técnicos (OS)", COLOR_PRIMARY)
 
         s_par_tec = df_par_f['criado_por'].value_counts().head(5) if not df_par_f.empty else pd.Series(dtype=int)
         plotar_barras_horizontais(axs[3, 1], s_par_tec, "Top 5 Técnicos (Pareceres)", COLOR_SECONDARY)
 
-        # =========================================================
-        # LINHA 5 (Solicitantes Lado a Lado com Ranking Global TODOS)
-        # =========================================================
         solicitantes = pd.concat([
             df_os_f['solicitante'] if 'solicitante' in df_os_f.columns else pd.Series(dtype=str),
             df_par_f['solicitante'] if 'solicitante' in df_par_f.columns else pd.Series(dtype=str)
@@ -259,13 +215,106 @@ class DashboardGeralView(ctk.CTkFrame):
 
         s_os_all = df_os_f['criado_por'].value_counts() if not df_os_f.empty else pd.Series(dtype=int)
         s_par_all = df_par_f['criado_por'].value_counts() if not df_par_f.empty else pd.Series(dtype=int)
-        # Removido o .head() para mostrar TODOS os usuários no Ranking Global
         prod_total = s_os_all.add(s_par_all, fill_value=0).sort_values(ascending=False)
         plotar_barras_horizontais(axs[4, 1], prod_total, "Ranking Global (Todos os Usuários)", COLOR_SECONDARY)
 
         canvas = FigureCanvasTkAgg(self.fig, master=self.frame_graficos)
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
+
+    # --- MÉTODOS DE EXPORTAÇÃO EXECUTIVA BLINDADOS ---
+    def abrir_popup_exportacao(self):
+        if self.fig is None:
+            messagebox.showwarning("Aviso", "Não há gráficos gerados para exportar.")
+            return
+
+        popup = ctk.CTkToplevel(self)
+        popup.title("Exportar Relatório Global")
+        popup.geometry("500x550")
+        popup.transient(self.winfo_toplevel())
+        popup.grab_set()
+
+        ctk.CTkLabel(popup, text="Selecione os gráficos para o Relatório:", font=("Arial", 14, "bold")).pack(pady=15)
+        
+        scroll_popup = ctk.CTkScrollableFrame(popup, fg_color="transparent")
+        scroll_popup.pack(fill="both", expand=True, padx=10, pady=5)
+
+        self.vars_export = {}
+        self.graficos_meta = {
+            "g1": ("Evolução de OS por Mês", "Ilustra o crescimento e volume mensal de emissão de Ordens de Serviço por toda a equipe."),
+            "g2": ("Evolução de Pareceres", "Apresenta a quantidade mensal de Pareceres Técnicos concluídos e assinados."),
+            "g3": ("Evolução de Pesquisas", "Exibe a constância e volume de levantamentos realizados pela equipe de pesquisas (SPR)."),
+            "g4": ("Total por Origem", "Distribuição de documentos trabalhados agrupados pelas origens institucionais (ex: SPU, SIGESP)."),
+            "g5": ("Volume de Trabalho por Setor", "Demonstra graficamente o peso e a proporção da carga de trabalho entre os módulos operacionais."),
+            "g6": ("Decisões Técnicas", "Visão geral estratégica apontando a taxa de aprovações (Deferimentos) contra reprovações (Indeferimentos)."),
+            "g7": ("Top 5 Técnicos (OS)", "Ranking de produtividade destacando os responsáveis pela maior criação de Ordens de Serviço."),
+            "g8": ("Top 5 Técnicos (Pareceres)", "Ranking analítico apontando quem mais relatou e protocolou Pareceres."),
+            "g9": ("Top 10 Solicitantes", "Aponta quais são os principais órgãos, lideranças ou entidades que mais solicitam atendimento."),
+            "g10": ("Ranking Global de Produtividade", "Soma consolidada de TODAS as ações do sistema, formando um quadro de destaque do time.")
+        }
+
+        for key, meta in self.graficos_meta.items():
+            var = ctk.BooleanVar(value=True)
+            self.vars_export[key] = var
+            chk = ctk.CTkCheckBox(scroll_popup, text=meta[0], variable=var, fg_color=COLOR_PRIMARY)
+            chk.pack(anchor="w", padx=20, pady=8)
+
+        ctk.CTkButton(popup, text="Gerar Relatório Completo", fg_color=COLOR_PRIMARY, command=lambda: self.iniciar_geracao_pdf(popup)).pack(pady=20)
+
+    def iniciar_geracao_pdf(self, popup):
+        selecionados = {k: v.get() for k, v in self.vars_export.items()}
+        if not any(selecionados.values()):
+            messagebox.showwarning("Aviso", "Selecione pelo menos um gráfico.")
+            return
+
+        filepath = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            title="Salvar Relatório Executivo Global",
+            initialfile="Relatorio_Executivo_Global.pdf" # NOVO: Nome Fixo Estático
+        )
+        if not filepath: return
+
+        popup.destroy()
+
+        import tempfile
+        import os
+        temp_dir = tempfile.gettempdir()
+        imagens_salvas = {}
+        
+        # Mapeamento Seguro por Linha e Coluna EXATA
+        axs_map = {
+            "g1": (0,0), "g2": (0,1), "g3": (1,0), "g4": (1,1), "g5": (2,0),
+            "g6": (2,1), "g7": (3,0), "g8": (3,1), "g9": (4,0), "g10": (4,1)
+        }
+
+        try:
+            for key in selecionados:
+                if selecionados[key]:
+                    # Acessando linha e coluna individualmente (BLINDAGEM CONTRA O SLICE ERROR)
+                    linha, coluna = axs_map[key]
+                    ax = self.axs[linha, coluna] 
+                    
+                    caminho_img = os.path.join(temp_dir, f"temp_geral_{key}.png")
+                    extent = ax.get_window_extent().transformed(self.fig.dpi_scale_trans.inverted())
+                    self.fig.savefig(caminho_img, bbox_inches=extent.expanded(1.25, 1.25), dpi=150)
+                    imagens_salvas[key] = caminho_img
+            
+            # Recalcula KPI
+            dt_ini = self.date_ini.get_date()
+            dt_fim = self.date_fim.get_date()
+            df_os_f, df_par_f, df_pesq_f = self.service.filtrar_dados(self.df_os_raw, self.df_par_raw, self.df_pesq_raw, dt_ini, dt_fim)
+            kpis = self.service.calcular_kpis(df_os_f, df_par_f, df_pesq_f)
+            
+            self.service.gerar_relatorio_pdf(filepath, imagens_salvas, self.graficos_meta, kpis, dt_ini, dt_fim)
+            messagebox.showinfo("Sucesso", "Relatório Executivo Global gerado com sucesso!")
+            os.startfile(filepath) 
+            
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao gerar PDF: {e}")
+        finally:
+            for img in imagens_salvas.values():
+                if os.path.exists(img): os.remove(img)
 
 def renderizar(frame_destino, usuario_logado):
     return DashboardGeralView(master=frame_destino, usuario_logado=usuario_logado)
