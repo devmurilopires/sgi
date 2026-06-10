@@ -43,7 +43,7 @@ class OSService:
 
     # NOVA FUNÇÃO: Retorna os itens correspondentes ao modelo selecionado
     def obter_itens_por_modelo(self, modelo):
-        contexto = 'ITEM_URBMIDIA' if modelo == 'Urbmídia' else 'ITEM_MCMENSAGEM'
+        contexto = 'ITEM_URBMIDIA' if modelo == 'URBMÍDIA' else 'ITEM_MCMENSAGEM'
         return self.repo.buscar_tipos_por_contexto(contexto)
 
     # =========================================================
