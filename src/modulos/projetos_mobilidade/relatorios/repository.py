@@ -80,12 +80,98 @@ class RelatorioProjetosMobilidadeRepository:
             print(f"[LOG DB] Erro ao contar total: {e}")
             return 0
 
-    def excluir_registro(self, registro_id):
+    def excluir_registro(self, registro_id, motivo, excluido_por_nome):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
+                    cur.execute("SELECT id FROM common.usuarios WHERE nome_completo = %s LIMIT 1", (excluido_por_nome,))
+                    user_row = cur.fetchone()
+                    if not user_row: return False, "Usuário não encontrado para auditoria."
+                    excluido_por_id = user_row[0]
+
+                    # CONSTRUÇÃO DO JSON COMPLETO COM NOME DO GERADOR
+                    cur.execute("""
+                        SELECT b.numero_parecer_ano, json_build_object(
+                            'id', p.id, 'processo', p.processo, 'assunto', p.assunto,
+                            'solicitante', p.solicitante, 'origem', o.nome, 'decisao', t.nome,
+                            'gerado_por', u.nome_completo, 'caminho_arquivo', b.caminho_arquivo,
+                            'data_criacao', b.created_at
+                        )
+                        FROM projetos_mobilidade.pareceres p
+                        JOIN common.pareceres_base b ON p.id = b.id
+                        LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
+                        LEFT JOIN common.origens o ON p.origem_id = o.id
+                        LEFT JOIN common.tipos t ON b.tipo_id = t.id
+                        WHERE p.id = %s
+                    """, (registro_id,))
+                    
+                    resultado = cur.fetchone()
+                    if not resultado: return False, "Registro não encontrado para exclusão."
+                        
+                    numero_do_parecer = resultado[0]
+                    dados_json = resultado[1]
+
+                    import json
+                    cur.execute("""
+                        INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por_id, data_exclusao)
+                        VALUES ('PARECER_projetos_mobilidade', %s, %s, %s, %s, NOW())
+                    """, (numero_do_parecer, json.dumps(dados_json), motivo, excluido_por_id))
+
                     cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     conn.commit()
-                    return True, "Parecer excluído com sucesso do banco de dados."
+                    return True, "Registro excluído e arquivado no histórico com sucesso."
+                    
         except Exception as e:
+            print(f"[LOG DB] Erro ao excluir Projeto de Mobilidade: {e}")
             return False, f"Erro ao excluir: {e}"
+                    
+        except Exception as e:
+            print(f"[LOG DB] Erro ao excluir Projeto de Mobilidade: {e}")
+            return False, f"Erro ao excluir: {e}"
+        
+
+    def atualizar_registro(self, registro_id, dados):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # 1. Atualiza Tabela Base (Responsável, Data, Decisão, Número)
+                    if dados.get("numero_completo"):
+                        try:
+                            num = int(str(dados["numero_completo"]).split('/')[0])
+                            cur.execute("UPDATE common.pareceres_base SET numero_parecer_ano = %s WHERE id = %s", (num, registro_id))
+                        except: pass
+
+                    cur.execute("""
+                        UPDATE common.pareceres_base pb
+                        SET tipo_id = COALESCE((SELECT id FROM common.tipos WHERE contexto IN ('PARECER', 'DECISAO_PARECER') AND nome = %(decisao)s LIMIT 1), pb.tipo_id),
+                            criado_por_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), pb.criado_por_id),
+                            created_at = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), pb.created_at)
+                        FROM projetos_mobilidade.pareceres p
+                        WHERE pb.id = p.id AND p.id = %(id)s
+                    """, {
+                        "id": registro_id,
+                        "decisao": dados.get("decisao"),
+                        "responsavel": dados.get("responsavel"),
+                        "data_criacao": dados.get("data_criacao")
+                    })
+
+                    # 2. Atualiza Tabela Específica de Projetos de Mobilidade
+                    cur.execute("""
+                        UPDATE projetos_mobilidade.pareceres
+                        SET processo = COALESCE(%(processo)s, processo),
+                            assunto = COALESCE(%(assunto)s, assunto),
+                            solicitante = COALESCE(%(solicitante)s, solicitante),
+                            origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id)
+                        WHERE id = %(id)s
+                    """, {
+                        "id": registro_id,
+                        "processo": dados.get("processo"),
+                        "assunto": dados.get("assunto"),
+                        "solicitante": dados.get("solicitante"),
+                        "origem": dados.get("origem")
+                    })
+                    conn.commit()
+            return True, "Registro atualizado com sucesso no banco de dados."
+        except Exception as e:
+            print(f"[LOG DB] Erro atualizar_registro Projetos Mobilidade: {e}")
+            return False, "Erro ao atualizar registro. Verifique se as informações inseridas são válidas."

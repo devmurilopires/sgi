@@ -12,7 +12,7 @@ from src.modulos.projetos_mobilidade.dashboard.repository import DashboardPMRepo
 
 COLOR_PRIMARY = "#0F8C75"     # Verde
 COLOR_SECONDARY = "#F24822"   # Laranja
-COLOR_BG = "#F4F6F9"
+COLOR_BG = "#FFFFFF"
 COLOR_CARD = "#FFFFFF"
 
 class DashboardPMView(ctk.CTkFrame):
@@ -169,7 +169,7 @@ class DashboardPMView(ctk.CTkFrame):
             assuntos = self.df_f['assunto'].value_counts().head(5)
             if not assuntos.empty:
                 ax.pie(assuntos, labels=[textwrap.fill(str(a), 15) for a in assuntos.index], autopct='%1.1f%%', \
-                       startangle=90, colors=plt.cm.Oranges(np.linspace(0.1, 0.5, len(assuntos))), textprops={'fontweight':'bold'})
+                       startangle=90, colors=plt.cm.Oranges(np.linspace(0.5, 0.7, len(assuntos))), textprops={'fontweight':'bold'})
         ax.set_title("Top 5 Assuntos Demandados", fontsize=12, fontweight='bold', pad=15)
 
         canvas = FigureCanvasTkAgg(fig, master=self.frame_graficos)

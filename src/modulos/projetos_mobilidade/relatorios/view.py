@@ -215,34 +215,58 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         self.btn_ant.configure(state="normal" if self.pagina_atual > 1 else "disabled")
         self.btn_prox.configure(state="normal" if self.pagina_atual < self.total_paginas else "disabled")
 
-    # MODIFICAÇÃO: Helper para texto selecionável (Permite copiar e colar no Modal!)
-    def _add_detail_field(self, parent, label, value, row, col, pad_x):
-        ctk.CTkLabel(parent, text=f"{label}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
+    # 1. Nova Função Dinâmica: Transformando os campos em Comboboxes ou Texto livre
+    def _add_detail_field_dinamico(self, parent, key, value, row, col, pad_x, editando):
+        label_text = str(key).replace("_", " ").title()
+        ctk.CTkLabel(parent, text=f"{label_text}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
         
-        val_str = str(value).strip()
+        val_str = str(value).strip() if value is not None else ""
         if not val_str or val_str.lower() == "none": val_str = "-"
-        
-        # Calcula a altura baseada na quantidade de texto para não cortar
-        linhas = max(1, len(val_str) // 35)
-        linhas = max(linhas, val_str.count('\\n') + 1)
-        altura = linhas * 20 + 10
-        
-        # Usamos Textbox desabilitado para o usuário poder selecionar e copiar o texto livremente
-        box = ctk.CTkTextbox(parent, font=("Arial", 12), width=250, height=altura, fg_color="transparent", border_width=0, wrap="word")
-        box.insert("1.0", val_str)
-        box.configure(state="disabled")
-        box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
 
+        if not editando:
+            linhas = max(1, len(val_str) // 35)
+            linhas = max(linhas, val_str.count('\n') + 1)
+            altura = linhas * 20 + 10
+            
+            box = ctk.CTkTextbox(parent, font=("Arial", 12), width=250, height=altura, fg_color="transparent", border_width=0, wrap="word")
+            box.insert("1.0", val_str)
+            box.configure(state="disabled") 
+            box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
+            if editando: self.modal_edit_widgets[key] = box
+        else:
+            # Renderiza Comboboxes Inteligentes para o Módulo de Projetos de Mobilidade
+            if key == "origem":
+                w = CtkParametrosComboBox(parent, setor="Projetos de Mobilidade", campo="ORIGEM", width=250, height=35)
+                w.set(val_str if val_str != "-" else "– Selecione –")
+            elif key == "decisao":
+                w = CtkParametrosComboBox(parent, setor="Projetos de Mobilidade", campo="DECISAO_PARECER", width=250, height=35)
+                w.set(val_str if val_str != "-" else "– Selecione –")
+            elif key == "assunto":
+                w = CtkParametrosComboBox(parent, setor="Projetos de Mobilidade", campo="ASSUNTO_PROJETOS_MOBILIDADE", width=250, height=35)
+                w.set(val_str if val_str != "-" else "– Selecione –")
+            elif key == "solicitante":
+                w = CtkParametrosComboBox(parent, setor="Projetos de Mobilidade", campo="SOLICITANTE_PARECER", width=250, height=35)
+                w.set(val_str if val_str != "-" else "– Selecione –")
+            else:
+                # Demais campos: Processo, Responsável, Data, etc.
+                w = ctk.CTkEntry(parent, width=250, height=35, font=("Arial", 12))
+                w.insert(0, val_str if val_str != "-" else "")
+            
+            w.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
+            self.modal_edit_widgets[key] = w
+
+    # 2. Tela de Detalhes com Botão Inteligente de Edição
     def acao_detalhes(self):
         sel = self.tree.selection()
         if not sel: return messagebox.showwarning("Aviso", "Por favor, selecione um registro na tabela.")
         
-        dado = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
-        if not dado: return
+        dado_bruto = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
+        if not dado_bruto: return
+        dado = dado_bruto.copy()
 
         modal = ctk.CTkToplevel(self)
         modal.title(f"Visualização Detalhada - Parecer Nº {dado.get('numero_completo', '')}")
-        modal.geometry("800x600")
+        modal.geometry("800x650")
         modal.grab_set()
 
         scroll = ctk.CTkScrollableFrame(modal, fg_color="#F9FAFB")
@@ -255,20 +279,26 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
         info_frame = ctk.CTkFrame(scroll, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E5E7EB")
         info_frame.pack(fill="x", pady=10)
 
-        row_idx = 0
         grid = ctk.CTkFrame(info_frame, fg_color="transparent")
         grid.pack(fill="x", padx=15, pady=15)
         
         campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo']]
-        
-        for i in range(0, len(campos_exibir), 2):
-            lbl_key1 = str(campos_exibir[i][0]).replace("_", " ").title()
-            self._add_detail_field(grid, lbl_key1, campos_exibir[i][1], row_idx, 0, (0, 20))
+        self.modal_edit_widgets = {}
 
-            if i + 1 < len(campos_exibir):
-                lbl_key2 = str(campos_exibir[i+1][0]).replace("_", " ").title()
-                self._add_detail_field(grid, lbl_key2, campos_exibir[i+1][1], row_idx, 2, (0, 0))
-            row_idx += 1
+        def desenhar_grid(editando=False):
+            for w in grid.winfo_children(): w.destroy()
+            self.modal_edit_widgets.clear()
+            row_idx = 0
+            for i in range(0, len(campos_exibir), 2):
+                key1, val1 = campos_exibir[i]
+                self._add_detail_field_dinamico(grid, key1, val1, row_idx, 0, (0, 20), editando)
+
+                if i + 1 < len(campos_exibir):
+                    key2, val2 = campos_exibir[i+1]
+                    self._add_detail_field_dinamico(grid, key2, val2, row_idx, 2, (0, 0), editando)
+                row_idx += 1
+
+        desenhar_grid(editando=False)
 
         if dado.get('caminho_arquivo'):
             ctk.CTkLabel(scroll, text="Localização na Rede:", font=("Arial Bold", 12)).pack(anchor="w", pady=(15, 0))
@@ -277,7 +307,37 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
             path_box.insert(0, dado.get('caminho_arquivo'))
             path_box.configure(state="readonly")
 
-        ctk.CTkButton(scroll, text="Fechar Janela", width=150, height=40, fg_color="#6B7280", hover_color="#4B5563", command=modal.destroy).pack(pady=30)
+        # --- BOTÕES DO MODAL ---
+        frame_botoes = ctk.CTkFrame(scroll, fg_color="transparent")
+        frame_botoes.pack(pady=30)
+        
+        if self.is_admin:
+            def alternar_edicao():
+                if btn_editar.cget("text") == "✏️ Editar":
+                    btn_editar.configure(text="💾 Salvar", fg_color="#10B981", hover_color="#059669")
+                    desenhar_grid(editando=True)
+                else:
+                    novos_dados = {}
+                    for k, widget in self.modal_edit_widgets.items():
+                        if isinstance(widget, CtkParametrosComboBox):
+                            v = widget.get()
+                            novos_dados[k] = "" if v == "– Selecione –" else v
+                        elif isinstance(widget, ctk.CTkTextbox): pass
+                        else:
+                            novos_dados[k] = widget.get().strip()
+                    
+                    sucesso, msg = self.service.atualizar_registro(dado['id'], novos_dados)
+                    if sucesso:
+                        messagebox.showinfo("Sucesso", msg)
+                        modal.destroy()
+                        self.acao_buscar()
+                    else:
+                        messagebox.showerror("Erro", msg)
+
+            btn_editar = ctk.CTkButton(frame_botoes, text="✏️ Editar", width=140, height=40, fg_color="#F59E0B", hover_color="#D97706", command=alternar_edicao)
+            btn_editar.pack(side="left", padx=10)
+
+        ctk.CTkButton(frame_botoes, text="Fechar", width=140, height=40, fg_color="#6B7280", hover_color="#4B5563", command=modal.destroy).pack(side="left", padx=10)
 
     # MODIFICAÇÃO: Nova ação para abrir o arquivo gerado
     def acao_abrir(self):
@@ -290,13 +350,29 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
 
     def acao_excluir(self):
         sel = self.tree.selection()
-        if not sel: return messagebox.showwarning("Aviso", "Selecione um registro para excluir.")
-        if messagebox.askyesno("Atenção Crítica", "Esta ação apagará permanentemente o parecer do banco de dados.\nDeseja prosseguir?"):
-            sucesso, msg = self.service.excluir(sel[0])
+        if not sel: 
+            return messagebox.showwarning("Aviso", "Selecione um registro para excluir.")
+        
+        # 1. Abre a caixinha solicitando o motivo obrigatório da exclusão
+        dialog = ctk.CTkInputDialog(text="Motivo para a exclusão do parecer técnico:", title="Auditoria de Exclusão")
+        motivo = dialog.get_input()
+        
+        if motivo is None: 
+            return # Se clicar em cancelar, interrompe
+        if not motivo.strip():
+            return messagebox.showwarning("Aviso", "A exclusão foi abortada. O motivo é obrigatório.")
+            
+        if messagebox.askyesno("Atenção Crítica", "Esta ação enviará o parecer para o Histórico/Lixeira do sistema.\nDeseja prosseguir?"):
+            # 2. Captura o nome do usuário de forma segura conforme o tipo de dicionário/objeto da sessão
+            usr_nome = self.usuario.get('nome') if isinstance(self.usuario, dict) else self.usuario
+            
+            # 3. Envia todos os parâmetros necessários corrigindo o bug do TypeError
+            sucesso, msg = self.service.excluir(sel[0], motivo.strip(), usr_nome)
             if sucesso:
                 self.acao_buscar()
                 messagebox.showinfo("Sucesso", msg)
-            else: messagebox.showerror("Erro", msg)
+            else: 
+                messagebox.showerror("Erro", msg)
 
     def acao_excel(self):
         path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
@@ -315,7 +391,7 @@ class RelatorioProjetosMobilidadeView(ctk.CTkFrame):
             if isinstance(widget, CtkParametrosComboBox): widget.set("Todos")
             else: widget.delete(0, 'end')
 
-        self.data_inicio.set_date(date(date.today().year, 1, 1))
+        self.data_inicio.set_date(date(date.today().year, 1, 1)) 
         self.data_fim.set_date(date.today())
         self.acao_buscar()
 

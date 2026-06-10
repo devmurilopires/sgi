@@ -20,8 +20,11 @@ class RelatorioProjetosMobilidadeService:
         except Exception as e:
             return False, f"Erro ao abrir o arquivo: {e}"
 
-    def excluir(self, registro_id):
-        return self.repo.excluir_registro(registro_id)
+    def excluir(self, registro_id, motivo, excluido_por_nome):
+        return self.repo.excluir_registro(registro_id, motivo, excluido_por_nome)
+    
+    def atualizar_registro(self, registro_id, dados):
+        return self.repo.atualizar_registro(registro_id, dados)
 
     def exportar_excel(self, filtros, destino):
         dados = self.repo.buscar_dados_paginados(filtros, limit=10000)
