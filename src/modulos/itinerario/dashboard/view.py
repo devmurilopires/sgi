@@ -156,8 +156,7 @@ class DashboardItinerarioView(ctk.CTkFrame):
         ctk.CTkLabel(scroll_checks, text="👥 Gráficos de Desempenho da Equipa", font=("Arial Bold", 13), text_color=COLOR_PRIMARY).pack(anchor="w", padx=10, pady=(5, 5))
         ctk.CTkCheckBox(scroll_checks, text="Gráfico: Comparação de Carga (OS vs Parecer)", variable=self.vars_export["g4"], font=("Arial", 12)).pack(**pad_opt)
         ctk.CTkCheckBox(scroll_checks, text="Gráfico: Ranking de Produtividade Total Bruta", variable=self.vars_export["g5"], font=("Arial", 12)).pack(**pad_opt)
-        ctk.CTkCheckBox(scroll_checks, text="Gráfico: Desempenho Relativo vs Média da Equipa", variable=self.vars_export["g6"], font=("Arial", 12)).pack(**pad_opt, pady=(4, 15))
-
+        ctk.CTkCheckBox(scroll_checks, text="Gráfico: Desempenho Relativo vs Média da Equipe", variable=self.vars_export["g6"], font=("Arial", 12)).pack(anchor="w", padx=20, pady=8)
 
     def _iniciar_geracao_pdf(self, popup):
         selecoes = {k: v.get() for k, v in self.vars_export.items()}
