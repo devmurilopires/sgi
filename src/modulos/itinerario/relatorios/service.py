@@ -22,8 +22,11 @@ class RelatoriosItinerarioService:
         except Exception as e:
             return False, f"Erro ao abrir o arquivo: {e}"
 
-    def excluir(self, tipo_doc, registro_id):
-        return self.repo.excluir_registro(tipo_doc, registro_id)
+    def excluir(self, tipo_doc, registro_id, motivo, excluido_por_nome):
+        return self.repo.excluir_registro(tipo_doc, registro_id, motivo, excluido_por_nome)
+    
+    def atualizar_registro(self, tipo_doc, registro_id, dados):
+        return self.repo.atualizar_registro(tipo_doc, registro_id, dados)
 
     def exportar_excel(self, tipo_doc, filtros, destino):
         dados = self.repo.buscar_dados_paginados(tipo_doc, filtros, limit=10000)

@@ -119,18 +119,185 @@ class RelatoriosItinerarioRepository:
                     return cur.fetchone()[0]
         except: return 0
 
-    def excluir_registro(self, tipo_doc, registro_id):
+    def excluir_registro(self, tipo_doc, registro_id, motivo, excluido_por_nome):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    # 1. Pega o ID do usuário que está excluindo
+                    cur.execute("SELECT id FROM common.usuarios WHERE nome_completo = %s LIMIT 1", (excluido_por_nome,))
+                    user_row = cur.fetchone()
+                    excluido_por_id = user_row[0] if user_row else None
+
+                    import json
+                    if tipo_doc == "PARECER":
+                        # CONSTRUÇÃO DO JSON COMPLETO COM NOME DO GERADOR (PARECER)
+                        cur.execute("""
+                            SELECT b.numero_parecer_ano, json_build_object(
+                                'id', p.id, 'processo', p.processo, 'assunto', p.assunto,
+                                'solicitante', p.solicitante, 'origem', o.nome, 'decisao', t.nome,
+                                'gerado_por', u.nome_completo, 'caminho_arquivo', b.caminho_arquivo,
+                                'data_criacao', b.created_at, 'endereco', p.endereco, 'evento', p.evento,
+                                'motivo_indeferimento', p.motivo_indeferimento, 'periodo', p.periodo
+                            )
+                            FROM itinerario.pareceres p
+                            JOIN common.pareceres_base b ON p.id = b.id
+                            LEFT JOIN common.tipos t ON b.tipo_id = t.id
+                            LEFT JOIN common.origens o ON p.origem_id = o.id
+                            LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
+                            WHERE p.id = %s
+                        """, (registro_id,))
+                        
+                        res = cur.fetchone()
+                        if res:
+                            numero, dados_json = res
+                            cur.execute("""
+                                INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por_id, data_exclusao)
+                                VALUES ('PARECER_itinerario', %s, %s, %s, %s, NOW())
+                            """, (numero, json.dumps(dados_json), motivo, excluido_por_id))
+                        
+                        # Deleta em cascata através da base
+                        cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
+                        
+                    else:
+                        # CONSTRUÇÃO DO JSON COMPLETO COM NOME DO GERADOR (ORDEM DE SERVIÇO)
+                        cur.execute("""
+                            SELECT os.numero, json_build_object(
+                                'id', os.id, 'processo', os.processo_adm, 'solicitante', os.solicitante,
+                                'origem', o.nome, 'gerado_por', u.nome_completo, 'caminho_arquivo', os.caminho_arquivo,
+                                'data_criacao', os.data_emissao, 'endereco', os.endereco,
+                                'horario_inicio', os.horario_inicio, 'horario_fim', os.horario_fim,
+                                'evento', os.evento, 'nome_corrida', os.nome_corrida, 'tipo_obra', os.tipo_obra,
+                                'km', os.km
+                            )
+                            FROM itinerario.ordens_servico os
+                            LEFT JOIN common.origens o ON os.origem_id = o.id
+                            LEFT JOIN common.usuarios u ON os.responsavel_id = u.id
+                            WHERE os.id = %s
+                        """, (registro_id,))
+                        
+                        res = cur.fetchone()
+                        if res:
+                            numero, dados_json = res
+                            cur.execute("""
+                                INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por_id, data_exclusao)
+                                VALUES ('OS_itinerario', %s, %s, %s, %s, NOW())
+                            """, (numero, json.dumps(dados_json), motivo, excluido_por_id))
+                            
+                        # Deleta da tabela principal
+                        cur.execute("DELETE FROM itinerario.ordens_servico WHERE id = %s", (registro_id,))
+                        
+                    conn.commit()
+                    return True, "Registro excluído e arquivado no histórico com sucesso."
+        except Exception as e:
+            print(f"[LOG DB] Erro ao excluir no Itinerário: {e}")
+            return False, f"Erro ao excluir: {e}"
+        
+    def atualizar_registro(self, tipo_doc, registro_id, dados):
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if tipo_doc == "PARECER":
-                        cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
-                    else:
-                        cur.execute("DELETE FROM itinerario.ordens_servico WHERE id = %s", (registro_id,))
+                        # Atualiza Número da Base
+                        if dados.get("numero_completo"):
+                            try:
+                                num = int(str(dados["numero_completo"]).split('/')[0])
+                                cur.execute("UPDATE common.pareceres_base SET numero_parecer_ano = %s WHERE id = %s", (num, registro_id))
+                            except: pass
+
+                        # Atualiza dados da Tabela Base (Decisão, Responsável, Data)
+                        cur.execute("""
+                            UPDATE common.pareceres_base pb
+                            SET tipo_id = COALESCE((SELECT id FROM common.tipos WHERE contexto IN ('PARECER', 'DECISAO_PARECER') AND nome = %(decisao)s LIMIT 1), pb.tipo_id),
+                                criado_por_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), pb.criado_por_id),
+                                created_at = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), pb.created_at)
+                            FROM itinerario.pareceres p
+                            WHERE pb.id = p.id AND p.id = %(id)s
+                        """, {
+                            "id": registro_id,
+                            "decisao": dados.get("decisao"),
+                            "responsavel": dados.get("responsavel"),
+                            "data_criacao": dados.get("data_criacao")
+                        })
+                        
+                        # Atualiza a Tabela de Pareceres Específica
+                        cur.execute("""
+                            UPDATE itinerario.pareceres
+                            SET processo = COALESCE(%(processo)s, processo),
+                                assunto = COALESCE(%(assunto)s, assunto),
+                                solicitante = COALESCE(%(solicitante)s, solicitante),
+                                endereco = COALESCE(%(endereco)s, endereco),
+                                evento = COALESCE(%(evento)s, evento),
+                                origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id)
+                            WHERE id = %(id)s
+                        """, {
+                            "id": registro_id, 
+                            "processo": dados.get("processo"),
+                            "assunto": dados.get("assunto"),
+                            "solicitante": dados.get("solicitante"),
+                            "endereco": dados.get("endereco"),
+                            "evento": dados.get("evento"),
+                            "origem": dados.get("origem")
+                        })
+
+                        # Atualiza Linhas Relacionadas (N:M)
+                        if "linhas" in dados:
+                            cur.execute("DELETE FROM itinerario.pareceres_linhas WHERE parecer_id = %s", (registro_id,))
+                            codigos = [c.strip() for c in dados["linhas"].split(',') if c.strip()]
+                            for cod in codigos:
+                                cur.execute("INSERT INTO itinerario.pareceres_linhas (parecer_id, linha_id) SELECT %s, id FROM common.linhas WHERE codigo = %s LIMIT 1", (registro_id, cod))
+
+                    else: # OS (ORDEM DE SERVIÇO)
+                        # Atualiza Número da OS
+                        if dados.get("numero_os"):
+                            try:
+                                num = int(str(dados["numero_os"]).split('/')[0])
+                                cur.execute("UPDATE itinerario.ordens_servico SET numero = %s WHERE id = %s", (num, registro_id))
+                            except: pass
+
+                        # Atualiza Tabela Principal da OS
+                        cur.execute("""
+                            UPDATE itinerario.ordens_servico
+                            SET processo_adm = COALESCE(%(processo)s, processo_adm),
+                                solicitante = COALESCE(%(solicitante)s, solicitante),
+                                endereco = COALESCE(%(endereco)s, endereco),
+                                evento = CASE WHEN %(tipo)s = 'EVENTOS' THEN %(evento)s ELSE NULL END,
+                                nome_corrida = CASE WHEN %(tipo)s = 'CORRIDA' THEN %(evento)s ELSE NULL END,
+                                tipo_obra = CASE WHEN %(tipo)s = 'OBRAS' THEN %(evento)s ELSE NULL END,
+                                tipo_evento_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'TIPO_EVENTO_OS' AND nome = %(tipo)s LIMIT 1), tipo_evento_id),
+                                origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id),
+                                responsavel_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), responsavel_id),
+                                data_emissao = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), data_emissao)
+                            WHERE id = %(id)s
+                        """, {
+                            "id": registro_id,
+                            "processo": dados.get("processo"),
+                            "solicitante": dados.get("solicitante"),
+                            "endereco": dados.get("endereco"),
+                            "evento": dados.get("evento"),
+                            "tipo": dados.get("tipo"),
+                            "origem": dados.get("origem"),
+                            "responsavel": dados.get("responsavel"),
+                            "data_criacao": dados.get("data_criacao")
+                        })
+
+                        # Atualiza Linhas e Empresas Relacionadas (N:M)
+                        if "linhas" in dados:
+                            cur.execute("DELETE FROM itinerario.os_linhas WHERE os_id = %s", (registro_id,))
+                            codigos = [c.strip() for c in dados["linhas"].split(',') if c.strip()]
+                            for cod in codigos:
+                                cur.execute("INSERT INTO itinerario.os_linhas (os_id, linha_id) SELECT %s, id FROM common.linhas WHERE codigo = %s LIMIT 1", (registro_id, cod))
+                                
+                        if "empresa" in dados:
+                            cur.execute("DELETE FROM itinerario.os_empresas WHERE os_id = %s", (registro_id,))
+                            empresas = [e.strip() for e in dados["empresa"].split(',') if e.strip()]
+                            for emp in empresas:
+                                cur.execute("INSERT INTO itinerario.os_empresas (os_id, empresa_id) SELECT %s, id FROM common.empresas WHERE nome ILIKE %s LIMIT 1", (registro_id, emp))
+
                     conn.commit()
-                    return True, "Registro excluído com sucesso."
+            return True, "Registro atualizado com sucesso no banco de dados."
         except Exception as e:
-            return False, f"Erro ao excluir: {e}"
+            print(f"[LOG DB] Erro atualizar_registro: {e}")
+            return False, f"Erro ao atualizar registro: Verifique se os dados são válidos e se as linhas/empresas existem." 
 
     def obter_empresas(self):
         try:

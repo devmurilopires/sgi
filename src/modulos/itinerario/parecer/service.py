@@ -107,8 +107,8 @@ class ParecerItinerarioService:
         if tipo == "DEFERIDO":
             texto_desvio = f"Informamos que este evento interfere no itinerário das linhas: {', '.join(linhas)}. Do Sistema de Transporte Coletivo e, portanto, deve ser feita uma ordem de serviço autorizando o desvio das mesmas." if linhas else "Informamos que este evento interfere no itinerário de algumas linhas do sistema de transporte coletivo de Fortaleza, portanto, deve ser feita uma ordem de serviço autorizando o desvio das mesmas."
             mapeamento.update({
-                "{{EVENTO}}": f",para realização do evento {dados_form['evento']}," if dados_form["evento"] else "",
-                "{{DATA_EVENTO}}": f", que acontecerá {data_text}" if data_text else "",
+                "{{EVENTO}}": f"para realização do evento {dados_form['evento']}" if dados_form["evento"] else "",
+                "{{DATA_EVENTO}}": f" que acontecerá {data_text}" if data_text else "",
                 "{{PERIODO}}": f", das {dados_form['periodo']} horas" if dados_form["periodo"] else "",
                 "{{TEXTO_DESVIO}}": texto_desvio
             })

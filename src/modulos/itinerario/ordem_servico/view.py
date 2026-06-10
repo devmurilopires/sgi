@@ -130,15 +130,13 @@ class OSItinerarioView(ctk.CTkFrame):
         self._construir_interface()
 
     def _fechar_modais_on_scroll(self, *args, **kwargs):
-        """Oculta dropdowns e autocompletes instantaneamente ao rolar a tela"""
+        """Oculta e fecha todos os dropdowns abertos imediatamente ao detectar rolagem de tela."""
         try:
-            self.winfo_toplevel().focus_set()
-            
             # Fecha os autocompletes clássicos
             if hasattr(self, 'linha_combo') and self.linha_combo: self.linha_combo.esconder_lista()
             if hasattr(self, 'empresa_combo') and self.empresa_combo: self.empresa_combo.esconder_lista()
             
-            # Varre a tela e fecha TODOS os novos CtkParametrosComboBox que estiverem abertos
+            # Força o fechamento de TODOS os CtkParametrosComboBox abertos na tela
             def varrer_e_fechar(widget):
                 for child in widget.winfo_children():
                     if isinstance(child, CtkParametrosComboBox):
@@ -155,20 +153,24 @@ class OSItinerarioView(ctk.CTkFrame):
         self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#F4F6F9")
         self.scroll_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
-        # --- A GRANDE SACADA SÊNIOR: INTERCEPTAR O MOTOR DE ROLAGEM ---
+        # --- CAPTURA TOTAL DE MOVIMENTO DE ROLAGEM (COM DELAY SÊNIOR) ---
         _yview_scroll_original = self.scroll_frame._parent_canvas.yview_scroll
         _yview_original = self.scroll_frame._parent_canvas.yview
 
+        # Atraso de 10ms para evitar que a destruição do widget quebre o CustomTkinter
         def _motor_rolagem_hook(*args, **kwargs):
-            self._fechar_modais_on_scroll()
+            self.after(10, self._fechar_modais_on_scroll)
             return _yview_scroll_original(*args, **kwargs)
 
         def _barra_rolagem_hook(*args, **kwargs):
-            self._fechar_modais_on_scroll()
+            self.after(10, self._fechar_modais_on_scroll)
             return _yview_original(*args, **kwargs)
 
         self.scroll_frame._parent_canvas.yview_scroll = _motor_rolagem_hook
         self.scroll_frame._parent_canvas.yview = _barra_rolagem_hook
+        
+        # Garante que qualquer rolagem na janela feche os popups com segurança
+        self.winfo_toplevel().bind("<MouseWheel>", lambda e: self.after(10, self._fechar_modais_on_scroll), add="+")
         # --------------------------------------------------------------
         
         header_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")

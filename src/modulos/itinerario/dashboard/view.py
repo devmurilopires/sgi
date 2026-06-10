@@ -14,7 +14,7 @@ from src.modulos.itinerario.dashboard.repository import DashboardItinerarioRepos
 
 COLOR_PRIMARY = "#0F8C75"     
 COLOR_SECONDARY = "#F24822"   
-COLOR_BG = "#F8F9FA"          
+COLOR_BG = "#FFFFFF"          
 COLOR_CARD_BG = "#FFFFFF"     
 COLOR_TEXT = "#333333"
 
@@ -213,7 +213,7 @@ class DashboardItinerarioView(ctk.CTkFrame):
             ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 11), text_color="#777777").pack(anchor="w")
             ctk.CTkLabel(conteudo, text=str(valor), font=("Arial Black", 24), text_color=COLOR_TEXT).pack(anchor="w")
 
-        add_card("TOTAL OS", c_os, COLOR_PRIMARY)
+        add_card("TOTAL OS", c_os, COLOR_TEXT)
         add_card("TOTAL PARECERES", c_par, COLOR_PRIMARY)
         add_card("DEFERIDOS", c_def, "#28A745")
         add_card("INDEFERIDOS", c_indef, COLOR_SECONDARY)
@@ -292,7 +292,7 @@ class DashboardItinerarioView(ctk.CTkFrame):
         if tipo == "g1": plot_bar_labels(d["meses"], d["os_m"], "EVOLUÇÃO MENSAL DE OS", COLOR_PRIMARY)
         elif tipo == "g2": plot_bar_labels(d["meses"], d["par_m"], "EVOLUÇÃO MENSAL DE PARECERES", COLOR_SECONDARY)
         elif tipo == "g3": 
-            if len(d["solic_val"]) > 0: plot_bar_labels(d["solic_labels"], d["solic_val"], "TOP 10 SOLICITANTES (PARECERES)", "#555555")
+            if len(d["solic_val"]) > 0: plot_bar_labels(d["solic_labels"], d["solic_val"], "TOP 10 SOLICITANTES (PARECERES)", COLOR_PRIMARY)
             else: self._configurar_eixo(ax, "TOP 10 SOLICITANTES (PARECERES)")
 
         elif tipo == "g4":

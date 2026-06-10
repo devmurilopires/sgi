@@ -146,6 +146,7 @@ class OSItinerarioService:
                 "nome_corrida": form_dados.get("nome_corrida", ""), 
                 "km": form_dados.get("km", ""), 
                 "tipo_obra": form_dados.get("tipo_obra", ""), 
+                "solicitante": form_dados.get("solicitante", ""), # <--- LINHA ADICIONADA!
                 "docx_path": filepath, 
                 "criado_por": f"%{usuario}%",
                 "empresas_lista": empresas,

@@ -34,12 +34,12 @@ class OSItinerarioRepository:
             return 1
 
     def salvar_os_itinerario(self, dados_db):
-        # MODIFICAÇÃO: A coluna KM agora recebe o valor cru sem forçar a conversão (::NUMERIC), permitindo texto livre!
+        # MODIFICAÇÃO: Inserção do campo 'solicitante'
         query_os = """
             INSERT INTO itinerario.ordens_servico (
                 numero, ano, origem_id, tipo_evento_id, processo_adm, endereco,
                 horario_inicio, horario_fim, evento, nome_corrida, tipo_obra,
-                km, caminho_arquivo, responsavel_id, data_emissao
+                km, solicitante, caminho_arquivo, responsavel_id, data_emissao
             ) VALUES (
                 %(num_os)s, %(ano)s, 
                 (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
@@ -47,7 +47,7 @@ class OSItinerarioRepository:
                 %(processo)s, %(endereco)s,
                 NULLIF(%(horario_inicio)s, '')::TIME, NULLIF(%(horario_final)s, '')::TIME, 
                 %(evento)s, %(nome_corrida)s, %(tipo_obra)s,
-                NULLIF(%(km)s, ''), %(docx_path)s, 
+                NULLIF(%(km)s, ''), %(solicitante)s, %(docx_path)s, 
                 (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(criado_por)s LIMIT 1),
                 NOW()
             ) RETURNING id;
