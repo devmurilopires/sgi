@@ -16,6 +16,7 @@ COLOR_BG = "#F4F6F9"
 COLOR_WHITE = "#FFFFFF"       
 COLOR_PRIMARY = "#0F8C75"     # Verde
 COLOR_SECONDARY = "#F24822"   # Laranja
+COLOR_TERTIARY = "#1F8CF2"   # Azul
 COLOR_TEXT = "#333333"
 
 class DashboardGeralView(ctk.CTkFrame):
@@ -48,7 +49,7 @@ class DashboardGeralView(ctk.CTkFrame):
 
         ctk.CTkLabel(frame_filtros, text="DASHBOARD EXECUTIVO - Produtividade Global", font=("Arial Black", 20), text_color=COLOR_PRIMARY).pack(side="left", padx=20, pady=20)
         
-        self.btn_pdf = ctk.CTkButton(frame_filtros, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color="#333333", width=120, height=35, command=self.exportar_pdf)
+        self.btn_pdf = ctk.CTkButton(frame_filtros, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color=COLOR_SECONDARY, width=120, height=35, command=self.exportar_pdf)
         self.btn_pdf.pack(side="right", padx=15, pady=17)
 
         self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 Aplicar Filtro", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, width=120, height=35, command=self.atualizar_dashboard)
@@ -57,16 +58,17 @@ class DashboardGeralView(ctk.CTkFrame):
         # Filtros de Data com calendário estilizado
         f_data = ctk.CTkFrame(frame_filtros, fg_color="transparent")
         f_data.pack(side="right", padx=10, pady=17)
-        
-        ctk.CTkLabel(f_data, text="Data Fim:", text_color="#555", font=("Arial Bold", 12)).pack(side="left", padx=(10, 5))
-        wrapper_fim, self.date_fim = self._criar_date_wrapper(f_data, 120)
-        self.date_fim.set_date(date.today())
-        wrapper_fim.pack(side="left")
 
-        ctk.CTkLabel(f_data, text="Data Início:", text_color="#555", font=("Arial Bold", 12)).pack(side="left", padx=(10, 5))
+
+        ctk.CTkLabel(f_data, text="Data Início:", text_color=COLOR_TEXT, font=("Arial Bold", 12)).pack(side="left", padx=(10, 5))
         wrapper_ini, self.date_ini = self._criar_date_wrapper(f_data, 120)
         self.date_ini.set_date(date(date.today().year, 1, 1))
         wrapper_ini.pack(side="left")
+        
+        ctk.CTkLabel(f_data, text="Data Fim:", text_color=COLOR_TEXT, font=("Arial Bold", 12)).pack(side="left", padx=(10, 5))
+        wrapper_fim, self.date_fim = self._criar_date_wrapper(f_data, 120)
+        self.date_fim.set_date(date.today())
+        wrapper_fim.pack(side="left")
 
         self.scroll_area = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.scroll_area.pack(fill="both", expand=True, padx=10, pady=10)
@@ -131,7 +133,7 @@ class DashboardGeralView(ctk.CTkFrame):
         c_tot, c_os, c_par, c_pesq, champ = self.service.calcular_kpis(df_os_f, df_par_f, df_pesq_f)
         
         self.frame_kpis.columnconfigure((0,1,2,3,4), weight=1)
-        self.criar_card(self.frame_kpis, "TOTAL DE DOCUMENTOS", f"{c_tot}", "#333333", "📁").grid(row=0, column=0, padx=5, sticky="ew")
+        self.criar_card(self.frame_kpis, "TOTAL DE DOCUMENTOS", f"{c_tot}", COLOR_TEXT, "📁").grid(row=0, column=0, padx=5, sticky="ew")
         self.criar_card(self.frame_kpis, "ORDENS DE SERVIÇO", f"{c_os}", COLOR_PRIMARY, "📋").grid(row=0, column=1, padx=5, sticky="ew")
         self.criar_card(self.frame_kpis, "PARECERES TÉCNICOS", f"{c_par}", COLOR_SECONDARY, "📝").grid(row=0, column=2, padx=5, sticky="ew")
         self.criar_card(self.frame_kpis, "PESQUISAS (SPR)", f"{c_pesq}", COLOR_PRIMARY, "📊").grid(row=0, column=3, padx=5, sticky="ew")
@@ -212,13 +214,13 @@ class DashboardGeralView(ctk.CTkFrame):
         labels_setor = ["Ponto de Parada", "Itinerário", "Quadro de Horário"]
         vols_plot = [v for v in vols if v > 0]
         labels_plot = [l for l, v in zip(labels_setor, vols) if v > 0]
-        plot_pizza(axs[2, 0], vols_plot, labels_plot, [COLOR_PRIMARY, COLOR_SECONDARY, "#555555"], "Volume de Trabalho por Setor")
+        plot_pizza(axs[2, 0], vols_plot, labels_plot, [COLOR_PRIMARY, COLOR_SECONDARY, COLOR_TERTIARY], "Volume de Trabalho por Setor")
 
         ax_decisao = axs[2, 1]
         if not df_par_f.empty and 'decisao' in df_par_f.columns:
             c_dec = df_par_f['decisao'].value_counts()
             if not c_dec.empty:
-                cores_decisao = [COLOR_PRIMARY if "DEF" in str(x).upper() else COLOR_SECONDARY for x in c_dec.index]
+                cores_decisao = [COLOR_PRIMARY if "DEFERIDO" == str(x).upper().strip() else COLOR_SECONDARY for x in c_dec.index]
                 plot_pizza(ax_decisao, c_dec.values, c_dec.index, cores_decisao, "Decisões: Deferido vs Indeferido")
         else: self._configurar_eixo(ax_decisao, "Decisões: Deferido vs Indeferido", is_pie=True)
 
