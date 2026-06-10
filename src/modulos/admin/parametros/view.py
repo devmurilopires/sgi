@@ -11,16 +11,17 @@ class AdminParametrosView:
         self.service = ParametrosService()
         self.color_accent = COLOR_PRIMARY
         
+        # MAPA DE CONFIGURAÇÕES ALINHADO COM A MIGRAÇÃO
         self.config_map = {
             "Ponto de Parada": {
                 "MODELO_OS": "Modelo da OS",
                 "ACAO_OS": "Ação da OS",
-                "STATUS_OS": "Status da OS",              # <-- NOVO
-                "DECISAO_PARECER": "Decisões de Parecer",   # <-- NOVO
+                "STATUS_OS": "Status da OS",
+                "DECISAO_PARECER": "Decisões de Parecer",
                 "ITEM_URBMIDIA": "Itens (Urbmídia)",
                 "ITEM_MCMENSAGEM": "Itens (McMensagem)",
-                "ITEM_MOBILIARIO": "Itens (Mobiliário)",
-                "ORIGEM_DEMANDA": "Origem da Demanda",
+                "ITENS": "Itens",
+                "ORIGEM": "Origem",
                 "SOLICITANTE_PARECER": "Solicitante",
                 "ASSUNTO_PARECER": "Assunto"
             },
@@ -30,9 +31,7 @@ class AdminParametrosView:
                 "EVENTO": "Lista de Eventos",
                 "SOLICITANTE_PARECER": "Solicitante",
                 "ASSUNTO_ITINERARIO": "Assunto",
-                "DECISAO_PARECER": "Decisões de Parecer", # <--- NOVO (Para gerenciar Deferido/Indeferido)
-                "SELECAO_DATA": "Modo de Data",
-                "HORARIO": "Horários do Sistema"
+                "DECISAO_PARECER": "Decisões de Parecer",
             },
             "Quadro de Horário": {
                 "ORIGEM": "Origem",
@@ -49,7 +48,7 @@ class AdminParametrosView:
         }
         
         self.setor_selecionado = "Ponto de Parada"
-        self.campo_selecionado = "TIPO_ITEM"
+        self.campo_selecionado = "MODELO_OS"
         
         self.setup_ui()
         self.atualizar_lista()
@@ -156,49 +155,40 @@ class AdminParametrosView:
         self.atualizar_lista()
 
     def get_roteamento(self):
-        """Mapeia dinamicamente a tabela do banco SGI v2.2 alvo."""
-        return self.service.obter_roteamento(self.setor_selecionado, self.campo_selecionado)
+        return self.service.obter_roteamento(self.campo_selecionado)
 
     def atualizar_lista(self, *args):
-        # 1. Correção: Limpa os widgets usando o nome correto (scroll_lista)
         for child in self.scroll_lista.winfo_children(): 
             child.destroy()
             
         routing = self.get_roteamento()
         if not routing: return
 
-        # 2. Guardamos a lista na memória da classe para podermos manipular a ordem
         self.parametros_atuais = self.service.listar_parametros(routing)
 
         if not self.parametros_atuais:
             ctk.CTkLabel(self.scroll_lista, text="Lista vazia. Adicione opções acima.", text_color="#999").pack(pady=40)
             return
 
-        # 3. Desenhar cada item com as setinhas de ordenação
         for idx, param in enumerate(self.parametros_atuais):
             card = ctk.CTkFrame(self.scroll_lista, fg_color="#F9FAFB", corner_radius=6, border_width=1, border_color="#E5E7EB", height=45)
             card.pack(fill="x", pady=2, padx=5)
             
-            # --- Bloco de Setas de Ordenação ---
             f_setas = ctk.CTkFrame(card, fg_color="transparent")
             f_setas.pack(side="left", padx=5, pady=2)
             
-            # Só mostra a seta Cima se não for o primeiro da lista
             if idx > 0:
                 ctk.CTkButton(f_setas, text="⬆️", width=25, height=20, fg_color="transparent", hover_color="#E0E0E0", text_color="#333", command=lambda i=idx: self.mover_item(i, "UP")).pack(side="top", pady=1)
             else:
                 ctk.CTkLabel(f_setas, text="", width=25, height=20).pack(side="top", pady=1)
 
-            # Só mostra a seta Baixo se não for o último da lista
             if idx < len(self.parametros_atuais) - 1:
                 ctk.CTkButton(f_setas, text="⬇️", width=25, height=20, fg_color="transparent", hover_color="#E0E0E0", text_color="#333", command=lambda i=idx: self.mover_item(i, "DOWN")).pack(side="top", pady=1)
             else:
                 ctk.CTkLabel(f_setas, text="", width=25, height=20).pack(side="top", pady=1)
-            # ------------------------------------
 
             ctk.CTkLabel(card, text=param['valor'], font=("Arial", 14), text_color="#333").pack(side="left", padx=10)
 
-            # Botões de Ação (Editar e Excluir)
             btns_row = ctk.CTkFrame(card, fg_color="transparent")
             btns_row.pack(side="right", padx=10)
 
@@ -211,26 +201,20 @@ class AdminParametrosView:
             btn_del.pack(side="left", padx=5)
 
     def mover_item(self, index, direcao):
-        """Troca a posição do item na memória, extrai os IDs e guarda a nova ordem na base de dados."""
         if direcao == "UP" and index > 0:
-            # Troca com o de cima
             self.parametros_atuais[index], self.parametros_atuais[index-1] = self.parametros_atuais[index-1], self.parametros_atuais[index]
         elif direcao == "DOWN" and index < len(self.parametros_atuais) - 1:
-            # Troca com o de baixo
             self.parametros_atuais[index], self.parametros_atuais[index+1] = self.parametros_atuais[index+1], self.parametros_atuais[index]
         else:
             return
 
-        # Pega apenas a lista de IDs na nova ordem
         lista_ordenada_ids = [item['id'] for item in self.parametros_atuais]
-        
-        # Envia para a base de dados via service
         routing = self.get_roteamento()
         sucesso, msg = self.service.reordenar_parametros(routing, lista_ordenada_ids)
         
         if sucesso:
-            self.atualizar_lista() # Redesenha a lista já na nova ordem
-            self._notificar_mudancas_globais() # Atualiza em tempo real as comboboxes do sistema
+            self.atualizar_lista() 
+            self._notificar_mudancas_globais() 
         else:
             messagebox.showerror("Erro", msg)
 

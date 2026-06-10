@@ -20,54 +20,54 @@ class ParametrosService:
         if not routing: return []
         return self.repository.listar_parametros(routing)
 
-    def obter_roteamento(self, setor, campo):
+    def obter_roteamento(self, setor, campo=None):
         """
-        Roteador Sênior: Mapeia o Campo da Interface para a Tabela SGI v2.2.
+        Roteador Inteligente e Híbrido:
+        Suporta os dois padrões de chamada do sistema para manter retrocompatibilidade:
+        1. obter_roteamento(campo) -> Vindo da View do Admin
+        2. obter_roteamento(setor, campo) -> Vindo do componente compartilhado CtkParametrosComboBox
         """
-        c_key = campo.upper()
-        s_key = setor.upper()
+        # Se 'campo' for None, significa que a função foi chamada com apenas 1 argumento,
+        # portanto o argumento recebido na variável 'setor' é, na verdade, o próprio campo.
+        if campo is None:
+            c_key = str(setor).upper()
+        else:
+            c_key = str(campo).upper()
 
         # 1. ORIGENS
-        if c_key in ["ORIGEM", "ORIGEM_DEMANDA"]:
+        if c_key == "ORIGEM":
             return {"tabela": "common.origens", "col_ctx": None, "val_ctx": None, "col_val": "nome"}
 
-        # No método obter_roteamento da classe ParametrosService...
+        # 2. TABELA DE TIPOS E AÇÕES
         map_tipos = {
             "ACAO_OS": "ACAO_OS", 
             "MODELO_OS": "MODELO_OS",
+            "STATUS_OS": "STATUS_OS",              
+            "DECISAO_PARECER": "DECISAO_PARECER",
             "ITEM_URBMIDIA": "ITEM_URBMIDIA",
             "ITEM_MCMENSAGEM": "ITEM_MCMENSAGEM",
-            "ITEM_MOBILIARIO": "ITEM_MOBILIARIO",  
-            "PESQUISA": "PESQUISA",                
+            "ITENS": "ITENS",
             "TIPO_OS": "TIPO_OS",
-            "TIPO_EVENTO_OS": "TIPO_EVENTO_OS",
-            "STATUS_OS": "STATUS_OS",              
-            "DECISAO_PARECER": "PARECER"
+            "PESQUISA": "PESQUISA"
         }
         
         if c_key in map_tipos:
             return {"tabela": "common.tipos", "col_ctx": "contexto", "val_ctx": map_tipos[c_key], "col_val": "nome"}
-        if c_key == "ITEM_GLOBAL":
-            return {"tabela": "common.tipos", "col_ctx": "contexto IN ('ITEM_URBMIDIA', 'ITEM_MCMENSAGEM', 'ITEM_MOBILIARIO') AND is_ativo", "val_ctx": True, "col_val": "nome"}
-        if c_key in map_tipos:
-            return {"tabela": "common.tipos", "col_ctx": "contexto", "val_ctx": map_tipos[c_key], "col_val": "nome"}
-        if c_key == "SOLICITANTE_PARECER":
-            return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": "SOLICITANTE_PARECER", "col_val": "valor"}
-        if c_key == "ASSUNTO_PARECER":
-            return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": "ASSUNTO_PARECER", "col_val": "valor"}
-        if c_key == "ASSUNTO_ITINERARIO":
-            return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": "ASSUNTO_ITINERARIO", "col_val": "valor"}
-        if c_key == "ASSUNTO_QUADRO_HORARIO":
-            return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": "ASSUNTO_QUADRO_HORARIO", "col_val": "valor"}
-        if c_key == "EVENTO":
-            # Agora a busca de Eventos cai aqui (tabela correta!)
-            return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": "EVENTO", "col_val": "valor"}
-        if c_key == "ASSUNTO_PROJETOS_MOBILIDADE": # <-- NOVA LINHA AQUI
-            return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": "ASSUNTO_PROJETOS_MOBILIDADE", "col_val": "valor"}
+        
+        # 3. TABELA DE PARÂMETROS GERAIS
+        map_parametros = {
+            "SOLICITANTE_PARECER": "SOLICITANTE_PARECER",
+            "ASSUNTO_PARECER": "ASSUNTO_PARECER",
+            "ASSUNTO_ITINERARIO": "ASSUNTO_ITINERARIO",
+            "ASSUNTO_QUADRO_HORARIO": "ASSUNTO_QUADRO_HORARIO",
+            "ASSUNTO_PROJETOS_MOBILIDADE": "ASSUNTO_PROJETOS_MOBILIDADE",
+            "EVENTO": "EVENTO"
+        }
 
-        # Comportamento padrão (slug)
-        slug_categoria = f"{s_key}_{c_key}".lower().replace(' ', '_')
-        return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": slug_categoria, "col_val": "valor"}
+        if c_key in map_parametros:
+            return {"tabela": "common.parametros_sistema", "col_ctx": "categoria", "val_ctx": map_parametros[c_key], "col_val": "valor"}
+
+        return None # Proteção contra crashes se o mapeamento falhar
     
     def reordenar_parametros(self, routing, lista_ids):
         if not lista_ids: return False, "Nenhum dado para ordenar."
