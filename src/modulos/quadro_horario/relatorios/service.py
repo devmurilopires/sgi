@@ -200,6 +200,9 @@ class RelatorioQuadroHorarioService:
 
     def excluir_registro(self, tipo_doc, registro_id, motivo, excluido_por):
         return self.repo.excluir_registro(tipo_doc, registro_id, motivo, excluido_por)
+    
+    def atualizar_registro(self, tipo_doc, registro_id, dados):
+        return self.repo.atualizar_registro(tipo_doc, registro_id, dados)
 
     # Exportações Genéricas (Grade)
     def exportar_excel(self, tipo_doc, filtros, destino):

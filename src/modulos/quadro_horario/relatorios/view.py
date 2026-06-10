@@ -481,7 +481,9 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 except: payload = {}
             if isinstance(payload, dict):
                 datas_list = payload.get("datas", [])
-                d["relatorios"] = "\n".join([f"  • {dt.strip()}" for dt in datas_list]) if datas_list else "-"
+                # --- MODIFICAÇÃO SÊNIOR: Junta as datas na horizontal separadas por vírgula ---
+                d["relatorios"] = ", ".join([dt.strip() for dt in datas_list]) if datas_list else "-"
+                # -----------------------------------------------------------------------------
             else:
                 d["relatorios"] = "-"
 
@@ -502,25 +504,53 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             self.btn_ant.configure(state="normal" if self.pagina_atual > 1 else "disabled")
             self.btn_prox.configure(state="normal" if self.pagina_atual < self.total_paginas else "disabled")
 
-    def _add_detail_field(self, parent, label, value, row, col, pad_x):
-        ctk.CTkLabel(parent, text=f"{label}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
-        val_str = str(value).strip()
+    # 1. Nova Função Dinâmica: Sem bloqueios e com Comboboxes Inteligentes
+    def _add_detail_field_dinamico(self, parent, key, value, row, col, pad_x, editando):
+        label_text = str(key).replace("_", " ").title()
+        ctk.CTkLabel(parent, text=f"{label_text}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
+        
+        val_str = str(value).strip() if value is not None else ""
         if not val_str or val_str.lower() == "none": val_str = "-"
-        
-        linhas = max(1, len(val_str) // 35)
-        linhas = max(linhas, val_str.count('\n') + 1)
-        altura = linhas * 20 + 10
-        
-        box = ctk.CTkTextbox(parent, font=("Arial", 12), width=250, height=altura, fg_color="transparent", border_width=0, wrap="word")
-        box.insert("1.0", val_str)
-        box.configure(state="disabled")
-        box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
 
+        if not editando:
+            linhas = max(1, len(val_str) // 35)
+            linhas = max(linhas, val_str.count('\n') + 1)
+            altura = linhas * 20 + 10
+            
+            box = ctk.CTkTextbox(parent, font=("Arial", 12), width=250, height=altura, fg_color="transparent", border_width=0, wrap="word")
+            box.insert("1.0", val_str)
+            box.configure(state="disabled") 
+            box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
+            if editando: self.modal_edit_widgets[key] = box
+        else:
+            # Renderiza Comboboxes Inteligentes no Modo Edição
+            if key == "origem":
+                w = CtkParametrosComboBox(parent, setor="Quadro de Horário", campo="ORIGEM", width=250, height=35)
+                w.set(val_str if val_str != "-" else "– Selecione –")
+            elif key == "decisao":
+                w = CtkParametrosComboBox(parent, setor="Quadro de Horário", campo="DECISAO_PARECER", width=250, height=35)
+                w.set(val_str if val_str != "-" else "– Selecione –")
+            elif key == "assunto":
+                w = CtkParametrosComboBox(parent, setor="Quadro de Horário", campo="ASSUNTO_QUADRO_HORARIO", width=250, height=35)
+                w.set(val_str if val_str != "-" else "– Selecione –")
+            elif key == "solicitante":
+                w = CtkParametrosComboBox(parent, setor="Quadro de Horário", campo="SOLICITANTE_PARECER", width=250, height=35)
+                w.set(val_str if val_str != "-" else "– Selecione –")
+            else:
+                # Demais campos: Data, Processo, Linhas, Responsável, Motivo, etc.
+                w = ctk.CTkEntry(parent, width=250, height=35, font=("Arial", 12))
+                w.insert(0, val_str if val_str != "-" else "")
+            
+            w.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
+            self.modal_edit_widgets[key] = w
+
+    # 2. Tela de Detalhes Modificada com Botão de Edição
     def acao_detalhes(self):
         sel = self.tree.selection()
         if not sel: return messagebox.showwarning("Aviso", "Selecione um registro.")
-        dado = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
-        if not dado: return
+        dado_bruto = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
+        if not dado_bruto: return
+        dado = dado_bruto.copy()
         
         if self.tipo_doc == "PESQUISA":
             RelatorioDetalhesPesquisa(self, dado, self.service)
@@ -544,16 +574,22 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             grid.pack(fill="x", padx=15, pady=15)
             
             campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo', 'payload']]
-            
-            row_idx = 0
-            for i in range(0, len(campos_exibir), 2):
-                lbl_key1 = str(campos_exibir[i][0]).replace("_", " ").title()
-                self._add_detail_field(grid, lbl_key1, campos_exibir[i][1], row_idx, 0, (0, 20))
+            self.modal_edit_widgets = {}
 
-                if i + 1 < len(campos_exibir):
-                    lbl_key2 = str(campos_exibir[i+1][0]).replace("_", " ").title()
-                    self._add_detail_field(grid, lbl_key2, campos_exibir[i+1][1], row_idx, 2, (0, 0))
-                row_idx += 1
+            def desenhar_grid(editando=False):
+                for w in grid.winfo_children(): w.destroy()
+                self.modal_edit_widgets.clear()
+                row_idx = 0
+                for i in range(0, len(campos_exibir), 2):
+                    key1, val1 = campos_exibir[i]
+                    self._add_detail_field_dinamico(grid, key1, val1, row_idx, 0, (0, 20), editando)
+
+                    if i + 1 < len(campos_exibir):
+                        key2, val2 = campos_exibir[i+1]
+                        self._add_detail_field_dinamico(grid, key2, val2, row_idx, 2, (0, 0), editando)
+                    row_idx += 1
+
+            desenhar_grid(editando=False)
 
             if dado.get('caminho_arquivo'):
                 ctk.CTkLabel(scroll, text="Localização na Rede:", font=("Arial Bold", 12)).pack(anchor="w", pady=(15, 0))
@@ -562,7 +598,37 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 path_box.insert(0, dado.get('caminho_arquivo'))
                 path_box.configure(state="readonly")
 
-            ctk.CTkButton(scroll, text="Fechar Janela", width=150, height=40, fg_color="#6B7280", hover_color="#4B5563", command=modal.destroy).pack(pady=30)
+            # --- BOTÕES DO MODAL ---
+            frame_botoes = ctk.CTkFrame(scroll, fg_color="transparent")
+            frame_botoes.pack(pady=30)
+            
+            if self.is_admin:
+                def alternar_edicao():
+                    if btn_editar.cget("text") == "✏️ Editar":
+                        btn_editar.configure(text="💾 Salvar", fg_color="#10B981", hover_color="#059669")
+                        desenhar_grid(editando=True)
+                    else:
+                        novos_dados = {}
+                        for k, widget in self.modal_edit_widgets.items():
+                            if isinstance(widget, CtkParametrosComboBox):
+                                v = widget.get()
+                                novos_dados[k] = "" if v == "– Selecione –" else v
+                            elif isinstance(widget, ctk.CTkTextbox): pass
+                            else:
+                                novos_dados[k] = widget.get().strip()
+                        
+                        sucesso, msg = self.service.atualizar_registro(self.tipo_doc, dado['id'], novos_dados)
+                        if sucesso:
+                            messagebox.showinfo("Sucesso", msg)
+                            modal.destroy()
+                            self.acao_buscar()
+                        else:
+                            messagebox.showerror("Erro", msg)
+
+                btn_editar = ctk.CTkButton(frame_botoes, text="✏️ Editar", width=140, height=40, fg_color="#F59E0B", hover_color="#D97706", command=alternar_edicao)
+                btn_editar.pack(side="left", padx=10)
+
+            ctk.CTkButton(frame_botoes, text="Fechar", width=140, height=40, fg_color="#6B7280", hover_color="#4B5563", command=modal.destroy).pack(side="left", padx=10)
 
     def acao_abrir(self):
         sel = self.tree.selection()

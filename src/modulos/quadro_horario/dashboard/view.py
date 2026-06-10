@@ -114,8 +114,8 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
         
         ctk.CTkLabel(scroll_checks, text="📋 Estrutura Base e KPIs", font=("Arial Bold", 13), text_color=COLOR_PRIMARY).pack(anchor="w", padx=10, pady=(10, 5))
         ctk.CTkCheckBox(scroll_checks, text="Tabela: Balanço Mensal Consolidado", variable=self.vars_export["tabela_resumo"], font=("Arial Bold", 12)).pack(**pad_opt, pady=(0,8))
-        ctk.CTkCheckBox(scroll_checks, text="Card: Total de Pareceres", variable=self.vars_export["kpi_total_par"], font=("Arial", 12)).pack(**pad_opt, pady=4)
         ctk.CTkCheckBox(scroll_checks, text="Card: Total de Pesquisas", variable=self.vars_export["kpi_total_pesq"], font=("Arial", 12)).pack(**pad_opt, pady=4)
+        ctk.CTkCheckBox(scroll_checks, text="Card: Total de Pareceres", variable=self.vars_export["kpi_total_par"], font=("Arial", 12)).pack(**pad_opt, pady=4)
         ctk.CTkCheckBox(scroll_checks, text="Card: Pareceres Deferidos", variable=self.vars_export["kpi_def"], font=("Arial", 12)).pack(**pad_opt, pady=4)
         ctk.CTkCheckBox(scroll_checks, text="Card: Pareceres Indeferidos", variable=self.vars_export["kpi_indef"], font=("Arial", 12)).pack(**pad_opt, pady=4)
         

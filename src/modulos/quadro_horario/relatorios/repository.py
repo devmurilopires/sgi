@@ -117,22 +117,137 @@ class RelatorioQuadroHorarioRepository:
                     usr = cur.fetchone()
                     excluido_por_id = usr[0] if usr else None
 
+                    import json
                     if tipo_doc == "PARECER":
-                        cur.execute("SELECT numero_parecer_ano FROM common.pareceres_base WHERE id = %s", (registro_id,))
-                        linha = cur.fetchone()
-                        numero = linha[0] if linha else registro_id
-                        cur.execute("INSERT INTO common.lixeira (modulo, numero, motivo, excluido_por_id, data_exclusao) VALUES ('PARECER_quadro_horario', %s, %s, %s, NOW())", (numero, motivo, excluido_por_id))
+                        # CONSTRUÇÃO DO JSON COMPLETO COM NOME DO GERADOR
+                        cur.execute("""
+                            SELECT b.numero_parecer_ano, json_build_object(
+                                'id', p.id, 'processo', p.processo, 'assunto', p.assunto, 
+                                'solicitante', p.solicitante, 'evento', p.evento, 
+                                'origem', o.nome, 'decisao', t.nome,
+                                'gerado_por', u.nome_completo, 'caminho_arquivo', b.caminho_arquivo
+                            )
+                            FROM quadro_horario.pareceres p
+                            JOIN common.pareceres_base b ON p.id = b.id
+                            LEFT JOIN common.usuarios u ON b.criado_por_id = u.id
+                            LEFT JOIN common.origens o ON p.origem_id = o.id
+                            LEFT JOIN common.tipos t ON b.tipo_id = t.id
+                            WHERE p.id = %s
+                        """, (registro_id,))
+                        res = cur.fetchone()
+                        if res:
+                            numero, dados_json = res
+                            cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por_id, data_exclusao) VALUES ('PARECER_quadro_horario', %s, %s, %s, %s, NOW())", (numero, json.dumps(dados_json), motivo, excluido_por_id))
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                     else:
-                        cur.execute("SELECT row_to_json(p) FROM quadro_horario.pesquisas p WHERE id = %s", (registro_id,))
-                        linha = cur.fetchone()
-                        if linha:
-                            cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por_id, data_exclusao) VALUES ('PESQUISA_quadro_horario', %s, %s, %s, %s, NOW())", (registro_id, json.dumps(linha[0]), motivo, excluido_por_id))
+                        # CONSTRUÇÃO DO JSON PARA PESQUISAS
+                        cur.execute("""
+                            SELECT json_build_object(
+                                'id', p.id, 'titulo', l.codigo || ' - ' || l.nome,
+                                'data_inicio', p.data_pesquisa_1, 
+                                'data_fim', COALESCE(p.data_pesquisa_3, p.data_pesquisa_2, p.data_pesquisa_1),
+                                'gerado_por', u.nome_completo
+                            )
+                            FROM quadro_horario.pesquisas p
+                            LEFT JOIN common.linhas l ON p.linha_id = l.id
+                            LEFT JOIN common.usuarios u ON p.criado_por_id = u.id
+                            WHERE p.id = %s
+                        """, (registro_id,))
+                        res = cur.fetchone()
+                        if res:
+                            dados_json = res[0]
+                            cur.execute("INSERT INTO common.lixeira (modulo, numero, dados, motivo, excluido_por_id, data_exclusao) VALUES ('PESQUISA_quadro_horario', %s, %s, %s, %s, NOW())", (registro_id, json.dumps(dados_json), motivo, excluido_por_id))
                         cur.execute("DELETE FROM quadro_horario.pesquisas WHERE id = %s", (registro_id,))
                     conn.commit()
                     return True, "Registro excluído com sucesso."
         except Exception as e:
             return False, f"Erro ao excluir: {e}"
+        
+    def atualizar_registro(self, tipo_doc, registro_id, dados):
+        try:
+            with get_db_connection() as conn:
+                with conn.cursor() as cur:
+                    if tipo_doc == "PARECER":
+                        # 1. Atualiza Tabela Base (Responsável, Data, Decisão, Número)
+                        if dados.get("numero_completo"):
+                            try:
+                                num = int(str(dados["numero_completo"]).split('/')[0])
+                                cur.execute("UPDATE common.pareceres_base SET numero_parecer_ano = %s WHERE id = %s", (num, registro_id))
+                            except: pass
+
+                        cur.execute("""
+                            UPDATE common.pareceres_base pb
+                            SET tipo_id = COALESCE((SELECT id FROM common.tipos WHERE contexto IN ('PARECER', 'DECISAO_PARECER') AND nome = %(decisao)s LIMIT 1), pb.tipo_id),
+                                criado_por_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), pb.criado_por_id),
+                                created_at = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), pb.created_at)
+                            FROM quadro_horario.pareceres p
+                            WHERE pb.id = p.id AND p.id = %(id)s
+                        """, {
+                            "id": registro_id,
+                            "decisao": dados.get("decisao"),
+                            "responsavel": dados.get("responsavel"),
+                            "data_criacao": dados.get("data_criacao")
+                        })
+
+                        # 2. Atualiza Parecer Especifico (Assunto, Evento, Origem, etc)
+                        cur.execute("""
+                            UPDATE quadro_horario.pareceres
+                            SET processo = COALESCE(%(processo)s, processo),
+                                assunto = COALESCE(%(assunto)s, assunto),
+                                solicitante = COALESCE(%(solicitante)s, solicitante),
+                                evento = COALESCE(%(evento)s, evento),
+                                data_evento = COALESCE(%(data_evento)s, data_evento),
+                                motivo_indeferimento = COALESCE(%(motivo)s, motivo_indeferimento),
+                                origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id)
+                            WHERE id = %(id)s
+                        """, {
+                            "id": registro_id,
+                            "processo": dados.get("processo"),
+                            "assunto": dados.get("assunto"),
+                            "solicitante": dados.get("solicitante"),
+                            "evento": dados.get("evento"),
+                            "data_evento": dados.get("data_evento"),
+                            "motivo": dados.get("motivo_indeferimento"),
+                            "origem": dados.get("origem")
+                        })
+                        
+                        # 3. Inteligência para atualização de Linhas Vinculadas
+                        if "linhas" in dados:
+                            str_linhas = dados["linhas"]
+                            cur.execute("DELETE FROM quadro_horario.pareceres_linhas WHERE parecer_id = %s", (registro_id,))
+                            codigos = [c.strip() for c in str_linhas.split(',') if c.strip()]
+                            for cod in codigos:
+                                cur.execute("""
+                                    INSERT INTO quadro_horario.pareceres_linhas (parecer_id, linha_id)
+                                    SELECT %s, id FROM common.linhas WHERE codigo = %s LIMIT 1
+                                """, (registro_id, cod))
+                                
+                    else: # PESQUISAS
+                        if "titulo" in dados:
+                            linha_codigo = str(dados["titulo"]).split(" - ")[0].strip()
+                            cur.execute("""
+                                UPDATE quadro_horario.pesquisas 
+                                SET linha_id = COALESCE((SELECT id FROM common.linhas WHERE codigo = %(codigo)s LIMIT 1), linha_id)
+                                WHERE id = %(id)s
+                            """, {"codigo": linha_codigo, "id": registro_id})
+
+                        cur.execute("""
+                            UPDATE quadro_horario.pesquisas
+                            SET tipo_pesquisa_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'PESQUISA' AND nome = %(tipo)s LIMIT 1), tipo_pesquisa_id),
+                                criado_por_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), criado_por_id),
+                                created_at = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), created_at)
+                            WHERE id = %(id)s
+                        """, {
+                            "id": registro_id,
+                            "tipo": dados.get("tipo"),
+                            "responsavel": dados.get("responsavel"),
+                            "data_criacao": dados.get("data_criacao")
+                        })
+                    conn.commit()
+            return True, "Registro atualizado com sucesso no banco de dados."
+        except Exception as e:
+            print(f"[LOG DB] Erro atualizar_registro Quadro Horario: {e}")
+            return False, "Erro ao atualizar registro. Verifique se as informações são válidas e tente novamente."
 
     def obter_linhas(self):
         try:
