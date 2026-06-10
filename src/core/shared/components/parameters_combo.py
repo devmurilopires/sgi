@@ -396,10 +396,18 @@ class CtkParametrosComboBox(ctk.CTkFrame):
         except Exception as e:
             print(f"Aviso: Não foi possível registrar o ouvinte: {e}")
 
-    def _on_atualizacao(self, _event=None) -> None:
+    def _on_atualizacao(self, event=None):
+        # Se o componente já foi destruído (ex: trocou de aba), cancela a atualização silenciosamente.
+        if not self.winfo_exists():
+            return 
+            
         self.atualizar_opcoes()
 
     def atualizar_opcoes(self) -> None:
+        # Verifica se o componente ainda está vivo na tela antes de consultar o banco
+        if not self.winfo_exists():
+            return
+
         try:
             valor_atual = self.get()
             dados = self._service.listar_parametros(self._routing)
@@ -417,5 +425,7 @@ class CtkParametrosComboBox(ctk.CTkFrame):
 
         except Exception as e:
             print(f"Erro ao carregar opções: {e}")
-            self._set_options(["Erro ao carregar"])
-            self.set("Erro ao carregar")
+            # BLINDAGEM 2: Verifica de novo antes de injetar texto de erro no componente
+            if self.winfo_exists():
+                self._set_options(["Erro ao carregar"])
+                self.set("Erro ao carregar")
