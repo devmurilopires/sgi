@@ -3,9 +3,6 @@
 import sys
 import os
 
-# =====================================================================
-# BLINDAGEM DE ESCOPO: Garante que o Python encontre a raiz 'src' e os submódulos
-# =====================================================================
 diretorio_atual = os.path.dirname(os.path.abspath(__file__))
 if diretorio_atual not in sys.path:
     sys.path.append(diretorio_atual)
@@ -19,28 +16,29 @@ from PIL import Image
 # 1. IMPORTS DA NOVA ARQUITETURA (DDD)
 # =====================================================================
 try:
+    # IMPORTS CORE (Essenciais para o funcionamento do sistema)
     from src.core.auth.view import LoginView
     from src.core.auth.service import AuthService
     from src.core.historico.view import renderizar as renderizar_historico
     from src.painel_geral.dashboard.view import renderizar as renderizar_dashboard_geral
-    
+    # --- IMPORTS: PONTO DE PARADA ---
     from src.modulos.ponto_parada.dashboard.view import renderizar as renderizar_dashboard_pp
     from src.modulos.ponto_parada.ordem_servico.view import renderizar as renderizar_os_pp
     from src.modulos.ponto_parada.parecer.view import renderizar as renderizar_parecer_pp
     from src.modulos.ponto_parada.relatorios.view import renderizar as renderizar_relatorios_pp
     from src.modulos.ponto_parada.enderecos.view import renderizar as renderizar_enderecos_pp
-    
+    # --- IMPORTS: ITINERÁRIO ---
     from src.modulos.itinerario.dashboard.view import renderizar as renderizar_dashboard_iti
     from src.modulos.itinerario.ordem_servico.view import renderizar as renderizar_os_iti
     from src.modulos.itinerario.parecer.view import renderizar as renderizar_parecer_iti
     from src.modulos.itinerario.relatorios.view import renderizar as renderizar_relatorios_iti
-    
+    # --- IMPORTS: QUADRO DE HORÁRIO ---
     from src.modulos.quadro_horario.dashboard.view import renderizar as renderizar_dashboard_qh
     from src.modulos.quadro_horario.parecer.view import renderizar as renderizar_parecer_qh
     from src.modulos.quadro_horario.pesquisas.view import renderizar as renderizar_pesquisas_qh
     from src.modulos.quadro_horario.relatorios.view import renderizar as renderizar_relatorios_qh
     
-    # --- NOVOS IMPORTS: PROJETOS DE MOBILIDADE ---
+    # --- IMPORTS: PROJETOS DE MOBILIDADE ---
     from src.modulos.projetos_mobilidade.dashboard.view import renderizar as renderizar_dashboard_pm
     from src.modulos.projetos_mobilidade.parecer.view import renderizar as renderizar_parecer_pm
     from src.modulos.projetos_mobilidade.relatorios.view import renderizar as renderizar_relatorios_pm
@@ -52,15 +50,15 @@ except ImportError as e:
     print("Core modules ou shared utils não encontrados. Fallback para resource_path básico.")
     def resource_path(path): return path
 
-# --- Definição de Cores Profissionais UI/UX (Clean Admin) ---
+# --- Definição de Cores UI/UX  ---
 COLOR_BG_CONTENT = "#F2F2F2"      
 COLOR_SIDEBAR = "#FFFFFF"         
-COLOR_ACCENT = "#0F8C75"          
+COLOR_PRIMARY = "#F15A22"          
 COLOR_TEXT_DARK = "#333333"       
 COLOR_TEXT_MUTED = "#888888"      
 COLOR_HOVER = "#E9ECEF"           
 
-# --- Definição de ÍCONES PNG UI/UX "Premium" ---
+# --- Definição de ÍCONES PNG UI/UX ---
 ICONS_PATH = "assets"
 SIZE_HEADER = (24, 24)
 SIZE_ITEM = (20, 20)
@@ -102,12 +100,12 @@ def iniciar_sistema(usuario_dados):
     except:
         app.geometry("1400x800")
 
-    # def fechar_sistema():
-    #     app.quit()
-    #     app.destroy()
-    #     sys.exit(0) # Força o Python a matar qualquer animação em segundo plano
+    def fechar_sistema():
+        app.quit()
+        app.destroy()
+        sys.exit(0) # Força o Python a matar qualquer animação em segundo plano
 
-    # app.protocol("WM_DELETE_WINDOW", fechar_sistema)
+    app.protocol("WM_DELETE_WINDOW", fechar_sistema)
 
     # =====================================================================
     # ESTILIZAÇÃO GLOBAL E TELA DE CARREGAMENTO
@@ -123,7 +121,7 @@ def iniciar_sistema(usuario_dados):
         img_logo_splash = ctk.CTkImage(Image.open(caminho_logo), size=(550, 550))
         ctk.CTkLabel(tela_carregamento, image=img_logo_splash, text="").pack(expand=True, pady=(120, 10))
     except:
-        ctk.CTkLabel(tela_carregamento, text="SGI | DIPLA", font=("Arial Black", 60), text_color=COLOR_ACCENT).pack(expand=True, pady=(120, 10))
+        ctk.CTkLabel(tela_carregamento, text="SGI | DIPLA", font=("Arial Black", 60), text_color=COLOR_PRIMARY).pack(expand=True, pady=(120, 10))
         
     ctk.CTkLabel(tela_carregamento, text="A organizar o ambiente de trabalho...\nPor favor, aguarde. ⏳", font=("Arial Bold", 20), text_color=COLOR_TEXT_MUTED, justify="center").pack(expand=True, pady=(0, 150))
     app.update()
@@ -208,7 +206,7 @@ def iniciar_sistema(usuario_dados):
         lbl_logo = ctk.CTkLabel(logo_center_container, image=img_logo, text="")
         lbl_logo.pack(anchor="center")
     except:
-        lbl_logo = ctk.CTkLabel(logo_center_container, text="E", font=("Arial Black", 30), text_color="white", fg_color=COLOR_ACCENT, corner_radius=35, width=70, height=70)
+        lbl_logo = ctk.CTkLabel(logo_center_container, text="E", font=("Arial Black", 30), text_color="white", fg_color=COLOR_PRIMARY, corner_radius=35, width=70, height=70)
         lbl_logo.pack(anchor="center")
 
     menu_scroll_frame = ctk.CTkScrollableFrame(sidebar_frame, fg_color="transparent", corner_radius=0)
@@ -345,7 +343,7 @@ def iniciar_sistema(usuario_dados):
 
         for frame, icon_widget, text_widget in botoes_ui:
             if chave_unica == frame.chave:
-                frame.configure(fg_color=COLOR_ACCENT)
+                frame.configure(fg_color=COLOR_PRIMARY)
                 icon_widget.configure(text_color="white")
                 text_widget.configure(text_color="white", font=("Arial Bold", 13))
             else:
