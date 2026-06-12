@@ -5,15 +5,11 @@ try:
 except ImportError:
     def resource_path(path): return path
 
-# Reutilizando a paleta de cores identificada no sistema
-COLOR_PRIMARY = "#0F8C75"       # Verde Principal
-COLOR_PRIMARY_HOVER = "#0B6B59" 
-COLOR_TEXT_LIGHT = "#FFFFFF"
-COLOR_BG_MENU = "#242424"       # Tom escuro para o menu lateral
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_TERTIARY, COLOR_QUATERNARY, COLOR_HOVER
 
 class SideMenu(ctk.CTkFrame):
     def __init__(self, master, user_data, on_menu_click, **kwargs):
-        super().__init__(master, corner_radius=0, fg_color=COLOR_BG_MENU, **kwargs)
+        super().__init__(master, corner_radius=0, fg_color=COLOR_BG, **kwargs)
         
         self.user_data = user_data
         self.on_menu_click = on_menu_click
@@ -37,7 +33,7 @@ class SideMenu(ctk.CTkFrame):
         # --- INFO USUÁRIO ---
         nome_user = self.user_data.get("nome", "Usuário")
         self.lbl_user = ctk.CTkLabel(self, text=f"Olá, {nome_user.split()[0]}", 
-                                    font=("Arial", 13, "bold"), text_color="#A0A0A0")
+                                    font=("Arial", 13, "bold"), text_color=COLOR_TEXT)
         self.lbl_user.grid(row=1, column=0, padx=20, pady=(0, 20))
 
         # --- BOTÕES DE NAVEGAÇÃO PADRÃO ---
@@ -50,12 +46,12 @@ class SideMenu(ctk.CTkFrame):
 
         # --- BOTÃO ADMIN (CONDICIONAL) ---
         if self.user_data.get("is_admin"):
-            self._criar_botao("Módulo Admin", "ADMIN", 7, fg_color="#333333", hover_color="#444444")
+            self._criar_botao("Módulo Admin", "ADMIN", 7, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER)
 
         # --- BOTÃO SAIR ---
         self.btn_sair = ctk.CTkButton(self, text="Sair do Sistema", fg_color="transparent", 
-                                     border_width=1, border_color="#555555",
-                                     hover_color="#333333", font=("Arial Bold", 13),
+                                     border_width=1, border_color=COLOR_TEXT,
+                                     hover_color=COLOR_HOVER, font=("Arial Bold", 13),
                                      command=lambda: self.on_menu_click("SAIR"))
         self.btn_sair.grid(row=8, column=0, padx=20, pady=20, sticky="ew")
 
@@ -63,8 +59,8 @@ class SideMenu(ctk.CTkFrame):
         """Helper para criar botões padronizados no menu."""
         style = {
             "fg_color": "transparent",
-            "text_color": COLOR_TEXT_LIGHT,
-            "hover_color": COLOR_PRIMARY_HOVER,
+            "text_color": COLOR_TEXT,
+            "hover_color": COLOR_HOVER,
             "anchor": "w",
             "font": ("Arial Bold", 14),
             "height": 45,
@@ -83,5 +79,5 @@ class SideMenu(ctk.CTkFrame):
             if k == key:
                 btn.configure(fg_color=COLOR_PRIMARY)
             else:
-                original_fg = "#333333" if k == "ADMIN" else "transparent"
+                original_fg = COLOR_SECONDARY if k == "ADMIN" else "transparent"
                 btn.configure(fg_color=original_fg)

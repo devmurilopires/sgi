@@ -1,7 +1,7 @@
 import tkinter as tk
 import customtkinter as ctk
 from src.modulos.admin.parametros.service import ParametrosService
-
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_TERTIARY, COLOR_QUATERNARY, COLOR_HOVER
 
 class CtkParametrosComboBox(ctk.CTkFrame):
     """
@@ -21,14 +21,14 @@ class CtkParametrosComboBox(ctk.CTkFrame):
         command=None,
         width=200,
         height=38,
-        fg_color="#FFFFFF",
-        border_color="#CCD9E8",
-        text_color="#2D3748",
+        fg_color=COLOR_WHITE,
+        border_color=COLOR_PRIMARY,
+        text_color=COLOR_TEXT,
         font=("Segoe UI", 12),
-        dropdown_fg_color="#FFFFFF",
-        dropdown_text_color="#4A5568",
-        dropdown_hover_color="#1982FC",
-        dropdown_hover_text_color="#FFFFFF",
+        dropdown_fg_color=COLOR_BG,
+        dropdown_text_color=COLOR_TEXT,
+        dropdown_hover_color=COLOR_PRIMARY,
+        dropdown_hover_text_color=COLOR_WHITE,
         dropdown_font=("Segoe UI", 10),
         max_visible_items=8,
         state="normal",
@@ -89,7 +89,7 @@ class CtkParametrosComboBox(ctk.CTkFrame):
             self,
             text=placeholder,
             font=font,
-            text_color="#A0AEC0",
+            text_color=COLOR_TEXT,
             anchor="w",
             cursor="hand2",
         )
@@ -99,7 +99,7 @@ class CtkParametrosComboBox(ctk.CTkFrame):
             self,
             text="▼",
             font=("Segoe UI", 10),
-            text_color="#718096",
+            text_color=COLOR_TEXT,
             width=30,
             cursor="hand2",
         )
@@ -139,7 +139,7 @@ class CtkParametrosComboBox(ctk.CTkFrame):
             self._label.configure(text=value, text_color=self._cfg["text_color"])
         elif not value or value == self._cfg["placeholder"]:
             self._label.configure(
-                text=self._cfg["placeholder"], text_color="#A0AEC0"
+                text=self._cfg["placeholder"], text_color=COLOR_TEXT
             )
         else:
             self._label.configure(text=value, text_color=self._cfg["text_color"])
