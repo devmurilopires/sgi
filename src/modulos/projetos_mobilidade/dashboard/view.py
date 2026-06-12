@@ -13,10 +13,7 @@ from tkinter import filedialog, messagebox
 from src.modulos.projetos_mobilidade.dashboard.service import DashboardPMService
 from src.modulos.projetos_mobilidade.dashboard.repository import DashboardPMRepository
 
-COLOR_PRIMARY = "#0F8C75"     # Verde
-COLOR_SECONDARY = "#F24822"   # Laranja
-COLOR_BG = "#FFFFFF"
-COLOR_CARD = "#FFFFFF"
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_BG, COLOR_WHITE, COLOR_HOVER, COLOR_TEXT, COLOR_SECONDARY
 
 class DashboardPMView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -34,7 +31,7 @@ class DashboardPMView(ctk.CTkFrame):
         self.atualizar_completo()
 
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color=COLOR_WHITE, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
         container.pack_propagate(False) 
         date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background=COLOR_PRIMARY, foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
@@ -42,29 +39,29 @@ class DashboardPMView(ctk.CTkFrame):
 
     def _construir_interface(self):
         # TOP BAR
-        topo = ctk.CTkFrame(self, fg_color=COLOR_CARD, height=70, corner_radius=0)
+        topo = ctk.CTkFrame(self, fg_color=COLOR_BG, height=70, corner_radius=0)
         topo.pack(fill="x", side="top")
         topo.pack_propagate(False)
 
         ctk.CTkLabel(topo, text="DASHBOARD ESTRATÉGICO | PROJETOS DE MOBILIDADE", font=("Arial Black", 18), text_color=COLOR_PRIMARY).pack(side="left", padx=20)
 
-        self.btn_exportar = ctk.CTkButton(topo, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color=COLOR_SECONDARY, width=120, height=35, command=self.abrir_popup_exportacao)
+        self.btn_exportar = ctk.CTkButton(topo, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color="#d41212", hover_color="#b40c0c", width=120, height=35, command=self.abrir_popup_exportacao)
         self.btn_exportar.pack(side="right", padx=10)
 
-        ctk.CTkButton(topo, text="🔄 Atualizar", font=("Arial Bold", 12), fg_color=COLOR_PRIMARY, width=100, height=35, command=self.atualizar_completo).pack(side="right", padx=20)
+        ctk.CTkButton(topo, text="🔄 Atualizar", font=("Arial Bold", 12), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, width=100, height=35, command=self.atualizar_completo).pack(side="right", padx=20)
 
-        self.btn_limpar_filtro = ctk.CTkButton(topo, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color="#777777", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", width=110, height=35, command=self.limpar_filtros_data)
+        self.btn_limpar_filtro = ctk.CTkButton(topo, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color=COLOR_PRIMARY, hover_color="#E9ECEF", border_width=1, border_color=COLOR_PRIMARY, width=110, height=35, command=self.limpar_filtros_data)
         self.btn_limpar_filtro.pack(side="right", padx=10)
 
         f_datas = ctk.CTkFrame(topo, fg_color="transparent")
         f_datas.pack(side="right", padx=10)
         
-        ctk.CTkLabel(f_datas, text="Período:", font=("Arial Bold", 12), text_color="#555555").pack(side="left", padx=5)
+        ctk.CTkLabel(f_datas, text="Período:", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(side="left", padx=5)
         w_ini, self.data_ini = self._criar_date_wrapper(f_datas, 110)
         self.data_ini.set_date(date(date.today().year, 1, 1))
         w_ini.pack(side="left", padx=2)
         
-        ctk.CTkLabel(f_datas, text="até", font=("Arial Bold", 12), text_color="#555555").pack(side="left", padx=5)
+        ctk.CTkLabel(f_datas, text="até", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(side="left", padx=5)
         w_fim, self.data_fim = self._criar_date_wrapper(f_datas, 110)
         w_fim.pack(side="left", padx=2)
 
@@ -112,15 +109,15 @@ class DashboardPMView(ctk.CTkFrame):
         self._renderizar_graficos()
 
     def _add_card(self, tit, val, cor):
-        c = ctk.CTkFrame(self.frame_cards, fg_color=COLOR_CARD, height=90, corner_radius=10, border_width=1, border_color="#E0E0E0")
+        c = ctk.CTkFrame(self.frame_cards, fg_color=COLOR_BG, height=90, corner_radius=10, border_width=1, border_color="#E0E0E0")
         c.pack(side="left", fill="x", expand=True, padx=8)
         c.pack_propagate(False)
         ctk.CTkFrame(c, fg_color=cor, width=6, corner_radius=10).pack(side="left", fill="y")
-        ctk.CTkLabel(c, text=tit, font=("Arial Bold", 11), text_color="#777777").pack(anchor="w", padx=15, pady=(4,0))
-        ctk.CTkLabel(c, text=str(val), font=("Arial Black", 18), text_color="#333333").pack(anchor="w", padx=15, pady=(0,2))
+        ctk.CTkLabel(c, text=tit, font=("Arial Bold", 11), text_color=COLOR_TEXT).pack(anchor="w", padx=15, pady=(4,0))
+        ctk.CTkLabel(c, text=str(val), font=("Arial Black", 18), text_color=COLOR_TEXT).pack(anchor="w", padx=15, pady=(0,2))
 
     def _criar_tabela_balanco(self, parent, titulo, headers, dados):
-        container = ctk.CTkFrame(parent, fg_color=COLOR_CARD, corner_radius=10, border_width=1, border_color="#E0E0E0")
+        container = ctk.CTkFrame(parent, fg_color=COLOR_BG, corner_radius=10, border_width=1, border_color="#E0E0E0")
         container.pack(fill="x", padx=8)
         ctk.CTkLabel(container, text=titulo, font=("Arial Bold", 14), text_color=COLOR_PRIMARY).pack(pady=10)
         
@@ -128,14 +125,14 @@ class DashboardPMView(ctk.CTkFrame):
         h_frame.pack(fill="x", padx=15, pady=5)
         for i, h in enumerate(headers):
             h_frame.columnconfigure(i, weight=1, uniform="col")
-            ctk.CTkLabel(h_frame, text=h, font=("Arial Bold", 11)).grid(row=0, column=i, pady=5, sticky="nsew")
+            ctk.CTkLabel(h_frame, text=h, font=("Arial Bold", 11), text_color=COLOR_TEXT).grid(row=0, column=i, pady=5, sticky="nsew")
 
         for r_idx, row in enumerate(dados):
             r_f = ctk.CTkFrame(container, fg_color="transparent")
             r_f.pack(fill="x", padx=15)
             for c_idx, v in enumerate(row):
                 r_f.columnconfigure(c_idx, weight=1, uniform="col")
-                ctk.CTkLabel(r_f, text=str(v), font=("Arial", 12)).grid(row=0, column=c_idx, pady=3, sticky="nsew")
+                ctk.CTkLabel(r_f, text=str(v), font=("Arial", 12), text_color=COLOR_TEXT).grid(row=0, column=c_idx, pady=3, sticky="nsew")
 
     def _renderizar_graficos(self):
         for w in self.frame_graficos.winfo_children(): w.destroy()
@@ -198,7 +195,7 @@ class DashboardPMView(ctk.CTkFrame):
         ax.spines['right'].set_visible(False)
         if eixo_int == 'y': ax.yaxis.set_major_locator(MaxNLocator(integer=True))
         else: ax.xaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.set_facecolor(COLOR_CARD)
+        ax.set_facecolor(COLOR_BG)
         ax.grid(axis=eixo_int, linestyle='--', alpha=0.3)
 
     # --- MÉTODOS DE EXPORTAÇÃO EXECUTIVA ---
@@ -242,7 +239,7 @@ class DashboardPMView(ctk.CTkFrame):
             defaultextension=".pdf",
             filetypes=[("PDF files", "*.pdf")],
             title="Salvar Relatório PDF",
-            initialfile="Relatorio_Executivo_Mobilidade.pdf"  # NOVO: Nome Fixo Estático
+            initialfile="Relatorio_Executivo_Mobilidade.pdf"  
         )
         if not filepath: return
 

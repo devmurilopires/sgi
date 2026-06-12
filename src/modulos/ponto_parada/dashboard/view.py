@@ -12,13 +12,7 @@ from tkinter import filedialog, messagebox
 from tkcalendar import DateEntry
 from src.modulos.ponto_parada.dashboard.service import DashboardService
 
-# --- Paleta de Cores Institucional ---
-COLOR_BG = "#F4F6F9"          
-COLOR_WHITE = "#FFFFFF"       
-COLOR_PRIMARY = "#0F8C75"     # Verde Petróleo
-COLOR_SECONDARY = "#F24822"   # Laranja/Vermelho
-COLOR_TEXT = "#333333"
-COLOR_TERTIARY = "#1F8CF2"    # Azul
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_TERTIARY, COLOR_QUATERNARY, COLOR_HOVER
 
 
 class DashboardView(ctk.CTkFrame):
@@ -39,9 +33,9 @@ class DashboardView(ctk.CTkFrame):
         self.atualizar_completo()
 
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
         container.pack_propagate(False) 
-        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background=COLOR_PRIMARY, foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
 
@@ -55,22 +49,22 @@ class DashboardView(ctk.CTkFrame):
         self.btn_exportar = ctk.CTkButton(frame_filtros, text="📄 Exportar Relatório", font=("Arial Bold", 13), fg_color="#DC3545", hover_color="#C82333", width=140, height=35, command=self._abrir_popup_exportacao)
         self.btn_exportar.pack(side="right", padx=15, pady=17)
 
-        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔄 ATUALIZAR", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color="#0B6B59", width=110, height=35, command=self.atualizar_completo)
+        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔄 ATUALIZAR", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, width=110, height=35, command=self.atualizar_completo)
         self.btn_filtrar.pack(side="right", padx=(20, 5), pady=17)
 
-        self.btn_limpar_filtro = ctk.CTkButton(frame_filtros, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color="#777777", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", width=110, height=35, command=self.limpar_filtros_data)
+        self.btn_limpar_filtro = ctk.CTkButton(frame_filtros, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color=COLOR_PRIMARY, hover_color="#E9ECEF", border_width=1, border_color=COLOR_PRIMARY, width=110, height=35, command=self.limpar_filtros_data)
         self.btn_limpar_filtro.pack(side="right", padx=10)  
 
         datas_frame = ctk.CTkFrame(frame_filtros, fg_color="transparent")
         datas_frame.pack(side="right", padx=10, pady=17)
 
-        ctk.CTkLabel(datas_frame, text="Período:", text_color="#555", font=("Arial Bold", 13)).pack(side="left", padx=(0, 5))
+        ctk.CTkLabel(datas_frame, text="Período:", text_color=COLOR_TEXT, font=("Arial Bold", 13)).pack(side="left", padx=(0, 5))
         
         wrapper_ini, self.data_inicio = self._criar_date_wrapper(datas_frame, 120)
         self.data_inicio.set_date(date(date.today().year, 1, 1))
         wrapper_ini.pack(side="left", padx=2)
 
-        ctk.CTkLabel(datas_frame, text="à", text_color="#555", font=("Arial Bold", 12)).pack(side="left", padx=5)
+        ctk.CTkLabel(datas_frame, text="à", text_color=COLOR_TEXT, font=("Arial Bold", 12)).pack(side="left", padx=5)
 
         wrapper_fim, self.data_fim = self._criar_date_wrapper(datas_frame, 120)
         wrapper_fim.pack(side="left", padx=2)
@@ -112,11 +106,11 @@ class DashboardView(ctk.CTkFrame):
         header = ctk.CTkFrame(popup, fg_color="transparent")
         header.pack(side="top", fill="x", pady=(20, 5))
         ctk.CTkLabel(header, text="Configuração Estrutural do PDF", font=("Arial Black", 16), text_color=COLOR_PRIMARY).pack()
-        ctk.CTkLabel(header, text="Selecione os componentes de dados e gráficos para montar o relatório.", font=("Arial", 12), text_color="#555").pack()
+        ctk.CTkLabel(header, text="Selecione os componentes de dados e gráficos para montar o relatório.", font=("Arial", 12), text_color=COLOR_TEXT).pack()
 
         footer = ctk.CTkFrame(popup, fg_color="transparent")
         footer.pack(side="bottom", fill="x", pady=20, padx=20)
-        ctk.CTkButton(footer, text="⬇️ GERAR RELATÓRIO PDF", fg_color=COLOR_PRIMARY, hover_color="#0B6B59", font=("Arial Black", 14), height=45, command=lambda: self._iniciar_geracao_pdf(popup)).pack(fill="x")
+        ctk.CTkButton(footer, text="⬇️ GERAR RELATÓRIO PDF", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial Black", 14), height=45, command=lambda: self._iniciar_geracao_pdf(popup)).pack(fill="x")
 
         self.vars_export = {
             "tabela_resumo": ctk.BooleanVar(value=True),
@@ -251,7 +245,7 @@ class DashboardView(ctk.CTkFrame):
         barra.pack(side="left", fill="y")
         conteudo = ctk.CTkFrame(card, fg_color="transparent")
         conteudo.pack(side="left", fill="both", expand=True, padx=15, pady=10)
-        ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 13), text_color="#777777").pack(anchor="w")
+        ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 13), text_color=COLOR_TEXT).pack(anchor="w")
         linha_valor = ctk.CTkFrame(conteudo, fg_color="transparent")
         linha_valor.pack(fill="x", expand=True)
         ctk.CTkLabel(linha_valor, text=valor, font=("Arial Black", 32), text_color=COLOR_TEXT).pack(side="left", pady=(5,0))
@@ -266,7 +260,7 @@ class DashboardView(ctk.CTkFrame):
         df_corpo = df_resumo.iloc[:-1]
         linha_total = df_resumo.iloc[-1]
 
-        container = ctk.CTkFrame(self.frame_tabela, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E0E0E0")
+        container = ctk.CTkFrame(self.frame_tabela, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color=COLOR_PRIMARY)
         container.pack(fill="x", padx=5)
 
         header_frame = ctk.CTkFrame(container, fg_color=COLOR_PRIMARY, corner_radius=6, height=35)
@@ -283,15 +277,15 @@ class DashboardView(ctk.CTkFrame):
                 largura = 280 if i == 0 else 50
                 val = row[col]
                 texto_val = str(val) if i == 0 else (str(int(val)) if val > 0 and val == int(val) else str(val) if val > 0 else "-")
-                ctk.CTkLabel(row_frame, text=texto_val, font=("Arial Bold" if col=="TOTAL" else "Arial", 11), text_color="#000" if col=="TOTAL" else "#333", anchor="w" if i==0 else "center", width=largura).pack(side="left", fill="x", expand=True, padx=(10 if i==0 else 1))
+                ctk.CTkLabel(row_frame, text=texto_val, font=("Arial Bold" if col=="TOTAL" else "Arial", 11), text_color=COLOR_TEXT if col=="TOTAL" else "#333", anchor="w" if i==0 else "center", width=largura).pack(side="left", fill="x", expand=True, padx=(10 if i==0 else 1))
 
-        total_frame = ctk.CTkFrame(container, fg_color="#E0E4E8", corner_radius=0, height=35)
+        total_frame = ctk.CTkFrame(container, fg_color=COLOR_PRIMARY, corner_radius=0, height=35)
         total_frame.pack(fill="x", padx=2, pady=(0, 2))
         for i, col in enumerate(df_resumo.columns):
             largura = 280 if i == 0 else 50
             val = linha_total[col]
             texto_val = str(val) if i == 0 else (str(int(val)) if val == int(val) else str(val))
-            ctk.CTkLabel(total_frame, text=texto_val, font=("Arial Black", 12), text_color=COLOR_PRIMARY, anchor="w" if i==0 else "center", width=largura).pack(side="left", fill="x", expand=True, padx=(10 if i==0 else 1))
+            ctk.CTkLabel(total_frame, text=texto_val, font=("Arial Black", 12), text_color=COLOR_WHITE, anchor="w" if i==0 else "center", width=largura).pack(side="left", fill="x", expand=True, padx=(10 if i==0 else 1))
 
     def atualizar_completo(self):
         self.df_os_raw, self.df_par_raw = self.service.carregar_dados_brutos()
@@ -308,10 +302,10 @@ class DashboardView(ctk.CTkFrame):
         c_os, c_par, c_def, c_indef = self.service.calcular_kpis(self.df_os_f, self.df_par_f)
         
         self.frame_kpis.columnconfigure((0,1,2,3), weight=1)
-        self.criar_card(self.frame_kpis, "TOTAL DE ORDENS (OS)", f"{c_os}", COLOR_PRIMARY, "📋").grid(row=0, column=0, padx=8, sticky="ew")
-        self.criar_card(self.frame_kpis, "TOTAL DE PARECERES", f"{c_par}", COLOR_SECONDARY, "📝").grid(row=0, column=1, padx=8, sticky="ew")
+        self.criar_card(self.frame_kpis, "TOTAL DE ORDENS (OS)", f"{c_os}", COLOR_TEXT, "📋").grid(row=0, column=0, padx=8, sticky="ew")
+        self.criar_card(self.frame_kpis, "TOTAL DE PARECERES", f"{c_par}", COLOR_PRIMARY, "📝").grid(row=0, column=1, padx=8, sticky="ew")
         self.criar_card(self.frame_kpis, "PARECERES DEFERIDOS", f"{c_def}", COLOR_PRIMARY, "✅").grid(row=0, column=2, padx=8, sticky="ew")
-        self.criar_card(self.frame_kpis, "PARECERES INDEFERIDOS", f"{c_indef}", COLOR_SECONDARY, "❌").grid(row=0, column=3, padx=8, sticky="ew")
+        self.criar_card(self.frame_kpis, "PARECERES INDEFERIDOS", f"{c_indef}", COLOR_PRIMARY, "❌").grid(row=0, column=3, padx=8, sticky="ew")
 
         self._desenhar_tabela_tela(self.df_os_f)
         self._renderizar_graficos_tela()
@@ -432,17 +426,37 @@ class DashboardView(ctk.CTkFrame):
                 ax.text(0.5, 0.5, "Sem dados", ha='center')
                 return
             cores_grafico = [cores_map.get(str(x).upper(), "#999999") for x in labels]
-            formato_rotulo = lambda p: f'{int(round(p * sum(values) / 100))}\n({p:.1f}%)'
-            ax.pie(values, labels=labels, autopct=formato_rotulo, startangle=90, colors=cores_grafico, textprops={'fontsize': 9, 'fontweight': 'bold'}, wedgeprops=dict(width=0.4, edgecolor='w'))
+            
+            # LÓGICA INTELIGENTE: Oculta o texto de fatias pequenas (< 5%) no anel
+            def formato_rotulo(p):
+                val = int(round(p * sum(values) / 100))
+                return f'{val}\n({p:.1f}%)' if p >= 5 else ''
+
+            # Removido o 'labels=labels' para limpar a confusão visual em volta do gráfico
+            wedges, texts, autotexts = ax.pie(
+                values, 
+                autopct=formato_rotulo, 
+                startangle=140, # Gira o gráfico para os fatias pequenas não ficarem no topo
+                colors=cores_grafico, 
+                pctdistance=0.80, # Centraliza bem os números no meio da cor
+                textprops={'fontsize': 9, 'fontweight': 'bold', 'color': '#333333'}, 
+                wedgeprops=dict(width=0.4, edgecolor='w', linewidth=1.5)
+            )
+            
+            # Adiciona a Legenda Lateral Elegante para não perdermos nenhum dado
+            legendas = [f"{l}: {v} ({(v/sum(values))*100:.1f}%)" for l, v in zip(labels, values)]
+            ax.legend(wedges, legendas, loc="lower left", bbox_to_anchor=(-0.1, -0.25), frameon=False, fontsize=9)
+            
             ax.set_title(titulo, fontsize=11, fontweight='bold', color=COLOR_TEXT, pad=10)
 
+        # -- MAPEAMENTO DOS GRÁFICOS (MANTIDO INTACTO) --
         if tipo == "g1": desenhar_barras_vert(d["meses"], d["g1_val"], COLOR_PRIMARY, "Evolução Mensal de OS")
         elif tipo == "g2": desenhar_barras_vert(d["meses"], d["g2_val"], COLOR_SECONDARY, "Evolução Mensal de Pareceres")
         elif tipo == "g3": desenhar_barras_horiz(d["g3_labels"], d["g3_val"], COLOR_PRIMARY, "Top 8 Bairros com Mais OS")
         elif tipo == "g4": desenhar_barras_horiz(d["g4_labels"], d["g4_val"], COLOR_SECONDARY, "Top 8 Solicitantes (Pareceres)")
         
         elif tipo == "g5": 
-            c_map = {"CONCLUÍDA": COLOR_PRIMARY, "PENDENTE": COLOR_SECONDARY, "NÃO AUTORIZADA": COLOR_TERTIARY}
+            c_map = {"CONCLUIDA": COLOR_PRIMARY, "PENDENTE": COLOR_SECONDARY,"REENVIADA": COLOR_QUATERNARY, "NÃO AUTORIZADA": COLOR_TERTIARY}
             desenhar_pizza(d["g5_labels"], d["g5_val"], c_map, "Status das Ordens de Serviço")
         elif tipo == "g6": 
             c_map = {"DEFERIDO": COLOR_PRIMARY, "INDEFERIDO": COLOR_SECONDARY}

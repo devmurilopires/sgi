@@ -11,13 +11,7 @@ from tkinter import filedialog, messagebox
 from tkcalendar import DateEntry
 from src.modulos.itinerario.dashboard.service import DashboardItinerarioService
 from src.modulos.itinerario.dashboard.repository import DashboardItinerarioRepository
-
-COLOR_PRIMARY = "#0F8C75"     
-COLOR_SECONDARY = "#F24822"   
-COLOR_BG = "#FFFFFF"          
-COLOR_CARD_BG = "#FFFFFF"     
-COLOR_TEXT = "#333333"
-
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE,COLOR_HOVER
 class DashboardItinerarioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
         super().__init__(master, fg_color=COLOR_BG)
@@ -35,14 +29,14 @@ class DashboardItinerarioView(ctk.CTkFrame):
         self.atualizar_completo()
 
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color=COLOR_WHITE, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
         container.pack_propagate(False) 
-        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background=COLOR_PRIMARY, foreground="white", borderwidth=0, bordercolor=COLOR_PRIMARY, fieldbackground=COLOR_WHITE, arrowcolor=COLOR_WHITE)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
 
     def _construir_interface(self):
-        frame_topo = ctk.CTkFrame(self, fg_color=COLOR_CARD_BG, height=70, corner_radius=0)
+        frame_topo = ctk.CTkFrame(self, fg_color=COLOR_BG, height=70, corner_radius=0)
         frame_topo.pack(fill="x", side="top")
         frame_topo.pack_propagate(False)
         
@@ -51,21 +45,21 @@ class DashboardItinerarioView(ctk.CTkFrame):
         self.btn_exportar = ctk.CTkButton(frame_topo, text="📄 Exportar Relatório", font=("Arial Bold", 13), fg_color="#DC3545", hover_color="#C82333", width=140, height=35, command=self._abrir_popup_exportacao)
         self.btn_exportar.pack(side="right", padx=15, pady=17)
 
-        ctk.CTkButton(frame_topo, text="🔄 Atualizar", fg_color=COLOR_PRIMARY, font=("Arial Bold", 13), width=100, height=35, command=self.atualizar_completo).pack(side="right", padx=10)
+        ctk.CTkButton(frame_topo, text="🔄 Atualizar", fg_color=COLOR_PRIMARY, font=("Arial Bold", 13), width=100, height=35, hover_color=COLOR_HOVER, command=self.atualizar_completo).pack(side="right", padx=10)
         
-        self.btn_limpar_filtro = ctk.CTkButton(frame_topo, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color="#777777", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", width=110, height=35, command=self.limpar_filtros_data)
+        self.btn_limpar_filtro = ctk.CTkButton(frame_topo, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color=COLOR_PRIMARY, hover_color="#E9ECEF", border_width=1, border_color=COLOR_PRIMARY, width=110, height=35, command=self.limpar_filtros_data)
         self.btn_limpar_filtro.pack(side="right", padx=10)
 
         datas_frame = ctk.CTkFrame(frame_topo, fg_color="transparent")
         datas_frame.pack(side="right", padx=10, pady=17)
 
-        ctk.CTkLabel(datas_frame, text="Período:", text_color="#555", font=("Arial Bold", 13)).pack(side="left", padx=(0, 5))
+        ctk.CTkLabel(datas_frame, text="Período:", text_color=COLOR_TEXT, font=("Arial Bold", 13)).pack(side="left", padx=(0, 5))
         
         wrapper_ini, self.data_inicio = self._criar_date_wrapper(datas_frame, 120)
         self.data_inicio.set_date(date(date.today().year, 1, 1))
         wrapper_ini.pack(side="left", padx=2)
 
-        ctk.CTkLabel(datas_frame, text="à", text_color="#555", font=("Arial Bold", 12)).pack(side="left", padx=5)
+        ctk.CTkLabel(datas_frame, text="à", text_color=COLOR_TEXT, font=("Arial Bold", 12)).pack(side="left", padx=5)
 
         wrapper_fim, self.data_fim = self._criar_date_wrapper(datas_frame, 120)
         wrapper_fim.pack(side="left", padx=2)
@@ -108,12 +102,12 @@ class DashboardItinerarioView(ctk.CTkFrame):
         header = ctk.CTkFrame(popup, fg_color="transparent")
         header.pack(side="top", fill="x", pady=(20, 5))
         ctk.CTkLabel(header, text="Configuração Estrutural do PDF", font=("Arial Black", 16), text_color=COLOR_PRIMARY).pack()
-        ctk.CTkLabel(header, text="Selecione minuciosamente os blocos que deseja exportar.", font=("Arial", 12), text_color="#555").pack()
+        ctk.CTkLabel(header, text="Selecione minuciosamente os blocos que deseja exportar.", font=("Arial", 12), text_color=COLOR_TEXT).pack()
 
         # 2. RODAPÉ FIXO (Garante que o botão nunca saia do ecrã)
         footer = ctk.CTkFrame(popup, fg_color="transparent")
         footer.pack(side="bottom", fill="x", pady=20, padx=20)
-        ctk.CTkButton(footer, text="⬇️ GERAR RELATÓRIO PDF", fg_color=COLOR_PRIMARY, hover_color="#0B6B59", font=("Arial Black", 14), height=45, command=lambda: self._iniciar_geracao_pdf(popup)).pack(fill="x")
+        ctk.CTkButton(footer, text="⬇️ GERAR RELATÓRIO PDF", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial Black", 14), height=45, command=lambda: self._iniciar_geracao_pdf(popup)).pack(fill="x")
 
         # 3. VARIÁVEIS
         self.vars_export = {
@@ -188,14 +182,14 @@ class DashboardItinerarioView(ctk.CTkFrame):
     # NÚCLEO DE DADOS E RENDERIZAÇÃO
     # =====================================================================
     def criar_tabela(self, parent, titulo, headers, dados):
-        container = ctk.CTkFrame(parent, fg_color=COLOR_CARD_BG, corner_radius=10, border_width=1, border_color="#E0E0E0")
+        container = ctk.CTkFrame(parent, fg_color=COLOR_BG, corner_radius=10, border_width=1, border_color="#E0E0E0")
         container.pack(side="left", fill="both", expand=True, padx=8)
         ctk.CTkLabel(container, text=titulo, font=("Arial Bold", 13), text_color=COLOR_PRIMARY).pack(pady=5)
         h_frame = ctk.CTkFrame(container, fg_color="#F1F3F5", height=35, corner_radius=6)
         h_frame.pack(fill="x", padx=10, pady=(0, 5))
         for i, h in enumerate(headers):
             h_frame.columnconfigure(i, weight=1)
-            ctk.CTkLabel(h_frame, text=h, font=("Arial Bold", 11), text_color="#555").grid(row=0, column=i, pady=5)
+            ctk.CTkLabel(h_frame, text=h, font=("Arial Bold", 11), text_color=COLOR_TEXT).grid(row=0, column=i, pady=5)
         for row in dados:
             r_frame = ctk.CTkFrame(container, fg_color="transparent", height=30)
             r_frame.pack(fill="x", padx=10)
@@ -220,18 +214,18 @@ class DashboardItinerarioView(ctk.CTkFrame):
         except: c_os, c_par, c_def, c_indef = 0, 0, 0, 0
         
         def add_card(titulo, valor, cor):
-            card = ctk.CTkFrame(self.frame_cards, fg_color=COLOR_CARD_BG, height=80, corner_radius=8, border_width=1, border_color="#E0E0E0")
+            card = ctk.CTkFrame(self.frame_cards, fg_color=COLOR_BG, height=80, corner_radius=8, border_width=1, border_color="#E0E0E0")
             card.pack(side="left", fill="x", expand=True, padx=8)
             ctk.CTkFrame(card, fg_color=cor, width=6, height=60, corner_radius=8).pack(side="left", fill="y")
             conteudo = ctk.CTkFrame(card, fg_color="transparent")
             conteudo.pack(side="left", fill="both", expand=True, padx=15, pady=10)
-            ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 11), text_color="#777777").pack(anchor="w")
+            ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 11), text_color=COLOR_TEXT).pack(anchor="w")
             ctk.CTkLabel(conteudo, text=str(valor), font=("Arial Black", 24), text_color=COLOR_TEXT).pack(anchor="w")
 
         add_card("TOTAL OS", c_os, COLOR_TEXT)
         add_card("TOTAL PARECERES", c_par, COLOR_PRIMARY)
-        add_card("DEFERIDOS", c_def, "#28A745")
-        add_card("INDEFERIDOS", c_indef, COLOR_SECONDARY)
+        add_card("DEFERIDOS", c_def, COLOR_PRIMARY)
+        add_card("INDEFERIDOS", c_indef, COLOR_PRIMARY)
 
         for w in self.frame_tabelas.winfo_children(): w.destroy()
         try:
@@ -287,7 +281,7 @@ class DashboardItinerarioView(ctk.CTkFrame):
         ax.spines['bottom'].set_color('#DDDDDD')
         ax.tick_params(colors='#555555', labelsize=8)
         ax.grid(axis='x', linestyle='--', alpha=0.3, color='#DDDDDD') 
-        ax.set_facecolor(COLOR_CARD_BG)
+        ax.set_facecolor(COLOR_BG)
 
     def _desenhar_grafico(self, ax, tipo):
         d = self.dados_graficos_cache
@@ -386,8 +380,8 @@ class DashboardItinerarioView(ctk.CTkFrame):
         canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def _gerar_grafico_standalone(self, tipo):
-        fig, ax = plt.subplots(figsize=(8, 4.5), facecolor=COLOR_CARD_BG)
-        fig.patch.set_facecolor(COLOR_CARD_BG)
+        fig, ax = plt.subplots(figsize=(8, 4.5), facecolor=COLOR_BG)
+        fig.patch.set_facecolor(COLOR_BG)
         
         self._desenhar_grafico(ax, tipo)
         

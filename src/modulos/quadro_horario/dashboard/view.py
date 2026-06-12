@@ -12,11 +12,7 @@ from tkinter import filedialog, messagebox
 from tkcalendar import DateEntry
 from src.modulos.quadro_horario.dashboard.service import DashboardQuadroHorarioService
 
-COLOR_BG = "#F4F6F9"          
-COLOR_WHITE = "#FFFFFF"       
-COLOR_PRIMARY = "#0F8C75"     
-COLOR_SECONDARY = "#F24822"   
-COLOR_TEXT = "#333333"
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_HOVER
 
 class DashboardQuadroHorarioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -35,14 +31,14 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
         self.atualizar_completo()
 
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color=COLOR_WHITE, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
         container.pack_propagate(False) 
-        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background=COLOR_PRIMARY, foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
 
     def _construir_interface(self):
-        frame_filtros = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=0, height=70)
+        frame_filtros = ctk.CTkFrame(self, fg_color=COLOR_WHITE, corner_radius=0, height=70)
         frame_filtros.pack(fill="x", side="top")
         frame_filtros.pack_propagate(False)
 
@@ -51,22 +47,22 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
         self.btn_exportar = ctk.CTkButton(frame_filtros, text="📄 Exportar Relatório", font=("Arial Bold", 13), fg_color="#DC3545", hover_color="#C82333", width=140, height=35, command=self._abrir_popup_exportacao)
         self.btn_exportar.pack(side="right", padx=15, pady=17)
 
-        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔄 ATUALIZAR", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color="#0B6B59", width=110, height=35, command=self.atualizar_completo)
+        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔄 ATUALIZAR", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, width=110, height=35, command=self.atualizar_completo)
         self.btn_filtrar.pack(side="right", padx=(20, 5), pady=17)
 
-        self.btn_limpar_filtro = ctk.CTkButton(frame_filtros, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color="#777777", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", width=110, height=35, command=self.limpar_filtros_data)
+        self.btn_limpar_filtro = ctk.CTkButton(frame_filtros, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color=COLOR_PRIMARY, hover_color="#E9ECEF" ,border_width=1, border_color=COLOR_PRIMARY, width=110, height=35, command=self.limpar_filtros_data)
         self.btn_limpar_filtro.pack(side="right", padx=10)  
 
         datas_frame = ctk.CTkFrame(frame_filtros, fg_color="transparent")
         datas_frame.pack(side="right", padx=10, pady=17)
 
-        ctk.CTkLabel(datas_frame, text="Período:", text_color="#555", font=("Arial Bold", 13)).pack(side="left", padx=(0, 5))
+        ctk.CTkLabel(datas_frame, text="Período:", text_color=COLOR_TEXT, font=("Arial Bold", 13)).pack(side="left", padx=(0, 5))
         
         wrapper_ini, self.data_inicio = self._criar_date_wrapper(datas_frame, 120)
         self.data_inicio.set_date(date(date.today().year, 1, 1))
         wrapper_ini.pack(side="left", padx=2)
 
-        ctk.CTkLabel(datas_frame, text="à", text_color="#555", font=("Arial Bold", 12)).pack(side="left", padx=5)
+        ctk.CTkLabel(datas_frame, text="à", text_color=COLOR_TEXT, font=("Arial Bold", 12)).pack(side="left", padx=5)
 
         wrapper_fim, self.data_fim = self._criar_date_wrapper(datas_frame, 120)
         wrapper_fim.pack(side="left", padx=2)
@@ -84,17 +80,11 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
         self.frame_graficos.pack(fill="both", expand=True, pady=10)
 
     def limpar_filtros_data(self):
-        """Reseta as datas para o padrão (início do ano até hoje) e reaplica os filtros."""
         hoje = date.today()
         primeiro_dia_ano = date(hoje.year, 1, 1)
-        
-        # Reseta os calendários
         self.data_inicio.set_date(primeiro_dia_ano)
         self.data_fim.set_date(hoje)
-        
-        # Chama a função que atualiza os gráficos
         self.atualizar_completo()
-
 
     # =====================================================================
     # EXPORTAÇÃO PDF E POPUP
@@ -112,7 +102,7 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
 
         footer = ctk.CTkFrame(popup, fg_color="transparent")
         footer.pack(side="bottom", fill="x", pady=20, padx=20)
-        ctk.CTkButton(footer, text="⬇️ GERAR RELATÓRIO PDF", fg_color=COLOR_PRIMARY, hover_color="#0B6B59", font=("Arial Black", 14), height=45, command=lambda: self._iniciar_geracao_pdf(popup)).pack(fill="x")
+        ctk.CTkButton(footer, text="⬇️ GERAR RELATÓRIO PDF", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial Black", 14), height=45, command=lambda: self._iniciar_geracao_pdf(popup)).pack(fill="x")
 
         self.vars_export = {
             "tabela_resumo": ctk.BooleanVar(value=True),
@@ -149,7 +139,9 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
         ctk.CTkLabel(scroll_checks, text="🛠️ Natureza e Conversão", font=("Arial Bold", 13), text_color=COLOR_PRIMARY).pack(anchor="w", padx=10, pady=(5, 5))
         ctk.CTkCheckBox(scroll_checks, text="Gráfico: Taxa de Aprovação (Pareceres)", variable=self.vars_export["g5"], font=("Arial", 12)).pack(**pad_opt, pady=4)
         ctk.CTkCheckBox(scroll_checks, text="Gráfico: Proporção de Tipos de Pesquisa", variable=self.vars_export["g6"], font=("Arial", 12)).pack(**pad_opt, pady=4)
-        ctk.CTkCheckBox(scroll_checks, text="Gráfico: Natureza da Afetação (Eventos vs Linhas)", variable=self.vars_export["g8"], font=("Arial", 12)).pack(**pad_opt, pady=4)
+        
+        # ATUALIZADO A DESCRIÇÃO DO G8 NA INTERFACE
+        ctk.CTkCheckBox(scroll_checks, text="Gráfico: Origem da Demanda (SPU vs SISGEP)", variable=self.vars_export["g8"], font=("Arial", 12)).pack(**pad_opt, pady=4)
 
         ctk.CTkFrame(scroll_checks, height=1, fg_color="#DDDDDD").pack(fill="x", padx=15, pady=10)
 
@@ -195,7 +187,7 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
         barra.pack(side="left", fill="y")
         conteudo = ctk.CTkFrame(card, fg_color="transparent")
         conteudo.pack(side="left", fill="both", expand=True, padx=15, pady=10)
-        ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 13), text_color="#777777").pack(anchor="w")
+        ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 13), text_color=COLOR_TEXT).pack(anchor="w")
         linha_valor = ctk.CTkFrame(conteudo, fg_color="transparent")
         linha_valor.pack(fill="x", expand=True)
         ctk.CTkLabel(linha_valor, text=valor, font=("Arial Black", 32), text_color=COLOR_TEXT).pack(side="left", pady=(5,0))
@@ -217,10 +209,10 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
         c_par, c_pesq, c_def, c_indef = self.service.calcular_kpis(self.df_par_f, self.df_pesq_f)
         
         self.frame_kpis.columnconfigure((0,1,2,3), weight=1)
+        self.criar_card(self.frame_kpis, "TOTAL DE PESQUISAS", f"{c_pesq}", COLOR_TEXT, "📊").grid(row=0, column=1, padx=8, sticky="ew")
         self.criar_card(self.frame_kpis, "TOTAL DE PARECERES", f"{c_par}", COLOR_PRIMARY, "📝").grid(row=0, column=0, padx=8, sticky="ew")
-        self.criar_card(self.frame_kpis, "TOTAL DE PESQUISAS", f"{c_pesq}", COLOR_PRIMARY, "📊").grid(row=0, column=1, padx=8, sticky="ew")
-        self.criar_card(self.frame_kpis, "PARECERES DEFERIDOS", f"{c_def}", "#28A745", "✅").grid(row=0, column=2, padx=8, sticky="ew")
-        self.criar_card(self.frame_kpis, "PARECERES INDEFERIDOS", f"{c_indef}", COLOR_SECONDARY, "❌").grid(row=0, column=3, padx=8, sticky="ew")
+        self.criar_card(self.frame_kpis, "PARECERES DEFERIDOS", f"{c_def}", COLOR_PRIMARY, "✅").grid(row=0, column=2, padx=8, sticky="ew")
+        self.criar_card(self.frame_kpis, "PARECERES INDEFERIDOS", f"{c_indef}", COLOR_PRIMARY, "❌").grid(row=0, column=3, padx=8, sticky="ew")
 
         # Tabela na tela
         for w in self.frame_tabela.winfo_children(): w.destroy()
@@ -235,7 +227,7 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
         headers = ["Mês", "Pareceres Deferidos", "Pareceres Indeferidos", "Pesquisas (Tempo)", "Pesquisas (Demanda)", "Total Geral"]
         for i, h in enumerate(headers):
             h_frame.columnconfigure(i, weight=1)
-            ctk.CTkLabel(h_frame, text=h, font=("Arial Bold", 11), text_color="#555").grid(row=0, column=i, pady=5)
+            ctk.CTkLabel(h_frame, text=h, font=("Arial Bold", 11), text_color=COLOR_TEXT).grid(row=0, column=i, pady=5)
             
         for row in tabela_dados:
             r_frame = ctk.CTkFrame(container, fg_color="transparent", height=30)
@@ -293,13 +285,13 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
             d["g7_val"] = counts.values
         else: d["g7_labels"], d["g7_val"] = [], []
 
-        # Natureza Afetação (Parecer)
-        eventos = 0; linhas = 0
-        if not self.df_par_f.empty:
-            eventos = self.df_par_f[self.df_par_f['evento'].notna() & (self.df_par_f['evento'] != '')].shape[0]
-            linhas = self.df_par_f[self.df_par_f['linhas_afetadas'].notna() & (self.df_par_f['linhas_afetadas'] != '')].shape[0]
-        d["g8_labels"] = ["Eventos Urbanos", "Intervenção Direta na Linha"] if eventos > 0 or linhas > 0 else []
-        d["g8_val"] = [eventos, linhas] if eventos > 0 or linhas > 0 else []
+        # NOVA LÓGICA DO G8: Origem da Demanda (SPU vs SISGEP) em gráfico de colunas
+        if not self.df_par_f.empty and 'origem' in self.df_par_f.columns:
+            counts = self.df_par_f['origem'].replace("", "NÃO INFORMADO").fillna("NÃO INFORMADO").value_counts()
+            d["g8_labels"] = [str(nome).upper() for nome in counts.index]
+            d["g8_val"] = counts.values
+        else:
+            d["g8_labels"], d["g8_val"] = [], []
 
         # Produtividade Equipa
         s_par = self.df_par_f['criado_por'].value_counts() if not self.df_par_f.empty else pd.Series(dtype=int)
@@ -374,9 +366,10 @@ class DashboardQuadroHorarioView(ctk.CTkFrame):
             desenhar_pizza([str(x).upper() for x in d["g6_labels"]], d["g6_val"], c_map, "Proporção de Tipos de Pesquisa")
             
         elif tipo == "g7": desenhar_barras_vert(d["g7_labels"], d["g7_val"], COLOR_PRIMARY, "Linhas Mais Pesquisadas")
+        
+        # MUDANÇA NA RENDERIZAÇÃO DO G8 PARA GRÁFICO DE COLUNAS (Barras Verticais)
         elif tipo == "g8": 
-            c_map = {"EVENTOS URBANOS": COLOR_PRIMARY, "INTERVENÇÃO DIRETA NA LINHA": COLOR_SECONDARY}
-            desenhar_pizza(d["g8_labels"], d["g8_val"], c_map, "Natureza da Afetação (Parecer)")
+            desenhar_barras_vert(d["g8_labels"], d["g8_val"], COLOR_SECONDARY, "Origem da Demanda (Pareceres)")
         
         elif tipo == "g9":
             s = d["s_par_head"]

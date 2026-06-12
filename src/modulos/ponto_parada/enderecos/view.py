@@ -1,10 +1,8 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 from src.modulos.ponto_parada.enderecos.service import EnderecoService
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_TERTIARY, COLOR_QUATERNARY, COLOR_HOVER
 
-COLOR_BG = "#F4F6F9"
-COLOR_WHITE = "#FFFFFF"
-COLOR_PRIMARY = "#0F8C75"
 
 class CadastroEnderecoView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -25,7 +23,7 @@ class CadastroEnderecoView(ctk.CTkFrame):
         header.pack_propagate(False)
         ctk.CTkLabel(header, text="Gestão de Ponto de Parada (Endereços)", font=("Arial Black", 20), text_color=COLOR_PRIMARY).pack(side="left", padx=20, pady=15)
 
-        btn_exportar = ctk.CTkButton(header, text="📥 EXPORTAR EXCEL", font=("Arial Bold", 12), fg_color="#27AE60", hover_color="#1E8449", command=self.acao_exportar)
+        btn_exportar = ctk.CTkButton(header, text="📥 EXPORTAR EXCEL", font=("Arial Bold", 12), fg_color=COLOR_SECONDARY, hover_color="#1E8449", command=self.acao_exportar)
         btn_exportar.pack(side="right", padx=20, pady=15)
 
         # CORPO (PANEL DUPLO)
@@ -37,7 +35,7 @@ class CadastroEnderecoView(ctk.CTkFrame):
         frame_form.pack(side="left", fill="y", padx=(0, 20))
         frame_form.pack_propagate(False)
 
-        ctk.CTkLabel(frame_form, text="Dados do Ponto", font=("Arial Bold", 16), text_color="#333").pack(pady=(20, 15))
+        ctk.CTkLabel(frame_form, text="Dados do Ponto", font=("Arial Bold", 16), text_color=COLOR_TEXT).pack(pady=(20, 15))
 
         self.entradas = {}
         campos = [
@@ -49,12 +47,12 @@ class CadastroEnderecoView(ctk.CTkFrame):
         ]
         # Gerar os campos dinamicamente a partir da lista acima, armazenando as referências em um dicionário para fácil acesso depois
         for label_text, key in campos:
-            ctk.CTkLabel(frame_form, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w", padx=20)
+            ctk.CTkLabel(frame_form, text=label_text, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w", padx=20)
             entry = ctk.CTkEntry(frame_form, width=310, height=35)
             entry.pack(padx=20, pady=(0, 10))
             self.entradas[key] = entry
 
-        ctk.CTkLabel(frame_form, text="Status", font=("Arial Bold", 12), text_color="#555").pack(anchor="w", padx=20)
+        ctk.CTkLabel(frame_form, text="Status", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w", padx=20)
         self.cb_status = ctk.CTkComboBox(frame_form, values=["ATIVO", "INATIVO", "EM MANUTENÇÃO"], width=310, height=35)
         self.cb_status.pack(padx=20, pady=(0, 25))
 
@@ -62,8 +60,8 @@ class CadastroEnderecoView(ctk.CTkFrame):
         frame_btns = ctk.CTkFrame(frame_form, fg_color="transparent")
         frame_btns.pack(fill="x", padx=20)
         
-        ctk.CTkButton(frame_btns, text="LIMPAR", fg_color="#95A5A6", hover_color="#7F8C8D", width=100, height=35, command=self.limpar_form).pack(side="left")
-        ctk.CTkButton(frame_btns, text="💾 SALVAR", fg_color=COLOR_PRIMARY, hover_color="#0B6B59", height=35, command=self.acao_salvar).pack(side="right", fill="x", expand=True, padx=(10, 0))
+        ctk.CTkButton(frame_btns, text="LIMPAR", fg_color="transparent", width=100, height=35, text_color=COLOR_PRIMARY, border_width=1, border_color=COLOR_PRIMARY, hover_color="#E9ECEF", command=self.limpar_form).pack(side="left")
+        ctk.CTkButton(frame_btns, text="💾 SALVAR", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, height=35, command=self.acao_salvar).pack(side="right", fill="x", expand=True, padx=(10, 0))
 
         # Tabela de Pesquisa
         frame_lista = ctk.CTkFrame(corpo, fg_color=COLOR_WHITE, corner_radius=8)
@@ -72,7 +70,7 @@ class CadastroEnderecoView(ctk.CTkFrame):
         frame_busca = ctk.CTkFrame(frame_lista, fg_color="transparent")
         frame_busca.pack(fill="x", padx=20, pady=15)
         
-        ctk.CTkLabel(frame_busca, text="🔍 Buscar:", font=("Arial Bold", 13), text_color="#333").pack(side="left")
+        ctk.CTkLabel(frame_busca, text="🔍 Buscar:", font=("Arial Bold", 13), text_color=COLOR_TEXT).pack(side="left")
         self.entry_busca = ctk.CTkEntry(frame_busca, width=300, height=35, placeholder_text="Digite ID, Rua ou Bairro...")
         self.entry_busca.pack(side="left", padx=10)
         self.entry_busca.bind("<KeyRelease>", self._filtrar_tabela) # Filtra ao digitar
@@ -80,7 +78,7 @@ class CadastroEnderecoView(ctk.CTkFrame):
         # Estilo da Tabela
         style = ttk.Style()
         style.theme_use("default")
-        style.configure("Treeview.Heading", font=("Arial Bold", 11), background="#E0E4E8", foreground="#333")
+        style.configure("Treeview.Heading", font=("Arial Bold", 11), background="#E0E4E8", foreground=COLOR_TEXT)
         style.configure("Treeview", font=("Arial", 11), rowheight=30)
         
         colunas = ("id", "endereco", "numero", "bairro", "status")

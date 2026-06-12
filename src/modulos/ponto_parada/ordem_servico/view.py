@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 from src.modulos.ponto_parada.ordem_servico.service import OSService
 from src.core.shared.components.parameters_combo import CtkParametrosComboBox
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_HOVER
 
 class OSView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -15,14 +16,14 @@ class OSView(ctk.CTkFrame):
         self._construir_interface()
 
     def _construir_interface(self):
-        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#FFFFFF")
+        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color=COLOR_WHITE)
         self.scroll_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
         # --- CABEÇALHO ---
         header_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 20))
 
-        ctk.CTkLabel(header_frame, text="Gerador de Ordem de Serviço", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
+        ctk.CTkLabel(header_frame, text="Gerador de Ordem de Serviço", font=("Arial Black", 24), text_color=COLOR_PRIMARY).pack(side="left")
         
         self.modelo_combo = CtkParametrosComboBox(
             header_frame, 
@@ -36,7 +37,7 @@ class OSView(ctk.CTkFrame):
         ctk.CTkLabel(header_frame, text="Modelo:", font=("Arial Bold", 14)).pack(side="right", padx=5)
 
         # --- FORMULÁRIO ---
-        form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
+        form_frame = ctk.CTkFrame(self.scroll_frame, fg_color=COLOR_WHITE, corner_radius=10)
         form_frame.pack(fill="x", pady=10, padx=10)
 
         # Linha 1: Origem, Ação da OS e Tipo de Item
@@ -61,13 +62,13 @@ class OSView(ctk.CTkFrame):
         self.complemento_entry = self._criar_campo(row2, "Complemento", width=300, side="left")
 
         # Botão Adicionar
-        ctk.CTkButton(form_frame, text="➕ Adicionar à Lista", fg_color="#0F8C75", font=("Arial Bold", 14), height=40, command=self.adicionar_descricao).pack(pady=(10, 20))
+        ctk.CTkButton(form_frame, text="➕ Adicionar à Lista", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial Bold", 14), height=40, command=self.adicionar_descricao).pack(pady=(10, 20))
 
         # --- TABELA ---
-        tabela_container = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
+        tabela_container = ctk.CTkFrame(self.scroll_frame, fg_color=COLOR_WHITE, corner_radius=10)
         tabela_container.pack(fill="x", pady=10, padx=10)
         
-        ctk.CTkLabel(tabela_container, text="Itens da OS (Descrições Acumuladas)", font=("Arial Bold", 16), text_color="#333333").pack(anchor="w", padx=15, pady=(15,5))
+        ctk.CTkLabel(tabela_container, text="Itens da OS (Descrições Acumuladas)", font=("Arial Bold", 16), text_color=COLOR_TEXT).pack(anchor="w", padx=15, pady=(15,5))
         
         self.tabela_frame = ctk.CTkFrame(tabela_container, fg_color="transparent")
         self.tabela_frame.pack(fill="both", expand=True, padx=15, pady=10)
@@ -79,7 +80,7 @@ class OSView(ctk.CTkFrame):
         self.criado_por_label = ctk.CTkLabel(footer_frame, text=f"Responsável: {self.usuario_logado}", font=("Arial", 12), text_color="gray")
         self.criado_por_label.pack(side="left", padx=10)
 
-        ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color="#0F8C75", font=("Arial Bold", 16), height=50, width=300, command=self.acao_criar_os).pack(side="right", padx=10)
+        ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial Bold", 16), height=50, width=300, command=self.acao_criar_os).pack(side="right", padx=10)
 
         self.ao_mudar_modelo(self.modelo_combo.get())
 
@@ -87,15 +88,34 @@ class OSView(ctk.CTkFrame):
     def _criar_campo(self, parent, label_text, width, side="top"):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side=side, padx=10, fill="x")
-        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        entry = ctk.CTkEntry(container, width=width, height=35)
-        entry.pack(anchor="w", pady=(2,0))
-        return entry
         
+        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
+        
+        # Cria o Entry já com uma borda fina (border_width=1) e a cor cinza padrão
+        cor_padrao = "#E0E0E0" # Cinza clarinho
+        entry = ctk.CTkEntry(container, width=width, height=35, border_width=1, border_color=cor_padrao)
+        entry.pack(anchor="w", pady=(2,0))
+
+        # O 'event=None' permite que a função seja acionada manualmente via código
+        def ao_digitar(event=None):
+            # .strip() remove espaços em branco; se sobrar texto, pinta de laranja (COLOR_PRIMARY)
+            if entry.get().strip():
+                entry.configure(border_color=COLOR_PRIMARY) 
+            else:
+                entry.configure(border_color=cor_padrao)      
+
+        # "Prende" a função ao evento de soltar a tecla no teclado
+        entry.bind("<KeyRelease>", ao_digitar)
+        
+        # ANEXA A FUNÇÃO AO COMPONENTE: Isso permite chamar entry.atualizar_borda() de fora!
+        entry.atualizar_borda = ao_digitar
+
+        return entry
+    
     def _criar_combobox(self, parent, label_text, width, values, side="top"):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side=side, padx=10, fill="x")
-        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
         combo = ctk.CTkComboBox(container, width=width, height=35, values=values, state="readonly")
         combo.pack(anchor="w", pady=(2,0))
         return combo
@@ -103,7 +123,7 @@ class OSView(ctk.CTkFrame):
     def _criar_param_combo(self, parent, label_text, setor, campo, width, side="top"):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side=side, padx=10, fill="x")
-        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
         combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=35)
         combo.pack(anchor="w", pady=(2,0))
         return combo
@@ -135,6 +155,12 @@ class OSView(ctk.CTkFrame):
             self.numero_entry.insert(0, dados.get("numero", ""))
             self.bairro_entry.insert(0, dados.get("bairro", ""))
             self.complemento_entry.insert(0, dados.get("complemento", ""))
+
+        # FORÇA A ATUALIZAÇÃO VISUAL DAS BORDAS APÓS O PREENCHIMENTO AUTOMÁTICO
+        self.endereco_entry.atualizar_borda()
+        self.numero_entry.atualizar_borda()
+        self.bairro_entry.atualizar_borda()
+        self.complemento_entry.atualizar_borda()
 
     def adicionar_descricao(self):
         id_texto = self.id_entry.get().strip().upper()
@@ -170,7 +196,7 @@ class OSView(ctk.CTkFrame):
             linha = ctk.CTkFrame(self.tabela_frame, fg_color="white", corner_radius=6)
             linha.pack(fill="x", pady=2)
             
-            ctk.CTkLabel(linha, text=f"ID: {item['id']}", font=("Arial Bold", 13), width=80, text_color="#0F8C75").pack(side="left", padx=10)
+            ctk.CTkLabel(linha, text=f"ID: {item['id']}", font=("Arial Bold", 13), width=80, text_color=COLOR_PRIMARY).pack(side="left", padx=10)
             ctk.CTkLabel(linha, text=item["descricao"], font=("Arial", 12), justify="left", wraplength=600).pack(side="left", fill="x", expand=True, padx=10, pady=5)
             
             btn_excluir = ctk.CTkButton(linha, text="X", width=30, fg_color="transparent", hover_color="#FFE0E0", text_color="red", font=("Arial Bold", 14), command=lambda i=idx: self.excluir_da_tabela(i))

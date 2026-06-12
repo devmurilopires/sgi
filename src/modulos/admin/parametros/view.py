@@ -1,8 +1,8 @@
 import customtkinter as ctk
 from tkinter import messagebox
 from src.modulos.admin.parametros.service import ParametrosService
-
-COLOR_PRIMARY = "#0F8C75"
+from src.core.shared.components.parameters_combo import CtkParametrosComboBox
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE,COLOR_HOVER
 
 class AdminParametrosView:
     def __init__(self, master, usuario_dados):
@@ -67,24 +67,24 @@ class AdminParametrosView:
         title_box = ctk.CTkFrame(header_frame, fg_color="transparent")
         title_box.pack(side="left")
         
-        ctk.CTkLabel(title_box, text="Configurações do Sistema", font=("Arial Bold", 28), text_color="#1A1A1A").pack(anchor="w")
-        ctk.CTkLabel(title_box, text="Gerencie as listas de opções e parâmetros globais de cada setor", font=("Arial", 13), text_color="#666666").pack(anchor="w")
+        ctk.CTkLabel(title_box, text="Configurações do Sistema", font=("Arial Bold", 28), text_color=COLOR_TEXT).pack(anchor="w")
+        ctk.CTkLabel(title_box, text="Gerencie as listas de opções e parâmetros globais de cada setor", font=("Arial", 13), text_color=COLOR_TEXT).pack(anchor="w")
 
         layout_container = ctk.CTkFrame(self.main_container, fg_color="transparent")
         layout_container.pack(fill="both", expand=True)
         
-        sidebar = ctk.CTkFrame(layout_container, width=280, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#EEEEEE")
+        sidebar = ctk.CTkFrame(layout_container, width=280, fg_color=COLOR_WHITE, corner_radius=12, border_width=1, border_color="#EEEEEE")
         sidebar.pack(side="left", fill="y", padx=(0, 20))
         sidebar.pack_propagate(False)
         
-        ctk.CTkLabel(sidebar, text="SETORES", font=("Arial Bold", 11), text_color="#999999").pack(pady=(20, 10), padx=20, anchor="w")
+        ctk.CTkLabel(sidebar, text="SETORES", font=("Arial Bold", 11), text_color=COLOR_TEXT).pack(pady=(20, 10), padx=20, anchor="w")
         
-        self.combo_setor = ctk.CTkComboBox(sidebar, values=list(self.config_map.keys()), 
+        self.combo_setor = CtkParametrosComboBox(sidebar, values=list(self.config_map.keys()), 
                                          command=self.on_setor_change, width=240, height=38,
-                                         fg_color="#F9F9F9", border_color="#DDDDDD", button_color=self.color_accent)
+                                         fg_color=COLOR_BG, border_color="#DDDDDD", button_color=self.color_accent)
         self.combo_setor.pack(padx=20, pady=(0, 20))
         
-        ctk.CTkLabel(sidebar, text="PARÂMETROS DISPONÍVEIS", font=("Arial Bold", 11), text_color="#999999").pack(pady=(10, 5), padx=20, anchor="w")
+        ctk.CTkLabel(sidebar, text="PARÂMETROS DISPONÍVEIS", font=("Arial Bold", 11), text_color=COLOR_TEXT).pack(pady=(10, 5), padx=20, anchor="w")
         
         self.scroll_campos = ctk.CTkScrollableFrame(sidebar, fg_color="transparent")
         self.scroll_campos.pack(fill="both", expand=True, padx=10, pady=5)
@@ -99,19 +99,20 @@ class AdminParametrosView:
         
         self.atualizar_menu_campos()
 
-        add_frame = ctk.CTkFrame(content, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#EEEEEE")
+        add_frame = ctk.CTkFrame(content, fg_color=COLOR_WHITE, corner_radius=12, border_width=1, border_color="#EEEEEE")
         add_frame.pack(fill="x", pady=(0, 20))
         
         self.entry_valor = ctk.CTkEntry(add_frame, placeholder_text="Digite o novo valor para adicionar à lista...", 
-                                       height=45, fg_color="#F9F9F9", border_color="#DDDDDD")
+                                       height=45, fg_color=COLOR_BG, border_color="#DDDDDD")
         self.entry_valor.pack(side="left", fill="x", expand=True, padx=20, pady=20)
         
         self.btn_add = ctk.CTkButton(add_frame, text="+ Adicionar", width=130, height=45, 
                                     fg_color=self.color_accent, font=("Arial Bold", 13),
+                                    hover_color=COLOR_HOVER,
                                     command=self.acao_adicionar)
         self.btn_add.pack(side="right", padx=20, pady=20)
         
-        table_container = ctk.CTkFrame(content, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#EEEEEE")
+        table_container = ctk.CTkFrame(content, fg_color=COLOR_WHITE, corner_radius=12, border_width=1, border_color="#EEEEEE")
         table_container.pack(fill="both", expand=True)
         
         self.scroll_lista = ctk.CTkScrollableFrame(table_container, fg_color="transparent")
@@ -124,8 +125,8 @@ class AdminParametrosView:
         campos = self.config_map[self.setor_selecionado]
         for chave, rotulo in campos.items():
             btn = ctk.CTkButton(
-                self.scroll_campos, text=rotulo, fg_color="transparent", text_color="#333333",
-                anchor="w", hover_color="#F0F0F0", command=lambda k=chave: self.on_campo_change(k)
+                self.scroll_campos, text=rotulo, fg_color="transparent", text_color=COLOR_TEXT,
+                anchor="w", hover_color=COLOR_HOVER, command=lambda k=chave: self.on_campo_change(k)
             )
             btn.pack(fill="x", pady=2)
             self.botoes_campos[chave] = btn
@@ -139,7 +140,7 @@ class AdminParametrosView:
             if k == self.campo_selecionado:
                 b.configure(fg_color=self.color_accent, text_color="white")
             else:
-                b.configure(fg_color="transparent", text_color="#333333")
+                b.configure(fg_color="transparent", text_color=COLOR_TEXT)
         
         rotulo_campo = self.config_map[self.setor_selecionado][self.campo_selecionado]
         self.lbl_contexto.configure(text=f"Gerenciando: {self.setor_selecionado} > {rotulo_campo}")
@@ -167,11 +168,11 @@ class AdminParametrosView:
         self.parametros_atuais = self.service.listar_parametros(routing)
 
         if not self.parametros_atuais:
-            ctk.CTkLabel(self.scroll_lista, text="Lista vazia. Adicione opções acima.", text_color="#999").pack(pady=40)
+            ctk.CTkLabel(self.scroll_lista, text="Lista vazia. Adicione opções acima.", text_color=COLOR_TEXT).pack(pady=40)
             return
 
         for idx, param in enumerate(self.parametros_atuais):
-            card = ctk.CTkFrame(self.scroll_lista, fg_color="#F9FAFB", corner_radius=6, border_width=1, border_color="#E5E7EB", height=45)
+            card = ctk.CTkFrame(self.scroll_lista, fg_color=COLOR_BG, corner_radius=6, border_width=1, border_color="#E5E7EB", height=45)
             card.pack(fill="x", pady=2, padx=5)
             
             f_setas = ctk.CTkFrame(card, fg_color="transparent")
@@ -192,11 +193,12 @@ class AdminParametrosView:
             btns_row = ctk.CTkFrame(card, fg_color="transparent")
             btns_row.pack(side="right", padx=10)
 
-            btn_edit = ctk.CTkButton(btns_row, text="Editar", width=70, height=26, fg_color="#555555", 
+            btn_edit = ctk.CTkButton(btns_row, text="Editar", width=70, height=26, fg_color=COLOR_TEXT,
+                                    hover_color=COLOR_HOVER, text_color="white", font=("Arial", 11),
                                    command=lambda p=param: self.abrir_modal_edicao(p))
             btn_edit.pack(side="left", padx=5)
 
-            btn_del = ctk.CTkButton(btns_row, text="Excluir", width=70, height=26, fg_color="#F24822", 
+            btn_del = ctk.CTkButton(btns_row, text="Excluir", width=70, height=26, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER,
                                    command=lambda pid=param['id']: self.acao_excluir(pid))
             btn_del.pack(side="left", padx=5)
 
@@ -250,7 +252,7 @@ class AdminParametrosView:
             else:
                 messagebox.showerror("Erro", msg)
 
-        btn_save = ctk.CTkButton(modal, text="Salvar", fg_color=self.color_accent, command=salvar)
+        btn_save = ctk.CTkButton(modal, text="Salvar", fg_color=self.color_accent, hover_color=self.color_hover, command=salvar)
         btn_save.pack(pady=20)
 
     def acao_adicionar(self):

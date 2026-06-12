@@ -1,6 +1,7 @@
 import customtkinter as ctk
 from tkinter import ttk, messagebox
 from src.modulos.admin.linhas.service import LinhasService
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE,COLOR_HOVER
 
 class AdminLinhasView(ctk.CTkFrame):
     def __init__(self, master):
@@ -17,9 +18,9 @@ class AdminLinhasView(ctk.CTkFrame):
     def _configurar_estilos(self):
         style = ttk.Style()
         style.theme_use("default")
-        style.configure("Linhas.Treeview", background="#FFFFFF", rowheight=35, font=("Arial", 11), borderwidth=0)
-        style.configure("Linhas.Treeview.Heading", font=("Arial Bold", 11), background="#E9ECEF", foreground="#333333")
-        style.map("Linhas.Treeview", background=[('selected', '#0F8C75')], foreground=[('selected', 'white')])
+        style.configure("Linhas.Treeview", background=COLOR_WHITE, rowheight=35, font=("Arial", 11), borderwidth=0)
+        style.configure("Linhas.Treeview.Heading", font=("Arial Bold", 11), background=COLOR_BG, foreground=COLOR_TEXT)
+        style.map("Linhas.Treeview", background=[('selected', COLOR_PRIMARY)], foreground=[('selected', 'white')])
 
     def setup_ui(self):
         self.main_container = ctk.CTkFrame(self, fg_color="transparent")
@@ -29,11 +30,11 @@ class AdminLinhasView(ctk.CTkFrame):
         header_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 15))
         
-        ctk.CTkLabel(header_frame, text="Gestão de Linhas de Ônibus", font=("Arial Bold", 24), text_color="#1A1A1A").pack(side="left")
-        ctk.CTkButton(header_frame, text="➕ Nova Linha", font=("Arial Bold", 13), height=38, fg_color="#0F8C75", command=self.abrir_modal_linha).pack(side="right")
+        ctk.CTkLabel(header_frame, text="Gestão de Linhas de Ônibus", font=("Arial Bold", 24), text_color=COLOR_TEXT).pack(side="left")
+        ctk.CTkButton(header_frame, text="➕ Nova Linha", font=("Arial Bold", 13), height=38, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.abrir_modal_linha).pack(side="right")
 
         # Filtro de Busca Rápida
-        filtro_frame = ctk.CTkFrame(self.main_container, fg_color="#FFFFFF", corner_radius=8, border_width=1, border_color="#E0E0E0")
+        filtro_frame = ctk.CTkFrame(self.main_container, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E0E0E0")
         filtro_frame.pack(fill="x", pady=(0, 10))
         
         self.busca_var = ctk.StringVar()
@@ -41,7 +42,7 @@ class AdminLinhasView(ctk.CTkFrame):
         ctk.CTkEntry(filtro_frame, textvariable=self.busca_var, placeholder_text="🔍 Pesquisar por Código ou Nome da linha...", width=400, height=38, fg_color="#F9FAFB", border_color="#D1D5DB").pack(side="left", padx=15, pady=10)
 
         # Tabela (Treeview)
-        tabela_frame = ctk.CTkFrame(self.main_container, fg_color="#FFFFFF", corner_radius=8, border_width=1, border_color="#E0E0E0")
+        tabela_frame = ctk.CTkFrame(self.main_container, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E0E0E0")
         tabela_frame.pack(fill="both", expand=True)
 
         self.tree = ttk.Treeview(tabela_frame, columns=("id", "codigo", "nome", "status"), show="headings", style="Linhas.Treeview")
@@ -67,8 +68,8 @@ class AdminLinhasView(ctk.CTkFrame):
         rodape = ctk.CTkFrame(self.main_container, fg_color="transparent")
         rodape.pack(fill="x", pady=10)
         
-        ctk.CTkButton(rodape, text="✏️ Editar Linha", font=("Arial Bold", 12), height=35, fg_color="#374151", hover_color="#1F2937", command=self.editar_linha_selecionada).pack(side="left", padx=5)
-        ctk.CTkButton(rodape, text="🔄 Ativar / Inativar", font=("Arial Bold", 12), height=35, fg_color="#F24822", hover_color="#B71C1C", command=self.toggle_status).pack(side="left", padx=5)
+        ctk.CTkButton(rodape, text="✏️ Editar Linha", font=("Arial Bold", 12), height=35, fg_color=COLOR_TEXT, hover_color=COLOR_HOVER, command=self.editar_linha_selecionada).pack(side="left", padx=5)
+        ctk.CTkButton(rodape, text="🔄 Ativar / Inativar", font=("Arial Bold", 12), height=35, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.toggle_status).pack(side="left", padx=5)
 
     def carregar_linhas(self):
         self.linhas_atuais = self.service.listar_linhas()
@@ -97,14 +98,14 @@ class AdminLinhasView(ctk.CTkFrame):
         container = ctk.CTkFrame(modal, fg_color="transparent")
         container.pack(fill="both", expand=True, padx=30, pady=30)
         
-        ctk.CTkLabel(container, text=titulo, font=("Arial Bold", 20), text_color="#0F8C75").pack(pady=(0, 20))
+        ctk.CTkLabel(container, text=titulo, font=("Arial Bold", 20), text_color=COLOR_PRIMARY).pack(pady=(0, 20))
         
-        ctk.CTkLabel(container, text="Código da Linha (Ex: 015):", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        ent_codigo = ctk.CTkEntry(container, width=150, height=38, fg_color="#F9FAFB", border_color="#CCC")
+        ctk.CTkLabel(container, text="Código da Linha (Ex: 015):", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
+        ent_codigo = ctk.CTkEntry(container, width=150, height=38, fg_color=COLOR_BG, border_color="#CCC")
         ent_codigo.pack(anchor="w", pady=(2, 15))
         
-        ctk.CTkLabel(container, text="Nome da Linha:", font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        ent_nome = ctk.CTkEntry(container, width=440, height=38, fg_color="#F9FAFB", border_color="#CCC")
+        ctk.CTkLabel(container, text="Nome da Linha:", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
+        ent_nome = ctk.CTkEntry(container, width=440, height=38, fg_color=COLOR_BG, border_color="#CCC")
         ent_nome.pack(anchor="w", pady=(2, 20))
         
         if linha:
@@ -124,7 +125,7 @@ class AdminLinhasView(ctk.CTkFrame):
             else:
                 messagebox.showerror("Erro", msg)
                 
-        ctk.CTkButton(container, text="Salvar Linha", fg_color="#0F8C75", height=40, font=("Arial Bold", 14), command=salvar).pack(fill="x", pady=10)
+        ctk.CTkButton(container, text="Salvar Linha", fg_color=COLOR_PRIMARY, height=40, font=("Arial Bold", 14), command=salvar).pack(fill="x", pady=10)
 
     def editar_linha_selecionada(self):
         sel = self.tree.selection()

@@ -3,20 +3,13 @@ from tkinter import messagebox
 from PIL import Image
 import webbrowser
 from src.core.auth.service import AuthService
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_TERTIARY, COLOR_QUATERNARY, COLOR_HOVER
 
 try:
     from src.core.shared.utils import resource_path
 except ImportError:
     def resource_path(path): return path
 
-# --- PALETA DE CORES DA ETUFOR ---
-COLOR_PRIMARY = "#0F8C75"       # Verde Principal
-COLOR_PRIMARY_HOVER = "#0B6B59" 
-COLOR_SECONDARY = "#F24822"     # Laranja/Vermelho
-COLOR_TERTIARY = "#14A1D9"      # Azul
-COLOR_BG_RIGHT = "#FFFFFF"      # Fundo Branco para o lado direito (Sem card, fundo direto)
-COLOR_TEXT = "#333333"          # Texto Escuro
-COLOR_PLACEHOLDER = "#8A8A8A"   # Texto de Dica
 
 class LoginView(ctk.CTk):
     def __init__(self, on_login_success):
@@ -27,7 +20,7 @@ class LoginView(ctk.CTk):
 
         # --- CONFIGURAÇÃO DA JANELA ---
         self.title("SGI - Sistema Integrado de Gerenciamento")
-        self.configure(fg_color=COLOR_BG_RIGHT)
+        self.configure(fg_color=COLOR_BG)
         
         # Garante Tela Cheia / Maximizada logo ao abrir
         try:
@@ -59,7 +52,7 @@ class LoginView(ctk.CTk):
             ctk.CTkLabel(self.left_panel, text="SGI - DIPLA", font=("Arial Black", 80), text_color="white").grid(row=0, column=0)
 
         # 2. PAINEL DIREITO (Formulários - 40%)
-        self.right_panel = ctk.CTkFrame(self, fg_color=COLOR_BG_RIGHT, corner_radius=0)
+        self.right_panel = ctk.CTkFrame(self, fg_color=COLOR_BG, corner_radius=0)
         self.right_panel.grid(row=0, column=1, sticky="nsew")
         
         # Configuração para o rodapé ficar fixo embaixo
@@ -83,26 +76,12 @@ class LoginView(ctk.CTk):
             footer_frame = ctk.CTkFrame(self.right_panel, fg_color="transparent")
             footer_frame.grid(row=1, column=0, pady=20)
 
-            # LinkedIn na Esquerda do centro
-            btn_linkedin = ctk.CTkButton(
-                footer_frame, 
-                text="in", 
-                font=("Arial Black", 16),
-                width=35, height=35, 
-                corner_radius=8,
-                fg_color="#0A66C2", 
-                hover_color="#004182",
-                command=lambda: webbrowser.open("https://www.linkedin.com/in/murilo-pires-713275257/")
-            )
-            # pack(side="left") coloca ele e já permite o próximo item ficar do lado
-            btn_linkedin.pack(side="left", padx=(0, 8)) 
-
             # Copyright na Direita do botão
             ctk.CTkLabel(
                 footer_frame, 
                 text="© 2026 devmurilopires", 
                 font=("Arial", 14, "bold"), 
-                text_color="#A0A0A0"
+                text_color=COLOR_TEXT
             ).pack(side="left")
 
     def _resetar_frame_ativo(self):
@@ -122,7 +101,7 @@ class LoginView(ctk.CTk):
         # O Ícone agora é maior: font=("Arial", 20)
         btn_eye = ctk.CTkButton(
             entry, text="👁️", width=35, height=35, 
-            fg_color="transparent", text_color="#666666", 
+            fg_color="transparent", text_color=COLOR_TEXT, border_width=0,
             font=("Arial", 18), hover=False
         )
         btn_eye.place(relx=0.96, rely=0.5, anchor="e")
@@ -143,7 +122,7 @@ class LoginView(ctk.CTk):
         self._resetar_frame_ativo()
 
         ctk.CTkLabel(self.active_frame, text="BEM-VINDO", font=("Century Gothic bold", 36), text_color=COLOR_PRIMARY).pack(pady=(0, 5))
-        ctk.CTkLabel(self.active_frame, text="Por favor, faça login na sua conta.", font=("Arial", 15), text_color=COLOR_PLACEHOLDER).pack(pady=(0, 35))
+        ctk.CTkLabel(self.active_frame, text="Por favor, faça login na sua conta.", font=("Arial", 15), text_color=COLOR_TEXT).pack(pady=(0, 35))
 
         self.entry_user = ctk.CTkEntry(self.active_frame, placeholder_text="👤 Matrícula", width=380, height=50, font=("Arial", 14), corner_radius=8, border_width=2, border_color=COLOR_PRIMARY)
         self.entry_user.pack(pady=7)
@@ -154,16 +133,16 @@ class LoginView(ctk.CTk):
         options_frame = ctk.CTkFrame(self.active_frame, fg_color="transparent", width=380)
         options_frame.pack(fill="x", pady=(5, 30))
         
-        self.chk_manter = ctk.CTkCheckBox(options_frame, text="Lembrar-me", font=("Arial", 13), fg_color=COLOR_PRIMARY, hover_color=COLOR_PRIMARY_HOVER, text_color=COLOR_TEXT)
+        self.chk_manter = ctk.CTkCheckBox(options_frame, text="Lembrar-me", font=("Arial", 13), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, text_color=COLOR_TEXT)
         self.chk_manter.pack(side="left")
 
         btn_esqueci = ctk.CTkLabel(options_frame, text="Esqueceu a senha?", font=("Arial bold", 13), text_color=COLOR_TERTIARY, cursor="hand2")
         btn_esqueci.pack(side="right")
         btn_esqueci.bind("<Button-1>", lambda e: self.mostrar_recuperacao())
 
-        ctk.CTkButton(self.active_frame, text="ENTRAR", width=380, height=50, corner_radius=8, fg_color=COLOR_PRIMARY, hover_color=COLOR_PRIMARY_HOVER, font=("Arial bold", 16), command=self.acao_login).pack(pady=10)
+        ctk.CTkButton(self.active_frame, text="ENTRAR", width=380, height=50, corner_radius=8, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial bold", 16), command=self.acao_login).pack(pady=10)
         
-        ctk.CTkLabel(self.active_frame, text="──────────────── OU ────────────────", font=("Arial", 12), text_color="#D1D1D1").pack(pady=10)
+        ctk.CTkLabel(self.active_frame, text="──────────────── OU ────────────────", font=("Arial", 12), text_color=COLOR_TEXT).pack(pady=10)
 
         ctk.CTkButton(self.active_frame, text="Criar nova conta", width=380, height=50, corner_radius=8, fg_color="transparent", border_width=2, border_color=COLOR_PRIMARY, text_color=COLOR_PRIMARY, hover_color="#E6F2F0", font=("Arial bold", 16), command=self.mostrar_cadastro).pack(pady=10)
 
@@ -215,7 +194,7 @@ class LoginView(ctk.CTk):
         self.cad_senha = self._criar_campo_senha(self.active_frame, "Senha (mín. 6 caracteres)")
         self.cad_conf = self._criar_campo_senha(self.active_frame, "Confirmar Senha")
 
-        ctk.CTkButton(self.active_frame, text="FINALIZAR CADASTRO", width=380, height=50, corner_radius=8, fg_color=COLOR_PRIMARY, hover_color=COLOR_PRIMARY_HOVER, font=("Arial bold", 16), command=self.acao_cadastrar).pack(pady=(20, 10))
+        ctk.CTkButton(self.active_frame, text="FINALIZAR CADASTRO", width=380, height=50, corner_radius=8, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial bold", 16), command=self.acao_cadastrar).pack(pady=(20, 10))
         
         btn_voltar = ctk.CTkLabel(self.active_frame, text="← Voltar ao Login", font=("Arial bold", 14), text_color=COLOR_SECONDARY, cursor="hand2")
         btn_voltar.pack(pady=5)
@@ -250,7 +229,7 @@ class LoginView(ctk.CTk):
         self._resetar_frame_ativo()
 
         ctk.CTkLabel(self.active_frame, text="RECUPERAÇÃO", font=("Century Gothic bold", 32), text_color=COLOR_PRIMARY).pack(pady=(0, 10))
-        ctk.CTkLabel(self.active_frame, text="Informe seu e-mail para receber o código.", font=("Arial", 14), text_color=COLOR_PLACEHOLDER).pack(pady=(0, 30))
+        ctk.CTkLabel(self.active_frame, text="Informe seu e-mail para receber o código.", font=("Arial", 14), text_color=COLOR_TEXT).pack(pady=(0, 30))
 
         self.rec_email = ctk.CTkEntry(self.active_frame, placeholder_text="✉️ Seu e-mail cadastrado", width=380, height=50, font=("Arial", 14), corner_radius=8, border_width=2, border_color=COLOR_PRIMARY)
         self.rec_email.pack(pady=10)

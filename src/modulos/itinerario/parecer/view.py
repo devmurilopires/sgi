@@ -6,6 +6,8 @@ import re
 from src.modulos.itinerario.parecer.service import ParecerItinerarioService
 from src.core.shared.components.parameters_combo import CtkParametrosComboBox
 
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_QUATERNARY, COLOR_HOVER
+
 # =====================================================================
 # COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
 # =====================================================================
@@ -46,11 +48,11 @@ class Autocomplete(ctk.CTkEntry):
         w = self.winfo_width()
         h = min(180, len(filtradas) * 26 + 5)
         
-        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color="#FFFFFF", border_width=1, border_color="#10B981", corner_radius=6, width=w, height=h)
+        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color=COLOR_WHITE, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6, width=w, height=h)
         self.listbox_frame.place(x=x, y=y)
         self.listbox_frame.pack_propagate(False)
         
-        self.listbox_widget = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#10B981", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox_widget = tk.Listbox(self.listbox_frame, bg=COLOR_WHITE, fg=COLOR_TEXT, selectbackground=COLOR_PRIMARY, selectforeground=COLOR_WHITE, bd=0, highlightthickness=0, font=("Arial", 11))
         self.listbox_widget.pack(side="left", fill="both", expand=True, padx=3, pady=3)
         
         scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox_widget.yview)
@@ -124,14 +126,14 @@ class ParecerItinerarioView(ctk.CTkFrame):
         self._construir_interface()
 
     def _construir_interface(self):
-        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#F8F9FA")
+        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color=COLOR_BG)
         self.scroll_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
         header_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 15))
-        ctk.CTkLabel(header_frame, text="Gerador de Parecer Técnico (Itinerário)", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
+        ctk.CTkLabel(header_frame, text="Gerador de Parecer Técnico (Itinerário)", font=("Arial Black", 24), text_color=COLOR_PRIMARY).pack(side="left")
 
-        form_frame = ctk.CTkFrame(self.scroll_frame, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E0E0E0")
+        form_frame = ctk.CTkFrame(self.scroll_frame, fg_color=COLOR_WHITE, corner_radius=10, border_width=1, border_color="#E0E0E0")
         form_frame.pack(fill="x", pady=10, padx=10)
 
         grid_master = ctk.CTkFrame(form_frame, fg_color="transparent")
@@ -210,15 +212,33 @@ class ParecerItinerarioView(ctk.CTkFrame):
     def _criar_campo_grid(self, parent, label, row, col, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
-        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        entry = ctk.CTkEntry(frame, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
+        
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
+        
+        # Define a cor padrão e cria o Entry com borda fina
+        cor_padrao = "#E0E0E0" 
+        entry = ctk.CTkEntry(frame, height=35, font=("Arial", 12), fg_color=COLOR_WHITE, text_color=COLOR_TEXT, border_width=1, border_color=cor_padrao)
         entry.pack(fill="x", expand=True, pady=(2,0))
+
+        # Função inteligente para pintar a borda
+        def atualizar_borda(event=None):
+            if entry.get().strip():
+                entry.configure(border_color=COLOR_PRIMARY)
+            else:
+                entry.configure(border_color=cor_padrao)
+
+        # Aciona ao digitar fisicamente
+        entry.bind("<KeyRelease>", atualizar_borda)
+        
+        # Acopla a função ao campo para preenchimentos automáticos via banco de dados
+        entry.atualizar_borda = atualizar_borda
+
         return entry
 
     def _criar_param_combo_grid(self, parent, label, setor, campo, row, col, columnspan=1, command=None):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
-        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
         combo = CtkParametrosComboBox(frame, setor=setor, campo=campo, height=35, command=command)
         combo.pack(fill="x", expand=True, pady=(2,0))
         return combo
@@ -226,7 +246,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
     def _criar_combo_estatico_grid(self, parent, label, values, row, col, columnspan=1, command=None):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
-        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
         combo = CtkParametrosComboBox(frame, values=values, height=35, command=command)
         combo.pack(fill="x", expand=True, pady=(2,0))
         return combo
@@ -234,15 +254,15 @@ class ParecerItinerarioView(ctk.CTkFrame):
     def _criar_autocomplete_grid(self, parent, label, values, row, col, columnspan=1):
         frame = ctk.CTkFrame(parent, fg_color="transparent")
         frame.grid(row=row, column=col, columnspan=columnspan, padx=10, pady=10, sticky="ew")
-        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        autocomplete = Autocomplete(frame, values=values, height=35, font=("Arial", 12), fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
+        ctk.CTkLabel(frame, text=label, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
+        autocomplete = Autocomplete(frame, values=values, height=35, font=("Arial", 12), fg_color=COLOR_WHITE, text_color=COLOR_TEXT, border_color=COLOR_PRIMARY, border_width=1, corner_radius=6)
         autocomplete.pack(fill="x", expand=True, pady=(2,0))
         return autocomplete
 
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color=COLOR_WHITE, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
         container.pack_propagate(False) 
-        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background=COLOR_PRIMARY, foreground="white", borderwidth=0 )
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
 
@@ -307,7 +327,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
             wrapper_iso, self.data_isolada = self._criar_date_wrapper(col1, 250)
             wrapper_iso.pack(fill="x", pady=(2,0))
 
-            self.btn_add_data = ctk.CTkButton(input_row, text="➕ Add Data", width=80, height=35, fg_color="#0F8C75", font=("Arial Bold", 12), command=self._add_data_isolada)
+            self.btn_add_data = ctk.CTkButton(input_row, text="➕ Add Data", width=80, height=35, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial Bold", 12), command=self._add_data_isolada)
             self.btn_add_data.pack(side="left", anchor="s", pady=(0,2))
 
             self.frame_chips_datas = ctk.CTkFrame(f_iso, fg_color="transparent")
@@ -330,15 +350,15 @@ class ParecerItinerarioView(ctk.CTkFrame):
     def _render_datas_chips(self):
         for w in self.frame_chips_datas.winfo_children(): w.destroy()
         if not self.datas_isoladas_add:
-            ctk.CTkLabel(self.frame_chips_datas, text="Nenhuma data isolada adicionada.", text_color="gray", font=("Arial", 11)).pack(anchor="w", padx=10)
+            ctk.CTkLabel(self.frame_chips_datas, text="Nenhuma data isolada adicionada.", text_color=COLOR_TEXT, font=("Arial", 11)).pack(anchor="w", padx=10)
             return
             
         for d in self.datas_isoladas_add:
-            chip = ctk.CTkFrame(self.frame_chips_datas, fg_color="#F1F3F5", corner_radius=6, height=32)
+            chip = ctk.CTkFrame(self.frame_chips_datas, fg_color=COLOR_WHITE, corner_radius=6, height=32)
             chip.pack(side="top", fill="x", pady=3)
             chip.pack_propagate(False)
-            ctk.CTkLabel(chip, text=d, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
-            ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda date=d: self._remove_data_isolada(date)).pack(side="right", padx=5)
+            ctk.CTkLabel(chip, text=d, text_color=COLOR_TEXT, font=("Arial Bold", 12)).pack(side="left", padx=10)
+            ctk.CTkButton(chip, text="X", width=24, height=24, fg_color=COLOR_QUATERNARY, hover_color=COLOR_HOVER, font=("Arial Black", 10), command=lambda date=d: self._remove_data_isolada(date)).pack(side="right", padx=5)
 
     def _on_tipo_change(self, *args):
         for w in self.container_dinamico.winfo_children(): w.destroy()
@@ -356,7 +376,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
             
             self.linha_combo.bind("<<AutocompleteSelected>>", lambda e: self._add_linha())
             
-            ctk.CTkButton(add_lin_row, text="➕ Add Linha", width=100, height=35, font=("Arial Bold", 12), fg_color="#0F8C75", command=self._add_linha).grid(row=0, column=1, sticky="s", pady=(10,10), padx=10)
+            ctk.CTkButton(add_lin_row, text="➕ Add Linha", width=100, height=35, font=("Arial Bold", 12), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self._add_linha).grid(row=0, column=1, sticky="s", pady=(10,10), padx=10)
             
             self.frame_chips_linhas = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
             self.frame_chips_linhas.pack(fill="both", expand=True, padx=10, pady=(0,10))
@@ -365,7 +385,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
             frame_motivo = ctk.CTkFrame(self.container_dinamico, fg_color="transparent")
             frame_motivo.pack(fill="x", padx=10, pady=5)
             ctk.CTkLabel(frame_motivo, text="Motivo do Indeferimento:", font=("Arial Bold", 12), text_color="#D32F2F").pack(anchor="w")
-            self.motivo_text = ctk.CTkTextbox(frame_motivo, height=80, border_width=2, fg_color="#FFFFFF", text_color="#333333", border_color="#CCCCCC")
+            self.motivo_text = ctk.CTkTextbox(frame_motivo, height=80, border_width=2, fg_color=COLOR_WHITE, text_color=COLOR_TEXT, border_color="#CCCCCC")
             self.motivo_text.pack(fill="x", pady=(2,0))
 
     def _add_linha(self):
@@ -388,8 +408,8 @@ class ParecerItinerarioView(ctk.CTkFrame):
             chip = ctk.CTkFrame(self.frame_chips_linhas, fg_color="#F1F3F5", corner_radius=6, height=32)
             chip.pack(side="top", fill="x", pady=3)
             chip.pack_propagate(False)
-            ctk.CTkLabel(chip, text=lin, text_color="#333", font=("Arial Bold", 12)).pack(side="left", padx=10)
-            ctk.CTkButton(chip, text="X", width=24, height=24, fg_color="#F24822", hover_color="#B71C1C", font=("Arial Black", 10), command=lambda l=lin: self._remove_linha(l)).pack(side="right", padx=5)
+            ctk.CTkLabel(chip, text=lin, text_color=COLOR_TEXT, font=("Arial Bold", 12)).pack(side="left", padx=10)
+            ctk.CTkButton(chip, text="X", width=24, height=24, fg_color=COLOR_PRIMARY, hover_color="#B71C1C", font=("Arial Black", 10), command=lambda l=lin: self._remove_linha(l)).pack(side="right", padx=5)
 
     def acao_generar(self):
         tipo = self.tipo_combo.get().upper()

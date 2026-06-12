@@ -12,6 +12,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 from src.modulos.quadro_horario.relatorios.service import RelatorioQuadroHorarioService, ensure_payload_list, safe_float
 from src.core.shared.components.parameters_combo import CtkParametrosComboBox
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_HOVER
 
 # =====================================================================
 # COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
@@ -52,11 +53,11 @@ class Autocomplete(ctk.CTkEntry):
         w = self.winfo_width()
         h = min(180, len(filtradas) * 26 + 5)
         
-        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color="#FFFFFF", border_width=1, border_color="#10B981", corner_radius=6, width=w, height=h)
+        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color=COLOR_WHITE, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6, width=w, height=h)
         self.listbox_frame.place(x=x, y=y)
         self.listbox_frame.pack_propagate(False)
         
-        self.listbox_widget = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#10B981", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox_widget = tk.Listbox(self.listbox_frame, bg=COLOR_WHITE, fg=COLOR_TEXT, selectbackground=COLOR_PRIMARY, selectforeground=COLOR_WHITE, bd=0, highlightthickness=0, font=("Arial", 11), border_color=COLOR_PRIMARY, relief="flat")
         self.listbox_widget.pack(side="left", fill="both", expand=True, padx=3, pady=3)
         
         scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox_widget.yview)
@@ -134,17 +135,17 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
         self.raw_payload = dado.get("payload") 
         self.payload = ensure_payload_list(self.raw_payload)
         
-        container = ctk.CTkScrollableFrame(self, fg_color="#F9FAFB")
+        container = ctk.CTkScrollableFrame(self, fg_color=COLOR_BG)
         container.pack(fill="both", expand=True, padx=10, pady=10)
 
         header = ctk.CTkFrame(container, fg_color="transparent")
         header.pack(fill="x", pady=(0, 20))
-        ctk.CTkLabel(header, text=self.nome, font=("Arial Bold", 28), text_color="#10B981").pack(side="left", padx=10)
+        ctk.CTkLabel(header, text=self.nome, font=("Arial Bold", 28), text_color=COLOR_PRIMARY).pack(side="left", padx=10)
         
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right")
-        ctk.CTkButton(btn_frame, text="Exportar PDF", fg_color="#EF4444", hover_color="#DC2626", command=self.acao_exportar_pdf).pack(side="left", padx=5)
-        ctk.CTkButton(btn_frame, text="Exportar Excel", fg_color="#059669", hover_color="#047857", command=self.acao_exportar_excel).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Exportar PDF", fg_color=COLOR_SECONDARY, hover_color=COLOR_HOVER, command=self.acao_exportar_pdf).pack(side="left", padx=5)
+        ctk.CTkButton(btn_frame, text="Exportar Excel", fg_color="#d82424", hover_color=COLOR_HOVER, command=self.acao_exportar_excel).pack(side="left", padx=5)
 
         row1 = ctk.CTkFrame(container, fg_color="transparent")
         row1.pack(fill="x", pady=10)
@@ -165,7 +166,7 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
             self._criar_grafico(container, self.payload[3], custom_title_prefix="Média por sentido")
             self._criar_grafico(container, self.payload[5])
         
-        ctk.CTkButton(container, text="Fechar Detalhes", width=200, height=40, fg_color="#6B7280", hover_color="#4B5563", command=self.destroy).pack(pady=30)
+        ctk.CTkButton(container, text="Fechar Detalhes", width=200, height=40, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.destroy).pack(pady=30)
         
     def _criar_grafico(self, parent, tabela, custom_title_prefix=None):
         if not tabela or not isinstance(tabela, dict) or not tabela.get("rows"): return
@@ -300,27 +301,27 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
     def _configurar_estilos(self):
         style = ttk.Style()
         style.theme_use("default")
-        style.configure("Modern.Treeview", background="#FFFFFF", fieldbackground="#FFFFFF", rowheight=50, font=("Arial", 11), borderwidth=0)
+        style.configure("Modern.Treeview", background=COLOR_WHITE, fieldbackground="#FFFFFF", rowheight=50, font=("Arial", 11), borderwidth=0)
         style.configure("Modern.Treeview.Heading", font=("Arial Bold", 11), background="#E9ECEF", foreground="#333333", borderwidth=0, padding=(0, 5))
-        style.map("Modern.Treeview", background=[('selected', '#0F8C75')], foreground=[('selected', 'white')])
+        style.map("Modern.Treeview", background=[('selected', COLOR_PRIMARY)], foreground=[('selected', 'white')])
 
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color=COLOR_WHITE, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
         container.pack_propagate(False) 
-        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 12), background=COLOR_PRIMARY, foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
 
     def _construir_interface(self):
-        self.frame_top = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
+        self.frame_top = ctk.CTkFrame(self, fg_color=COLOR_WHITE, corner_radius=12, border_width=1, border_color=COLOR_PRIMARY)
         self.frame_top.pack(side="top", fill="x", padx=20, pady=(20, 10))
         
         header_filtro = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         header_filtro.pack(fill="x", padx=20, pady=(15, 5))
-        ctk.CTkLabel(header_filtro, text=f"Filtros de Pesquisa - {self.tipo_doc}", font=("Arial Black", 16), text_color="#0F8C75").pack(side="left")
+        ctk.CTkLabel(header_filtro, text=f"Filtros de Pesquisa - {self.tipo_doc}", font=("Arial Black", 16), text_color=COLOR_PRIMARY).pack(side="left")
         
-        ctk.CTkButton(header_filtro, text="📄 PDF Geral", width=110, fg_color="#D32F2F", command=self.acao_pdf).pack(side="right", padx=5)
-        ctk.CTkButton(header_filtro, text="📊 Excel Geral", width=110, fg_color="#1D6F42", command=self.acao_excel).pack(side="right", padx=5)
+        ctk.CTkButton(header_filtro, text="📄 PDF Geral", width=110, fg_color="#D32F2F", hover_color="#B71C1C", command=self.acao_pdf).pack(side="right", padx=5)
+        ctk.CTkButton(header_filtro, text="📊 Excel Geral", width=110, fg_color="#1D6F42", hover_color="#145431", command=self.acao_excel).pack(side="right", padx=5)
 
         self.grid_filtros = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         self.grid_filtros.pack(fill="x", padx=15, pady=5)
@@ -334,7 +335,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             f = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
             f.grid(row=row, column=col, padx=10, pady=8, sticky="ew")
             self.grid_filtros.grid_columnconfigure(col, weight=1)
-            ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
+            ctk.CTkLabel(f, text=label, font=("Arial Bold", 11), text_color=COLOR_TEXT).pack(anchor="w")
             
             # --- MODIFICAÇÃO: Criação estruturada de Widgets ---
             if key == "tipo":
@@ -354,19 +355,19 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 widget.pack(fill="x")
             elif key == "relatorios":
                 # Filtro agora usa um calendário!
-                wrapper = ctk.CTkFrame(f, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+                wrapper = ctk.CTkFrame(f, height=35, fg_color=COLOR_WHITE, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
                 wrapper.pack(fill="x")
                 wrapper.pack_propagate(False)
-                widget = DateEntry(wrapper, date_pattern="dd/mm/yyyy", font=("Arial", 12), background="#0F8C75", foreground="white", borderwidth=0)
+                widget = DateEntry(wrapper, date_pattern="dd/mm/yyyy", font=("Arial", 12), background=COLOR_PRIMARY, foreground="white", borderwidth=0)
                 widget.pack(fill="both", expand=True, padx=2, pady=2)
                 widget.delete(0, "end") # Começa vazio para mostrar todas as opções até o usuário escolher
             elif key in ["titulo"]: 
-                widget = Autocomplete(f, values=self.lista_linhas, width=430)
+                widget = Autocomplete(f, values=self.lista_linhas, width=430, height=35, placeholder_text="Digite para buscar...", border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
                 widget.bind("<<AutocompleteSelected>>", lambda e: self.acao_buscar())
                 widget.bind("<Return>", lambda e: self.acao_buscar())
                 widget.pack(fill="x")
             else:
-                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite...")
+                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite...", border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
                 widget.pack(fill="x")
             
             self.entradas_filtros[key] = widget
@@ -375,21 +376,21 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
 
         date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
-        ctk.CTkLabel(date_inicio, text="Data Inicial:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
+        ctk.CTkLabel(date_inicio, text="Data Inicial:", font=("Arial Bold", 11), text_color=COLOR_TEXT).pack(anchor="w")
         wrapper_ini, self.date_ini = self._criar_date_wrapper(date_inicio, 450)
         wrapper_ini.pack(anchor="w", pady=(2,0))
         self.date_ini.set_date(date(date.today().year, 1, 1))
 
         date_fim = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_fim.grid(row=row, column=col+1, padx=10, pady=8, sticky="w")
-        ctk.CTkLabel(date_fim, text="Data Final:", font=("Arial Bold", 11), text_color="#666666").pack(anchor="w")
+        ctk.CTkLabel(date_fim, text="Data Final:", font=("Arial Bold", 11), text_color=COLOR_TEXT).pack(anchor="w")
         wrapper_fim, self.date_fim = self._criar_date_wrapper(date_fim, 450)
         wrapper_fim.pack(anchor="w", pady=(2,0))
 
         btn_busca = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         btn_busca.pack(fill="x", padx=20, pady=(5, 15))
-        ctk.CTkButton(btn_busca, text="🔍 Buscar", font=("Arial Bold", 13), width=120, height=35, fg_color="#0F8C75", command=self.acao_buscar).pack(side="left", padx=5)
-        ctk.CTkButton(btn_busca, text="🧹 Limpar Filtros", font=("Arial", 13), width=120, height=35, fg_color="transparent", text_color="#666", border_width=1, command=self._limpar_filtros).pack(side="left")
+        ctk.CTkButton(btn_busca, text="🔍 Buscar", font=("Arial Bold", 13), width=120, height=35, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.acao_buscar).pack(side="left", padx=5)
+        ctk.CTkButton(btn_busca, text="🧹 Limpar Filtros", font=("Arial", 13), width=120, height=35, fg_color="transparent", text_color=COLOR_PRIMARY, border_width=1, border_color=COLOR_PRIMARY, hover_color="#E9ECEF", command=self._limpar_filtros).pack(side="left")
 
         self.frame_bottom = ctk.CTkFrame(self, fg_color="transparent")
         self.frame_bottom.pack(side="bottom", fill="x", padx=20, pady=(5, 20))
@@ -399,27 +400,27 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         
         self.btn_ant = ctk.CTkButton(self.frame_paginacao, text="< Anterior", font=("Arial Bold", 12), width=90, height=35, fg_color="#E5E7EB", text_color="#374151", hover_color="#D1D5DB", command=self._pagina_anterior)
         self.btn_ant.pack(side="left", padx=5)
-        self.lbl_pag = ctk.CTkLabel(self.frame_paginacao, text="Página 1 | Total: 0 resultados", font=("Arial Bold", 13), text_color="#0F8C75")
+        self.lbl_pag = ctk.CTkLabel(self.frame_paginacao, text="Página 1 | Total: 0 resultados", font=("Arial Bold", 13), text_color=COLOR_PRIMARY)
         self.lbl_pag.pack(side="left", padx=15)
         self.btn_prox = ctk.CTkButton(self.frame_paginacao, text="Próxima >", font=("Arial Bold", 12), width=90, height=35, fg_color="#E5E7EB", text_color="#374151", hover_color="#D1D5DB", command=self._pagina_proxima)
         self.btn_prox.pack(side="left", padx=5)
 
         self.frame_acoes = ctk.CTkFrame(self.frame_bottom, fg_color="transparent")
         self.frame_acoes.pack(side="right")
-        ctk.CTkButton(self.frame_acoes, text="👁️ Ver Detalhes", font=("Arial Bold", 13), width=140, height=35, fg_color="#374151", hover_color="#1F2937", command=self.acao_detalhes).pack(side="left", padx=5)
+        ctk.CTkButton(self.frame_acoes, text="👁️ Ver Detalhes", font=("Arial Bold", 13), width=140, height=35, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.acao_detalhes).pack(side="left", padx=5)
         
         if self.tipo_doc == "PARECER":
-            ctk.CTkButton(self.frame_acoes, text="📂 Abrir Documento", font=("Arial Bold", 13), width=160, height=35, fg_color="#0F8C75", hover_color="#0B6B59", command=self.acao_abrir).pack(side="left", padx=5)
+            ctk.CTkButton(self.frame_acoes, text="📂 Abrir Documento", font=("Arial Bold", 13), width=160, height=35, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.acao_abrir).pack(side="left", padx=5)
             
         if self.is_admin:
             ctk.CTkButton(self.frame_acoes, text="🗑️ Excluir", font=("Arial Bold", 13), width=120, height=35, fg_color="transparent", border_width=1, border_color="#D32F2F", text_color="#D32F2F", hover_color="#FEE2E2", command=self.acao_excluir).pack(side="left", padx=(5, 0))
 
-        self.frame_tabela = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=12, border_width=1, border_color="#E0E0E0")
+        self.frame_tabela = ctk.CTkFrame(self, fg_color=COLOR_WHITE, corner_radius=12, border_width=1, border_color="#E0E0E0")
         self.frame_tabela.pack(side="top", fill="both", expand=True, padx=20, pady=5)
 
         cols = list(self.colunas_config.keys())
         self.tree = ttk.Treeview(self.frame_tabela, columns=cols, show="headings", style="Modern.Treeview")
-        self.tree.tag_configure('impar', background="#FFFFFF")
+        self.tree.tag_configure('impar', background=COLOR_WHITE)
         self.tree.tag_configure('par', background="#F9FAFB")
         
         for k, v in self.colunas_config.items():
@@ -507,7 +508,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
     # 1. Nova Função Dinâmica: Sem bloqueios e com Comboboxes Inteligentes
     def _add_detail_field_dinamico(self, parent, key, value, row, col, pad_x, editando):
         label_text = str(key).replace("_", " ").title()
-        ctk.CTkLabel(parent, text=f"{label_text}:", font=("Arial Bold", 12), text_color="#4B5563").grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
+        ctk.CTkLabel(parent, text=f"{label_text}:", font=("Arial Bold", 12), text_color=COLOR_TEXT).grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
         
         val_str = str(value).strip() if value is not None else ""
         if not val_str or val_str.lower() == "none": val_str = "-"
@@ -538,7 +539,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 w.set(val_str if val_str != "-" else "– Selecione –")
             else:
                 # Demais campos: Data, Processo, Linhas, Responsável, Motivo, etc.
-                w = ctk.CTkEntry(parent, width=250, height=35, font=("Arial", 12))
+                w = ctk.CTkEntry(parent, width=250, height=35, font=("Arial", 12), border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
                 w.insert(0, val_str if val_str != "-" else "")
             
             w.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
@@ -565,9 +566,9 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
 
             header_frame = ctk.CTkFrame(scroll, fg_color="transparent")
             header_frame.pack(fill="x", pady=(0, 15))
-            ctk.CTkLabel(header_frame, text="Detalhes Completos do Documento", font=("Arial Black", 20), text_color="#0F8C75").pack(side="left")
+            ctk.CTkLabel(header_frame, text="Detalhes Completos do Documento", font=("Arial Black", 20), text_color=COLOR_PRIMARY).pack(side="left")
 
-            info_frame = ctk.CTkFrame(scroll, fg_color="#FFFFFF", corner_radius=10, border_width=1, border_color="#E5E7EB")
+            info_frame = ctk.CTkFrame(scroll, fg_color=COLOR_WHITE, corner_radius=10, border_width=1, border_color="#E5E7EB")
             info_frame.pack(fill="x", pady=10)
 
             grid = ctk.CTkFrame(info_frame, fg_color="transparent")
@@ -593,7 +594,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
 
             if dado.get('caminho_arquivo'):
                 ctk.CTkLabel(scroll, text="Localização na Rede:", font=("Arial Bold", 12)).pack(anchor="w", pady=(15, 0))
-                path_box = ctk.CTkEntry(scroll, fg_color="#F3F4F6", text_color="#6B7280", border_width=0)
+                path_box = ctk.CTkEntry(scroll, fg_color="#F3F4F6", text_color=COLOR_TEXT, border_width=0)
                 path_box.pack(fill="x", pady=5)
                 path_box.insert(0, dado.get('caminho_arquivo'))
                 path_box.configure(state="readonly")
@@ -605,7 +606,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             if self.is_admin:
                 def alternar_edicao():
                     if btn_editar.cget("text") == "✏️ Editar":
-                        btn_editar.configure(text="💾 Salvar", fg_color="#10B981", hover_color="#059669")
+                        btn_editar.configure(text="💾 Salvar", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER)
                         desenhar_grid(editando=True)
                     else:
                         novos_dados = {}
@@ -625,10 +626,10 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                         else:
                             messagebox.showerror("Erro", msg)
 
-                btn_editar = ctk.CTkButton(frame_botoes, text="✏️ Editar", width=140, height=40, fg_color="#F59E0B", hover_color="#D97706", command=alternar_edicao)
+                btn_editar = ctk.CTkButton(frame_botoes, text="✏️ Editar", width=140, height=40, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=alternar_edicao)
                 btn_editar.pack(side="left", padx=10)
 
-            ctk.CTkButton(frame_botoes, text="Fechar", width=140, height=40, fg_color="#6B7280", hover_color="#4B5563", command=modal.destroy).pack(side="left", padx=10)
+            ctk.CTkButton(frame_botoes, text="Fechar", width=140, height=40, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=modal.destroy).pack(side="left", padx=10)
 
     def acao_abrir(self):
         sel = self.tree.selection()

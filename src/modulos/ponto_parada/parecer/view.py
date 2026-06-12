@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 from src.modulos.ponto_parada.parecer.service import ParecerService
 from src.core.shared.components.parameters_combo import CtkParametrosComboBox
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_HOVER
 
 class ParecerView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -15,14 +16,14 @@ class ParecerView(ctk.CTkFrame):
         self._construir_interface()
 
     def _construir_interface(self):
-        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color="#FFFFFF")
+        self.scroll_frame = ctk.CTkScrollableFrame(self, fg_color=COLOR_BG)
         self.scroll_frame.pack(padx=20, pady=20, fill="both", expand=True)
 
         header_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         header_frame.pack(fill="x", pady=(0, 20))
-        ctk.CTkLabel(header_frame, text="Gerador de Parecer Técnico", font=("Arial Black", 24), text_color="#0F8C75").pack(side="left")
+        ctk.CTkLabel(header_frame, text="Gerador de Parecer Técnico", font=("Arial Black", 24), text_color=COLOR_PRIMARY).pack(side="left")
 
-        bloco1 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
+        bloco1 = ctk.CTkFrame(self.scroll_frame, fg_color=COLOR_BG, corner_radius=10)
         bloco1.pack(fill="x", pady=10, padx=10)
 
         row1 = ctk.CTkFrame(bloco1, fg_color="transparent")
@@ -53,7 +54,7 @@ class ParecerView(ctk.CTkFrame):
         # MODIFICAÇÃO: Assunto agora busca nativamente e diretamente do banco (Modo Banco de Dados)
         self.assunto_combo = self._criar_param_combo(row2, "Assunto", "Ponto de Parada", "ASSUNTO_PARECER", width=625)
 
-        bloco2 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
+        bloco2 = ctk.CTkFrame(self.scroll_frame, fg_color=COLOR_BG, corner_radius=10)
         bloco2.pack(fill="x", pady=10, padx=10)
 
         row3 = ctk.CTkFrame(bloco2, fg_color="transparent")
@@ -76,7 +77,7 @@ class ParecerView(ctk.CTkFrame):
         self.quantidade_var = ctk.StringVar()
         self._criar_entry(row4, "Quantidade (Por extenso: Um, Dois...)", self.quantidade_var, width=625)
 
-        bloco3 = ctk.CTkFrame(self.scroll_frame, fg_color="#F2F2F2", corner_radius=10)
+        bloco3 = ctk.CTkFrame(self.scroll_frame, fg_color=COLOR_BG, corner_radius=10)
         bloco3.pack(fill="x", pady=10, padx=10)
 
         row_id = ctk.CTkFrame(bloco3, fg_color="transparent")
@@ -85,14 +86,14 @@ class ParecerView(ctk.CTkFrame):
         self.id_entry_var = ctk.StringVar()
         self._criar_entry(row_id, "Adicionar ID", self.id_entry_var, width=300)
         
-        btn_add_id = ctk.CTkButton(row_id, text="➕ Adicionar ID", fg_color="#0F8C75", font=("Arial Bold", 13), height=35, command=self._adicionar_ids)
+        btn_add_id = ctk.CTkButton(row_id, text="➕ Adicionar ID", fg_color=COLOR_PRIMARY, font=("Arial Bold", 13), height=35, command=self._adicionar_ids)
         btn_add_id.pack(side="left", padx=10, pady=(20,0)) 
 
-        self.lista_ids_frame = ctk.CTkFrame(bloco3, fg_color="#FFFFFF", corner_radius=6)
+        self.lista_ids_frame = ctk.CTkFrame(bloco3, fg_color=COLOR_BG, corner_radius=6)
         self.lista_ids_frame.pack(fill="x", padx=15, pady=(0, 15))
         self._renderizar_lista_ids() 
 
-        self.frame_motivo = ctk.CTkFrame(self.scroll_frame, fg_color="#FFF0F0", corner_radius=10, border_width=1, border_color="#FFD6D6")
+        self.frame_motivo = ctk.CTkFrame(self.scroll_frame, fg_color=COLOR_BG, corner_radius=10, border_width=1, border_color="#FFD6D6")
         ctk.CTkLabel(self.frame_motivo, text="Motivo do Indeferimento:", font=("Arial Bold", 13), text_color="#C21010").pack(anchor="w", padx=15, pady=(10, 0))
         self.entry_motivo = ctk.CTkTextbox(self.frame_motivo, height=100)
         self.entry_motivo.pack(fill="x", padx=15, pady=(5, 15))
@@ -101,19 +102,35 @@ class ParecerView(ctk.CTkFrame):
         footer_frame.pack(fill="x", pady=30)
         
         ctk.CTkLabel(footer_frame, text=f"Responsável: {self.usuario_logado}", text_color="gray", font=("Arial", 12)).pack(side="left", padx=10)
-        ctk.CTkButton(footer_frame, text="📄 GERAR PARECER TÉCNICO", fg_color="#0F8C75", font=("Arial Bold", 16), height=50, width=300, command=self._acao_gerar_parecer).pack(side="right", padx=10)
+        ctk.CTkButton(footer_frame, text="📄 GERAR PARECER TÉCNICO", fg_color=COLOR_PRIMARY, font=("Arial Bold", 16), height=50, width=300, command=self._acao_gerar_parecer).pack(side="right", padx=10)
 
     def _criar_entry(self, parent, label_text, variable, width):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side="left", padx=10, fill="x")
-        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
-        ctk.CTkEntry(container, textvariable=variable, width=width, height=35).pack(anchor="w", pady=(2,0))
+        
+        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
+        
+        cor_padrao = "#E0E0E0" # Cinza clarinho padrão
+        entry = ctk.CTkEntry(container, textvariable=variable, width=width, height=35, border_width=1, border_color=cor_padrao)
+        entry.pack(anchor="w", pady=(2,0))
 
-    # MODIFICAÇÃO: Helper estático agora usa CtkParametrosComboBox
+        # Função interna que muda a cor dependendo do que está na variável
+        def atualizar_borda(*args):
+            if variable.get().strip():
+                entry.configure(border_color=COLOR_PRIMARY)
+            else:
+                entry.configure(border_color=cor_padrao)
+
+        # O 'trace_add' fica vigiando a variável. Qualquer alteração aciona a atualização da borda!
+        variable.trace_add("write", atualizar_borda)
+
+        return entry
+
+    # Helper estático agora usa CtkParametrosComboBox
     def _criar_combobox(self, parent, label_text, values, width, command=None):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side="left", padx=10, fill="x")
-        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
         combo = CtkParametrosComboBox(container, values=values, width=width, height=35, command=command)
         combo.pack(anchor="w", pady=(2,0))
         return combo
@@ -121,7 +138,7 @@ class ParecerView(ctk.CTkFrame):
     def _criar_param_combo(self, parent, label_text, setor, campo, width, command=None):
         container = ctk.CTkFrame(parent, fg_color="transparent")
         container.pack(side="left", padx=10, fill="x")
-        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color="#555").pack(anchor="w")
+        ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
         # Passa o comando diretamente para o construtor do componente moderno
         combo = CtkParametrosComboBox(container, setor=setor, campo=campo, width=width, height=35, command=command)
         combo.pack(anchor="w", pady=(2,0))
@@ -164,7 +181,7 @@ class ParecerView(ctk.CTkFrame):
         container_badges.pack(fill="x", pady=10, padx=10)
 
         for idx, id_val in enumerate(self.ids_list):
-            badge = ctk.CTkFrame(container_badges, fg_color="#0F8C75", corner_radius=15)
+            badge = ctk.CTkFrame(container_badges, fg_color=COLOR_PRIMARY, corner_radius=15)
             badge.pack(side="left", padx=5, pady=5)
             
             ctk.CTkLabel(badge, text=f"ID: {id_val}", text_color="white", font=("Arial Bold", 12)).pack(side="left", padx=(10, 5))

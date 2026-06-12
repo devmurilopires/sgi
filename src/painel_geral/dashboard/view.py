@@ -12,13 +12,7 @@ from tkinter import filedialog, messagebox
 
 from src.painel_geral.dashboard.service import DashboardGeralService
 
-# --- Cores Definidas ---
-COLOR_BG = "#F4F6F9"          
-COLOR_WHITE = "#FFFFFF"       
-COLOR_PRIMARY = "#0F8C75"     # Verde
-COLOR_SECONDARY = "#F24822"   # Laranja
-COLOR_TERTIARY = "#1F8CF2"    # Azul
-COLOR_TEXT = "#333333"
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_TERTIARY
 
 class DashboardGeralView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado):
@@ -37,14 +31,14 @@ class DashboardGeralView(ctk.CTkFrame):
         self.atualizar_completo()
 
     def _criar_date_wrapper(self, parent, width):
-        container = ctk.CTkFrame(parent, width=width, height=35, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        container = ctk.CTkFrame(parent, width=width, height=35, fg_color=COLOR_WHITE, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
         container.pack_propagate(False) 
-        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry = DateEntry(container, date_pattern="dd/mm/yyyy", font=("Arial", 11), background=COLOR_PRIMARY, foreground="white", borderwidth=0)
         date_entry.pack(fill="both", expand=True, padx=2, pady=2)
         return container, date_entry
 
     def _construir_interface(self):
-        frame_filtros = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=0, height=70)
+        frame_filtros = ctk.CTkFrame(self, fg_color=COLOR_WHITE, corner_radius=0, height=70)
         frame_filtros.pack(fill="x", side="top")
         frame_filtros.pack_propagate(False)
 
@@ -56,7 +50,7 @@ class DashboardGeralView(ctk.CTkFrame):
         self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 Atualizar", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, width=120, height=35, command=self.atualizar_dashboard)
         self.btn_filtrar.pack(side="right", padx=10, pady=17)
 
-        self.btn_limpar_filtro = ctk.CTkButton(frame_filtros, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color="#777777", hover_color="#F3F4F6", border_width=1, border_color="#D1D5DB", width=110, height=35, command=self.limpar_filtros_data)
+        self.btn_limpar_filtro = ctk.CTkButton(frame_filtros, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color=COLOR_PRIMARY, hover_color="#E9ECEF", border_width=1, border_color=COLOR_PRIMARY, width=110, height=35, command=self.limpar_filtros_data)
         self.btn_limpar_filtro.pack(side="right", padx=10)
 
         f_data = ctk.CTkFrame(frame_filtros, fg_color="transparent")
@@ -92,7 +86,7 @@ class DashboardGeralView(ctk.CTkFrame):
         ctk.CTkFrame(card, fg_color=cor_destaque, width=6, height=60, corner_radius=8).pack(side="left", fill="y")
         conteudo = ctk.CTkFrame(card, fg_color="transparent")
         conteudo.pack(side="left", fill="both", expand=True, padx=15, pady=10)
-        ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 11), text_color="#777777").pack(anchor="w")
+        ctk.CTkLabel(conteudo, text=titulo, font=("Arial Bold", 11), text_color=COLOR_TEXT).pack(anchor="w")
         linha = ctk.CTkFrame(conteudo, fg_color="transparent")
         linha.pack(fill="x", expand=True)
         ctk.CTkLabel(linha, text=valor, font=("Arial Black", 24), text_color=COLOR_TEXT).pack(side="left", pady=(5,0))
@@ -127,9 +121,9 @@ class DashboardGeralView(ctk.CTkFrame):
         self.frame_kpis.columnconfigure((0,1,2,3,4), weight=1)
         self.criar_card(self.frame_kpis, "TOTAL DE DOCUMENTOS", f"{c_tot}", COLOR_TEXT, "📁").grid(row=0, column=0, padx=5, sticky="ew")
         self.criar_card(self.frame_kpis, "ORDENS DE SERVIÇO", f"{c_os}", COLOR_PRIMARY, "📋").grid(row=0, column=1, padx=5, sticky="ew")
-        self.criar_card(self.frame_kpis, "PARECERES TÉCNICOS", f"{c_par}", COLOR_SECONDARY, "📝").grid(row=0, column=2, padx=5, sticky="ew")
+        self.criar_card(self.frame_kpis, "PARECERES TÉCNICOS", f"{c_par}", COLOR_PRIMARY, "📝").grid(row=0, column=2, padx=5, sticky="ew")
         self.criar_card(self.frame_kpis, "PESQUISAS (SPR)", f"{c_pesq}", COLOR_PRIMARY, "📊").grid(row=0, column=3, padx=5, sticky="ew")
-        self.criar_card(self.frame_kpis, "DESTAQUE PRODUTIVIDADE", f"{champ.split()[0]}", "#F29C1F", "🏆").grid(row=0, column=4, padx=5, sticky="ew")
+        self.criar_card(self.frame_kpis, "DESTAQUE PRODUTIVIDADE", f"{champ.split()[0]}", "#EC940E", "🏆").grid(row=0, column=4, padx=5, sticky="ew")
 
         for w in self.frame_graficos.winfo_children(): w.destroy()
         

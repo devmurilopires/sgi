@@ -16,8 +16,14 @@ class DashboardQuadroHorarioService:
         df_par = self.repo.buscar_dados_pareceres()
         df_pesq = self.repo.buscar_dados_pesquisas()
 
-        if not df_par.empty: df_par['data_dt'] = pd.to_datetime(df_par['data_dt'], errors='coerce')
-        if not df_pesq.empty: df_pesq['data_dt'] = pd.to_datetime(df_pesq['data_dt'], errors='coerce')
+        if not df_par.empty: 
+            df_par['data_dt'] = pd.to_datetime(df_par['data_dt'], errors='coerce')
+            # Tratamento da nova coluna de origem
+            if 'origem' in df_par.columns:
+                df_par['origem'] = df_par['origem'].fillna('SPU').astype(str).str.upper().str.strip()
+                
+        if not df_pesq.empty: 
+            df_pesq['data_dt'] = pd.to_datetime(df_pesq['data_dt'], errors='coerce')
 
         return df_par, df_pesq
 
@@ -124,7 +130,6 @@ class DashboardQuadroHorarioService:
                 headers = ["Mês", "Pareceres\nDeferidos", "Pareceres\nIndeferidos", "Pesquisas\n(Tempo)", "Pesquisas\n(Demanda)", "Total Geral\nMensal"]
                 data_tab = [headers] + dados_tabela
                 
-                # Somatório final
                 totais = ["TOTAL", sum(r[1] for r in dados_tabela), sum(r[2] for r in dados_tabela), sum(r[3] for r in dados_tabela), sum(r[4] for r in dados_tabela), sum(r[5] for r in dados_tabela)]
                 data_tab.append(totais)
 
@@ -143,6 +148,7 @@ class DashboardQuadroHorarioService:
                 elements.append(KeepTogether([Paragraph("2. Balanço Mensal Consolidado (Pareceres e Pesquisas)", heading_style), Spacer(1, 5), t_resumo]))
                 elements.append(Spacer(1, 15))
 
+            # Atualizada a meta do g8
             graficos_meta = {
                 "g1": ("Evolução Mensal de Pareceres", "Fluxo de análise e vistorias de Pareceres ao longo dos meses."),
                 "g2": ("Evolução Mensal de Pesquisas", "Mapeamento da distribuição temporal da execução de pesquisas de campo."),
@@ -151,7 +157,7 @@ class DashboardQuadroHorarioService:
                 "g5": ("Taxa de Aprovação (Pareceres)", "Índice de deferimento vs indeferimento."),
                 "g6": ("Proporção de Tipos de Pesquisa", "Comparativo entre Pesquisas de Tempo de Viagem e Demanda."),
                 "g7": ("Linhas Mais Pesquisadas", "Ranking das rotas de transporte com maior índice de análise de campo."),
-                "g8": ("Natureza da Afetação", "Origem da necessidade do Parecer (Eventos Urbanos vs Alteração direta em Linhas)."),
+                "g8": ("Origem da Demanda (SPU vs SISGEP)", "Distribuição quantitativa de Pareceres elaborados a partir de requisições do SPU vs SISGEP."),
                 "g9": ("Carga Operacional de Pareceres", "Distribuição interna da responsabilidade técnica por Pareceres."),
                 "g10": ("Carga Operacional de Pesquisas", "Distribuição interna do esforço focado nas pesquisas de campo."),
                 "g11": ("Produtividade Total (Parecer + Pesq.)", "Consolidação bruta da entrega de cada membro do setor."),
@@ -177,8 +183,8 @@ class DashboardQuadroHorarioService:
                 elements.append(KeepTogether([t]))
                 elements.append(Spacer(1, 15))
 
-            # Separação Inteligente: Gráficos de Pizza Lado a Lado
-            pie_charts = ["g5", "g6", "g8"]
+            # REMOVIDO o "g8" daqui para que ele saia como um gráfico normal (grande) no PDF
+            pie_charts = ["g5", "g6"]
             pies_escolhidos = [k for k in pie_charts if selecoes.get(k)]
             
             for i in range(0, len(pies_escolhidos), 2):

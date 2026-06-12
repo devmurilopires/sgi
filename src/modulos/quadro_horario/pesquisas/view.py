@@ -5,6 +5,8 @@ import math
 import unicodedata
 from tkcalendar import DateEntry
 from src.modulos.quadro_horario.pesquisas.service import PesquisaQuadroHorarioService
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE,COLOR_HOVER
+
 
 HORARIOS = [f"{h:02d}:00 às {h:02d}:59" for h in range(4, 24)]
 
@@ -52,11 +54,11 @@ class Autocomplete(ctk.CTkEntry):
         w = self.winfo_width()
         h = min(180, len(filtradas) * 26 + 5)
         
-        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color="#FFFFFF", border_width=1, border_color="#10B981", corner_radius=6, width=w, height=h)
+        self.listbox_frame = ctk.CTkFrame(toplevel, fg_color=COLOR_BG, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6, width=w, height=h)
         self.listbox_frame.place(x=x, y=y)
         self.listbox_frame.pack_propagate(False)
         
-        self.listbox_widget = tk.Listbox(self.listbox_frame, bg="#FFFFFF", fg="#333333", selectbackground="#10B981", selectforeground="#FFFFFF", bd=0, highlightthickness=0, font=("Arial", 11))
+        self.listbox_widget = tk.Listbox(self.listbox_frame, bg=COLOR_BG, fg=COLOR_TEXT, selectbackground=COLOR_PRIMARY, selectforeground=COLOR_WHITE, bd=0, highlightthickness=0, font=("Arial", 11))
         self.listbox_widget.pack(side="left", fill="both", expand=True, padx=3, pady=3)
         
         scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox_widget.yview)
@@ -184,17 +186,17 @@ def criar_tabela(parent, titulo, bg_color, is_cinza=False):
     card = ctk.CTkFrame(parent, fg_color=bg_color, corner_radius=10)
     top = ctk.CTkFrame(card, fg_color=bg_color)
     top.pack(fill="x", padx=8, pady=8)
-    ctk.CTkLabel(top, text=titulo, font=("Arial Bold", 13), text_color="#333").pack(side="left")
+    ctk.CTkLabel(top, text=titulo, font=("Arial Bold", 13), text_color=COLOR_TEXT).pack(side="left")
     
     date_entry_widget = None
     if is_cinza:
-        data_frame = ctk.CTkFrame(top, width=110, height=28, fg_color="#FFFFFF", border_width=1, border_color="#AAAAAA", corner_radius=6)
+        data_frame = ctk.CTkFrame(top, width=110, height=28, fg_color=COLOR_BG, border_width=1, border_color=COLOR_TEXT, corner_radius=6)
         data_frame.pack_propagate(False)
         data_frame.pack(side="left", padx=10)
-        date_entry_widget = DateEntry(data_frame, date_pattern="dd/mm/yyyy", font=("Arial", 10), background="#0F8C75", foreground="white", borderwidth=0)
+        date_entry_widget = DateEntry(data_frame, date_pattern="dd/mm/yyyy", font=("Arial", 10), background=COLOR_PRIMARY, foreground=COLOR_WHITE, borderwidth=0)
         date_entry_widget.pack(fill="both", expand=True, padx=2, pady=2)
     
-    body = ctk.CTkFrame(card, fg_color="white")
+    body = ctk.CTkFrame(card, fg_color=COLOR_BG)
     body.pack(fill="both", expand=True, padx=8, pady=8)
     
     cols = ["horario", "s1", "s2", "s3", "s4", "total"]
@@ -237,20 +239,20 @@ class PesquisasView(ctk.CTkFrame):
         self._construir_interface()
 
     def _construir_interface(self):
-        top_bar = ctk.CTkFrame(self, fg_color="#FFFFFF", height=70, corner_radius=0)
+        top_bar = ctk.CTkFrame(self, fg_color=COLOR_WHITE, height=70, corner_radius=0)
         top_bar.pack(fill="x", side="top")
         top_bar.pack_propagate(False)
 
         action_frame = ctk.CTkFrame(top_bar, fg_color="transparent")
         action_frame.pack(side="left", fill="y", padx=20, pady=15)
         
-        ctk.CTkButton(action_frame, text="➕ Sentido", font=("Arial Bold", 12), fg_color="#0F8C75", width=90, height=35, command=self._add_sentido).pack(side="left", padx=(0, 5))
-        ctk.CTkButton(action_frame, text="➖ Sentido", font=("Arial Bold", 12), fg_color="#F24822", hover_color="#FF4319", width=90, height=35, command=self._rem_sentido).pack(side="left", padx=(0, 15))
-        ctk.CTkButton(action_frame, text="🔄 Zerar Grade", font=("Arial Bold", 12), fg_color="#6C757D", hover_color="#5A6268", width=100, height=35, command=self._resetar).pack(side="left", padx=(0, 5))
-        ctk.CTkButton(action_frame, text="💾 Salvar Pesquisa", font=("Arial Bold", 13), fg_color="#28A745", hover_color="#218838", width=130, height=35, command=self._abrir_popup_salvar).pack(side="left")
+        ctk.CTkButton(action_frame, text="➕ Sentido", font=("Arial Bold", 12), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, width=90, height=35, command=self._add_sentido).pack(side="left", padx=(0, 5))
+        ctk.CTkButton(action_frame, text="➖ Sentido", font=("Arial Bold", 12), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, width=90, height=35, command=self._rem_sentido).pack(side="left", padx=(0, 15))
+        ctk.CTkButton(action_frame, text="🔄 Zerar Grade", font=("Arial Bold", 12), fg_color=COLOR_TEXT, hover_color=COLOR_HOVER, width=100, height=35, command=self._resetar).pack(side="left", padx=(0, 5))
+        ctk.CTkButton(action_frame, text="💾 Salvar Pesquisa", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, width=130, height=35, command=self._abrir_popup_salvar).pack(side="left")
 
         self.modo_view = ctk.StringVar(value="Tempo de Viagem")
-        tabs = ctk.CTkSegmentedButton(top_bar, values=["Tempo de Viagem", "Demanda"], variable=self.modo_view, font=("Arial Bold", 13), height=35, selected_color="#0F8C75", selected_hover_color="#0B6B59", command=self._trocar_aba)
+        tabs = ctk.CTkSegmentedButton(top_bar, values=["Tempo de Viagem", "Demanda"], variable=self.modo_view, font=("Arial Bold", 13), height=35, selected_color=COLOR_PRIMARY, selected_hover_color=COLOR_HOVER, command=self._trocar_aba)
         tabs.pack(side="right", padx=20, pady=17)
 
         self.container_principal = ctk.CTkFrame(self, fg_color="transparent")
@@ -306,7 +308,7 @@ class PesquisasView(ctk.CTkFrame):
         popup.geometry("450x250")
         popup.grab_set()
 
-        ctk.CTkLabel(popup, text="Selecione a Linha da Pesquisa", font=("Arial Black", 16), text_color="#0F8C75").pack(pady=(20, 10))
+        ctk.CTkLabel(popup, text="Selecione a Linha da Pesquisa", font=("Arial Black", 16), text_color=COLOR_PRIMARY).pack(pady=(20, 10))
 
         # Agora as sugestões virão no formato "Código - Nome"
         linhas = self.service.buscar_sugestoes_linhas()
@@ -354,17 +356,17 @@ class PesquisasView(ctk.CTkFrame):
         # Atalho: Selecionou na lista ou deu Enter -> Valida a pesquisa
         cb_linha.bind("<<AutocompleteSelected>>", lambda e: confirmar())
         
-        ctk.CTkButton(popup, text="Salvar no Banco de Dados", fg_color="#0F8C75", font=("Arial Bold", 14), height=45, command=confirmar).pack(pady=(15,0))
+        ctk.CTkButton(popup, text="Salvar no Banco de Dados", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial Bold", 14), height=45, command=confirmar).pack(pady=(15,0))
         
     def _construir_aba_tempo(self):
         row1 = ctk.CTkFrame(self.frame_tempo, fg_color="transparent")
         row1.pack(fill="both", expand=True, pady=5)
         self.t_cinzas = []
         for i in range(3):
-            card, tree, top, date_entry = criar_tabela(row1, f"Relatório {i+1}", "#EDEDED", is_cinza=True)
+            card, tree, top, date_entry = criar_tabela(row1, f"Relatório {i+1}",COLOR_BG, is_cinza=True)
             card.pack(side="left", fill="both", expand=True, padx=5)
             self.date_widgets_tempo.append(date_entry)
-            ctk.CTkButton(top, text="📥 Excel", width=70, height=28, command=lambda t=tree: self._carregar_excel(t, 'tempo')).pack(side="right")
+            ctk.CTkButton(top, text="📥 Excel", width=70, height=28, fg_color=COLOR_TEXT, text_color=COLOR_WHITE, hover_color=COLOR_HOVER, command=lambda t=tree: self._carregar_excel(t, 'tempo')).pack(side="right")
             habilitar_edicao_treeview(tree, self, self._update_tempo_all)
             self.t_cinzas.append(tree)
             self.all_trees.append(tree)
@@ -375,7 +377,7 @@ class PesquisasView(ctk.CTkFrame):
         card_v, self.t_verde, top_verde, _ = criar_tabela(row2, "Quadro Atual", "#96D37A")
         card_az, self.t_azul, _, _ = criar_tabela(row2, "Diferença", "#70ADE7")
         for card in [card_a, card_v, card_az]: card.pack(side="left", fill="both", expand=True, padx=5)
-        ctk.CTkButton(top_verde, text="📥 Excel", width=70, height=28, command=lambda: self._carregar_excel(self.t_verde, 'verde')).pack(side="right")
+        ctk.CTkButton(top_verde, text="📥 Excel", width=70, height=28, fg_color=COLOR_TEXT, text_color=COLOR_WHITE, hover_color=COLOR_HOVER, command=lambda: self._carregar_excel(self.t_verde, 'verde')).pack(side="right")
         habilitar_edicao_treeview(self.t_amarela, self, self._update_tempo_all)
         habilitar_edicao_treeview(self.t_verde, self, self._update_tempo_all)
         self.all_trees.extend([self.t_amarela, self.t_verde, self.t_azul])
@@ -403,10 +405,10 @@ class PesquisasView(ctk.CTkFrame):
         row1.pack(fill="both", expand=True, pady=5)
         self.d_cinzas = []
         for i in range(3):
-            card, tree, top, date_entry = criar_tabela(row1, f"Relatório Demanda {i+1}", "#EDEDED", is_cinza=True)
+            card, tree, top, date_entry = criar_tabela(row1, f"Relatório Demanda {i+1}", COLOR_BG, is_cinza=True)
             card.pack(side="left", fill="both", expand=True, padx=5)
             self.date_widgets_demanda.append(date_entry)
-            ctk.CTkButton(top, text="📥 Excel", width=70, height=28, command=lambda t=tree: self._carregar_excel(t, 'demanda')).pack(side="right")
+            ctk.CTkButton(top, text="📥 Excel", width=70, height=28, fg_color=COLOR_TEXT, text_color=COLOR_WHITE ,hover_color=COLOR_HOVER, command=lambda t=tree: self._carregar_excel(t, 'demanda')).pack(side="right")
             habilitar_edicao_treeview(tree, self, self._update_demanda_all)
             self.d_cinzas.append(tree)
             self.all_trees.append(tree)
@@ -414,10 +416,10 @@ class PesquisasView(ctk.CTkFrame):
         row2 = ctk.CTkFrame(self.frame_demanda, fg_color="transparent")
         row2.pack(fill="both", expand=True, pady=10)
         card_a, self.d_amarela, _, _ = criar_tabela(row2, "Média Demanda", "#F8D057")
-        card_v, self.d_viagens, top_viagens, _ = criar_tabela(row2, "Nº de Viagens", "#70ADE7")
-        card_p, self.d_pass, _, _ = criar_tabela(row2, "Passageiro/Viagem", "#96D37A")
+        card_v, self.d_viagens, top_viagens, _ = criar_tabela(row2, "Nº de Viagens", "#96D37A")
+        card_p, self.d_pass, _, _ = criar_tabela(row2, "Passageiro/Viagem", "#70ADE7")
         for card in [card_a, card_v, card_p]: card.pack(side="left", fill="both", expand=True, padx=5)
-        ctk.CTkButton(top_viagens, text="📥 Excel", width=70, height=28, command=lambda: self._carregar_excel(self.d_viagens, 'viagens')).pack(side="right")
+        ctk.CTkButton(top_viagens, text="📥 Excel", width=70, height=28, text_color=COLOR_WHITE, fg_color=COLOR_TEXT, hover_color=COLOR_HOVER, command=lambda: self._carregar_excel(self.d_viagens, 'viagens')).pack(side="right")
         habilitar_edicao_treeview(self.d_viagens, self, self._update_demanda_all)
         self.all_trees.extend([self.d_amarela, self.d_viagens, self.d_pass])
 

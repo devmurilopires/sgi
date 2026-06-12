@@ -5,14 +5,14 @@ from src.modulos.admin.usuarios.service import UsuariosService
 
 # NOVA IMPORTAÇÃO DO MÓDULO DE LINHAS
 from src.modulos.admin.linhas.view import AdminLinhasView
-
+from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE,COLOR_HOVER
 class AdminUsuariosView:
     def __init__(self, master, usuario_dados):
         self.master = master
         self.usuario_dados = usuario_dados
         self.service = UsuariosService()
-        self.color_accent = "#0F8C75"
-        self.color_bg_card = "#FFFFFF"
+        self.color_accent = COLOR_PRIMARY
+        self.color_bg_card = COLOR_WHITE
         
         self.setup_ui()
         self.carregar_usuarios()
@@ -29,12 +29,12 @@ class AdminUsuariosView:
         title_box = ctk.CTkFrame(header_frame, fg_color="transparent")
         title_box.pack(side="left")
         
-        ctk.CTkLabel(title_box, text="Gestão de Usuários", font=("Arial Bold", 28), text_color="#1A1A1A").pack(anchor="w")
-        ctk.CTkLabel(title_box, text="Controle de acessos, perfis e permissões administrativas", font=("Arial", 13), text_color="#666666").pack(anchor="w")
+        ctk.CTkLabel(title_box, text="Gestão de Usuários", font=("Arial Bold", 28), text_color=COLOR_TEXT).pack(anchor="w")
+        ctk.CTkLabel(title_box, text="Controle de acessos, perfis e permissões administrativas", font=("Arial", 13), text_color=COLOR_TEXT).pack(anchor="w")
         
         ctk.CTkButton(header_frame, text="🔄 Atualizar Lista", width=140, height=40, 
-                     fg_color="#FFFFFF", text_color="#333333", border_width=1, border_color="#DDDDDD",
-                     hover_color="#F5F5F5", font=("Arial Bold", 13),
+                     fg_color=COLOR_WHITE, text_color=COLOR_TEXT, border_width=1, border_color="#DDDDDD",
+                     hover_color=COLOR_HOVER, font=("Arial Bold", 13),
                      command=self.carregar_usuarios).pack(side="right", pady=5)
 
         # Área de Scroll para os Cards
@@ -65,14 +65,14 @@ class AdminUsuariosView:
         info_frame = ctk.CTkFrame(card, fg_color="transparent")
         info_frame.grid(row=0, column=0, padx=20, pady=15, sticky="nsew")
         
-        ctk.CTkLabel(info_frame, text=user['nome_completo'].upper(), font=("Arial Bold", 15), text_color="#1A1A1A", anchor="w").pack(fill="x")
-        ctk.CTkLabel(info_frame, text=f"👤 {user['username']}  |  ✉️ {user['email']}", font=("Arial", 12), text_color="#666666", anchor="w").pack(fill="x", pady=(2, 0))
+        ctk.CTkLabel(info_frame, text=user['nome_completo'].upper(), font=("Arial Bold", 15), text_color=COLOR_TEXT, anchor="w").pack(fill="x")
+        ctk.CTkLabel(info_frame, text=f"👤 {user['username']}  |  ✉️ {user['email']}", font=("Arial", 12), text_color=COLOR_TEXT, anchor="w").pack(fill="x", pady=(2, 0))
 
         # 2. PERFIL DE ACESSO
         perfil_frame = ctk.CTkFrame(card, fg_color="transparent")
         perfil_frame.grid(row=0, column=1, padx=10, pady=15, sticky="nsew")
         
-        ctk.CTkLabel(perfil_frame, text="PERFIS ATIVOS:", font=("Arial Bold", 10), text_color="#999999", anchor="w").pack(fill="x")
+        ctk.CTkLabel(perfil_frame, text="PERFIS ATIVOS:", font=("Arial Bold", 10), text_color=COLOR_TEXT, anchor="w").pack(fill="x")
         
         perfis = user['tipo_perfil'].split(',') if user['tipo_perfil'] else ["SEM PERFIL"]
         for p in perfis:
@@ -90,7 +90,7 @@ class AdminUsuariosView:
         sw_admin.pack(anchor="w", pady=2)
         
         status_text = "ATIVO" if user['is_ativo'] else "INATIVO"
-        status_color = "#28A745" if user['is_ativo'] else "#F24822"
+        status_color = COLOR_SECONDARY if user['is_ativo'] else COLOR_PRIMARY
         lbl_status = ctk.CTkLabel(status_frame, text=status_text, font=("Arial Bold", 11), text_color=status_color)
         lbl_status.pack(anchor="w", padx=5)
 
@@ -99,14 +99,14 @@ class AdminUsuariosView:
         actions_frame.grid(row=0, column=3, padx=20, pady=15, sticky="e")
 
         ctk.CTkButton(actions_frame, text="Editar", width=80, height=32, 
-                     fg_color="#F0F0F0", text_color="#333333", hover_color="#E0E0E0",
+                     fg_color="#F0F0F0", text_color=COLOR_TEXT, hover_color="#E0E0E0",
                      font=("Arial Bold", 12), command=lambda: self.abrir_modal_edicao(user)).pack(side="left", padx=5)
 
         btn_toggle_text = "Inativar" if user['is_ativo'] else "Ativar"
-        btn_toggle_color = "#F24822" if user['is_ativo'] else "#28A745"
+        btn_toggle_color = COLOR_PRIMARY if user['is_ativo'] else COLOR_SECONDARY
         
         ctk.CTkButton(actions_frame, text=btn_toggle_text, width=80, height=32, 
-                     fg_color=btn_toggle_color, text_color="white", hover_color="#C0392B" if user['is_ativo'] else "#218838",
+                     fg_color=btn_toggle_color, text_color="white", hover_color=COLOR_HOVER,
                      font=("Arial Bold", 12),
                      command=lambda uid=user['id'], st=user['is_ativo']: self.acao_toggle_ativo(uid, not st)).pack(side="left", padx=5)
 
@@ -128,7 +128,7 @@ class AdminUsuariosView:
 
         ctk.CTkLabel(container, text="Editar Perfil de Acesso", font=("Arial Bold", 20)).pack(pady=(0, 20))
 
-        ctk.CTkLabel(container, text="Selecione os módulos permitidos:", font=("Arial Bold", 13), text_color="#666").pack(anchor="w", pady=5)
+        ctk.CTkLabel(container, text="Selecione os módulos permitidos:", font=("Arial Bold", 13), text_color=COLOR_TEXT).pack(anchor="w", pady=5)
         
         perfis_atuais = [p.strip() for p in user['tipo_perfil'].split(',')] if user['tipo_perfil'] else []
         
@@ -161,7 +161,7 @@ class AdminUsuariosView:
             else:
                 messagebox.showerror("Erro", msg)
 
-        ctk.CTkButton(footer, text="Cancelar", width=100, fg_color="#AAAAAA", command=modal.destroy).pack(side="left", padx=5)
+        ctk.CTkButton(footer, text="Cancelar", width=100, fg_color="#C71E1E", command=modal.destroy).pack(side="left", padx=5)
         ctk.CTkButton(footer, text="Salvar Alterações", width=180, fg_color=self.color_accent, command=salvar).pack(side="right", padx=5)
 
     def acao_toggle_admin(self, uid, novo_status):
@@ -189,7 +189,7 @@ class AdminCentralView:
 
     def setup_ui(self):
         # TabView Principal
-        self.tabview = ctk.CTkTabview(self.master, segmented_button_selected_color="#0F8C75")
+        self.tabview = ctk.CTkTabview(self.master, segmented_button_selected_color=COLOR_PRIMARY)
         self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
 
         # Adicionando Abas
