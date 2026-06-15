@@ -86,7 +86,7 @@ class ParecerView(ctk.CTkFrame):
         self.id_entry_var = ctk.StringVar()
         self._criar_entry(row_id, "Adicionar ID", self.id_entry_var, width=300)
         
-        btn_add_id = ctk.CTkButton(row_id, text="➕ Adicionar ID", fg_color=COLOR_PRIMARY, font=("Arial Bold", 13), height=35, command=self._adicionar_ids)
+        btn_add_id = ctk.CTkButton(row_id, text="➕ Adicionar ID", fg_color=COLOR_PRIMARY, font=("Arial Bold", 13), height=35, color_hover=COLOR_HOVER, command=self._adicionar_ids)
         btn_add_id.pack(side="left", padx=10, pady=(20,0)) 
 
         self.lista_ids_frame = ctk.CTkFrame(bloco3, fg_color=COLOR_BG, corner_radius=6)
@@ -102,7 +102,7 @@ class ParecerView(ctk.CTkFrame):
         footer_frame.pack(fill="x", pady=30)
         
         ctk.CTkLabel(footer_frame, text=f"Responsável: {self.usuario_logado}", text_color="gray", font=("Arial", 12)).pack(side="left", padx=10)
-        ctk.CTkButton(footer_frame, text="📄 GERAR PARECER TÉCNICO", fg_color=COLOR_PRIMARY, font=("Arial Bold", 16), height=50, width=300, command=self._acao_gerar_parecer).pack(side="right", padx=10)
+        ctk.CTkButton(footer_frame, text="📄 GERAR PARECER TÉCNICO", fg_color=COLOR_PRIMARY, font=("Arial Bold", 16), height=50, width=300, color_hover=COLOR_HOVER, command=self._acao_gerar_parecer).pack(side="right", padx=10)
 
     def _criar_entry(self, parent, label_text, variable, width):
         container = ctk.CTkFrame(parent, fg_color="transparent")

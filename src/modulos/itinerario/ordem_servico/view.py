@@ -257,7 +257,7 @@ class OSItinerarioView(ctk.CTkFrame):
         
         self.linha_combo.bind("<<AutocompleteSelected>>", lambda e: self._add_linha())
         
-        ctk.CTkButton(add_lin_row, text="➕ Add", width=80, height=35, font=("Arial Bold", 12), fg_color=COLOR_PRIMARY, command=self._add_linha).grid(row=1, column=1, sticky="w", pady=(2, 10))
+        ctk.CTkButton(add_lin_row, text="➕ Add", width=80, height=35, font=("Arial Bold", 12), fg_color=COLOR_PRIMARY, color_hover=COLOR_HOVER, command=self._add_linha).grid(row=1, column=1, sticky="w", pady=(2, 10))
         
         self.frame_chips_linhas = ctk.CTkFrame(self.frame_linhas_master, fg_color="transparent")
         self.frame_chips_linhas.pack(fill="both", expand=True, padx=10, pady=(0,10))
@@ -271,8 +271,8 @@ class OSItinerarioView(ctk.CTkFrame):
         
         botoes_anexos = ctk.CTkFrame(anexos_container, fg_color="transparent")
         botoes_anexos.pack(fill="x", padx=15)
-        ctk.CTkButton(botoes_anexos, text="📄 Selecionar Imagem/Anexo", fg_color=COLOR_PRIMARY, font=("Arial Bold", 12), height=35, hover_color=COLOR_HOVER, command=self._add_anexo).pack(side="left", padx=(0,10))
-        ctk.CTkButton(botoes_anexos, text="📝 Add Bloco de Texto (Sem Imagem)", fg_color=COLOR_SECONDARY, font=("Arial Bold", 12), height=35, hover_color=COLOR_HOVER, command=lambda: self._add_anexo(vazio=True)).pack(side="left")
+        ctk.CTkButton(botoes_anexos, text="📄 Selecionar Imagem/Anexo", fg_color=COLOR_PRIMARY, font=("Arial Bold", 12), height=35, color_hover=COLOR_HOVER, command=self._add_anexo).pack(side="left", padx=(0,10))
+        ctk.CTkButton(botoes_anexos, text="📝 Add Bloco de Texto (Sem Imagem)", fg_color=COLOR_PRIMARY, font=("Arial Bold", 12), height=35, color_hover=COLOR_HOVER, command=lambda: self._add_anexo(vazio=True)).pack(side="left")
         
         self.lista_anexos_frame = ctk.CTkFrame(anexos_container, fg_color="transparent")
         self.lista_anexos_frame.pack(fill="x", padx=15, pady=10)
@@ -280,7 +280,7 @@ class OSItinerarioView(ctk.CTkFrame):
         footer_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         footer_frame.pack(fill="x", pady=20)
         ctk.CTkLabel(footer_frame, text=f"Responsável pelo Documento: {self.usuario_logado}", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(side="left", padx=10)
-        ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, font=("Arial Black", 16), height=50, width=320, command=self.acao_criar_os).pack(side="right", padx=10)
+        ctk.CTkButton(footer_frame, text="✅ GERAR ORDEM DE SERVIÇO", fg_color=COLOR_PRIMARY, color_hover=COLOR_HOVER, font=("Arial Black", 16), height=50, width=320, command=self.acao_criar_os).pack(side="right", padx=10)
 
     # Função Central de Criação de Campos com Borda Dinâmica
     def _criar_campo_grid(self, parent, label, row, col, columnspan=1):

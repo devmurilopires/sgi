@@ -206,7 +206,7 @@ class ParecerItinerarioView(ctk.CTkFrame):
         footer_frame = ctk.CTkFrame(self.scroll_frame, fg_color="transparent")
         footer_frame.pack(fill="x", pady=20)
         ctk.CTkLabel(footer_frame, text=f"Responsável pelo Documento: {self.usuario_logado}", font=("Arial Bold", 12), text_color="#777").pack(side="left", padx=10)
-        ctk.CTkButton(footer_frame, text="✅ GERAR PARECER TÉCNICO", fg_color="#0F8C75", hover_color="#0B6B59", font=("Arial Black", 16), height=50, width=320, command=self.acao_generar).pack(side="right", padx=10)
+        ctk.CTkButton(footer_frame, text="✅ GERAR PARECER TÉCNICO", fg_color=COLOR_PRIMARY, color_hover=COLOR_HOVER, font=("Arial Black", 16), height=50, width=320, command=self.acao_generar).pack(side="right", padx=10)
 
     # --- HELPERS DE GRID UI/UX ---
     def _criar_campo_grid(self, parent, label, row, col, columnspan=1):
