@@ -44,10 +44,10 @@ class DashboardGeralView(ctk.CTkFrame):
 
         ctk.CTkLabel(frame_filtros, text="DASHBOARD EXECUTIVO - Produtividade Global", font=("Arial Black", 20), text_color=COLOR_PRIMARY).pack(side="left", padx=20, pady=20)
         
-        self.btn_pdf = ctk.CTkButton(frame_filtros, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY,color_hover=COLOR_HOVER, width=120, height=35, command=self.abrir_popup_exportacao)
+        self.btn_pdf = ctk.CTkButton(frame_filtros, text="📄 Exportar PDF", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, width=120, height=35, command=self.abrir_popup_exportacao)
         self.btn_pdf.pack(side="right", padx=15, pady=17)
 
-        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 Atualizar", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, color_hover=COLOR_HOVER, width=120, height=35, command=self.atualizar_dashboard)
+        self.btn_filtrar = ctk.CTkButton(frame_filtros, text="🔍 Atualizar", font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, width=120, height=35, command=self.atualizar_dashboard)
         self.btn_filtrar.pack(side="right", padx=10, pady=17)
 
         self.btn_limpar_filtro = ctk.CTkButton(frame_filtros, text="Limpar Filtro", font=("Arial Bold", 13), fg_color="transparent", text_color=COLOR_PRIMARY, hover_color="#E9ECEF", border_width=1, border_color=COLOR_PRIMARY, width=110, height=35, command=self.limpar_filtros_data)
