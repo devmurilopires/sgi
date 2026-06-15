@@ -164,6 +164,21 @@ class RelatorioQuadroHorarioRepository:
             return False, f"Erro ao excluir: {e}"
         
     def atualizar_registro(self, tipo_doc, registro_id, dados):
+        # =====================================================================
+        # BLINDAGEM SÊNIOR: Sanitização de Dados
+        # Removemos os marcadores de vazio da interface ("-" ou "") e convertemos
+        # para None (NULL no banco). Isso evita o crash ao salvar campos de data!
+        # =====================================================================
+        for k, v in dados.items():
+            if isinstance(v, str):
+                v_clean = v.strip()
+                # Se for o traço padrão da interface, converte para None
+                if v_clean == "-":
+                    dados[k] = None
+                # Se o usuário apagou uma data explicitamente, forçamos para None
+                elif k in ["data_evento", "data_criacao", "data_inicio", "data_fim"] and v_clean == "":
+                    dados[k] = None
+
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
@@ -212,8 +227,8 @@ class RelatorioQuadroHorarioRepository:
                         })
                         
                         # 3. Inteligência para atualização de Linhas Vinculadas
-                        if "linhas" in dados:
-                            str_linhas = dados["linhas"]
+                        str_linhas = dados.get("linhas")
+                        if str_linhas: # <-- BLINDAGEM EXTRA: Protege o split se vier vazio/None
                             cur.execute("DELETE FROM quadro_horario.pareceres_linhas WHERE parecer_id = %s", (registro_id,))
                             codigos = [c.strip() for c in str_linhas.split(',') if c.strip()]
                             for cod in codigos:
@@ -223,7 +238,7 @@ class RelatorioQuadroHorarioRepository:
                                 """, (registro_id, cod))
                                 
                     else: # PESQUISAS
-                        if "titulo" in dados:
+                        if dados.get("titulo"):
                             linha_codigo = str(dados["titulo"]).split(" - ")[0].strip()
                             cur.execute("""
                                 UPDATE quadro_horario.pesquisas 
