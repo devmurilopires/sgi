@@ -4,11 +4,12 @@ from config.database import get_db_connection
 class RelatorioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
-            # MODIFICAÇÃO: Wrapper Query para destravar busca por Nº Parecer
+            # CORREÇÃO: Buscando 'tipo_execucao' e 'item' diretamente como colunas de texto, sem usar JOINs extras!
             query = """
                 SELECT * FROM (
                     SELECT p.id, pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
                            p.processo, o.nome AS origem, p.assunto, t.nome AS decisao, 
+                           p.tipo_execucao AS acao, p.item AS item,
                            p.solicitante, p.endereco_vistoria AS endereco, 
                            pb.created_at AS data_criacao, u.nome_completo AS responsavel,
                            pb.caminho_arquivo, p.motivo_indeferimento
@@ -21,11 +22,12 @@ class RelatorioRepository:
                 WHERE 1=1
             """
         else: # ORDEM DE SERVIÇO
-            # MODIFICAÇÃO: Wrapper Query para destravar busca por Nº OS
             query = """
                 SELECT * FROM (
-                    SELECT os.id, os.numero AS numero_os, o.nome AS origem, 
-                           ta.nome AS acao, ti.nome AS item, os.ponto_principal_id, 
+                    SELECT os.id, os.numero AS numero_os, os.processo, o.nome AS origem, 
+                           ta.nome AS acao, ti.nome AS item, 
+                           tm.nome AS empresa, 
+                           os.ponto_principal_id, 
                            (SELECT string_agg(pa.ponto_id, ', ') 
                             FROM ponto_parada.os_pontos_adicionais pa 
                             WHERE pa.os_id = os.id) AS pontos_adicionais, 
@@ -37,6 +39,7 @@ class RelatorioRepository:
                     LEFT JOIN common.origens o ON os.origem_id = o.id
                     LEFT JOIN common.tipos ta ON os.tipo_acao_id = ta.id
                     LEFT JOIN common.tipos ti ON os.tipo_item_id = ti.id
+                    LEFT JOIN common.tipos tm ON os.modelo_id = tm.id 
                     LEFT JOIN common.usuarios u ON os.responsavel_id = u.id
                 ) AS base
                 WHERE 1=1
@@ -46,12 +49,13 @@ class RelatorioRepository:
         mapeamento = {
             "PARECER": {
                 "numero_completo": "numero_completo", "processo": "processo", "origem": "origem", 
-                "assunto": "assunto", "decisao": "decisao", "solicitante": "solicitante", "responsavel": "responsavel"
+                "assunto": "assunto", "decisao": "decisao", "solicitante": "solicitante", 
+                "acao": "acao", "item": "item", "responsavel": "responsavel", "endereco": "endereco"
             },
             "OS": {
-                "numero_os": "numero_os", "origem": "origem", "acao": "acao", "item": "item",
+                "numero_os": "numero_os", "processo": "processo", "origem": "origem", "acao": "acao", "item": "item",
                 "status": "status", "bairro": "bairro", "responsavel": "responsavel",
-                "id_ponto": "ponto_principal_id"
+                "id_ponto": "ponto_principal_id", "empresa": "empresa", "endereco": "endereco"
             }
         }
 
@@ -59,24 +63,19 @@ class RelatorioRepository:
         for chave, valor in filtros.items():
             if valor and chave in doc_map:
                 coluna = doc_map[chave]
-                
-                # BLINDAGEM: Decisão usa = para que "Deferido" não puxe "Indeferido"
-                if chave == "decisao":
+                if chave == "decisao" or chave == "empresa":
                     query += f" AND translate(lower(COALESCE({coluna}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') = translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
                     params.append(valor)
-                # BLINDAGEM: Busca por ID do Ponto de Parada (Principal ou Adicionais)
                 elif chave == "id_ponto" and tipo_doc == "OS":
                     query += f""" AND (
                         translate(lower(COALESCE(ponto_principal_id::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') OR 
                         translate(lower(COALESCE(pontos_adicionais::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')
                     )"""
                     params.extend([f"%{valor}%", f"%{valor}%"])
-                # BLINDAGEM: Qualquer outro campo livre (LIKE Ignorando maiúsculas e acentos)
                 else:
                     query += f" AND translate(lower(COALESCE({coluna}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
                     params.append(f"%{valor}%")
 
-        # Filtro de Data
         col_data = "data_criacao"
         if filtros.get("data_inicio"):
             query += f" AND ({col_data} IS NULL OR {col_data}::date >= %s)"
@@ -115,18 +114,18 @@ class RelatorioRepository:
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
-                    # 1. Pega o ID do usuário que está excluindo
                     cur.execute("SELECT id FROM common.usuarios WHERE nome_completo = %s LIMIT 1", (excluido_por_nome,))
                     user_row = cur.fetchone()
                     excluido_por_id = user_row[0] if user_row else None
 
                     import json
                     if tipo_doc == "PARECER":
-                        # CONSTRUÇÃO DO JSON COMPLETO COM NOME DO GERADOR (PARECER)
+                        # CORREÇÃO: Usando p.tipo_execucao e p.item para compor a Lixeira
                         cur.execute("""
                             SELECT pb.numero_parecer_ano, json_build_object(
                                 'id', p.id, 'processo', p.processo, 'assunto', p.assunto,
                                 'solicitante', p.solicitante, 'origem', o.nome, 'decisao', t.nome,
+                                'acao', p.tipo_execucao, 'item', p.item,
                                 'endereco', p.endereco_vistoria, 'motivo_indeferimento', p.motivo_indeferimento,
                                 'gerado_por', u.nome_completo, 'caminho_arquivo', pb.caminho_arquivo,
                                 'data_criacao', pb.created_at
@@ -147,11 +146,9 @@ class RelatorioRepository:
                                 VALUES ('PARECER_ponto_parada', %s, %s, %s, %s, NOW())
                             """, (numero, json.dumps(dados_json), motivo, excluido_por_id))
 
-                        # Deleta em cascata a partir da base
                         cur.execute("DELETE FROM common.pareceres_base WHERE id = %s", (registro_id,))
                         
                     else:
-                        # CONSTRUÇÃO DO JSON COMPLETO COM NOME DO GERADOR (ORDEM DE SERVIÇO)
                         cur.execute("""
                             SELECT os.numero, json_build_object(
                                 'id', os.id, 'numero_os', os.numero, 'origem', o.nome,
@@ -177,13 +174,11 @@ class RelatorioRepository:
                                 VALUES ('OS_ponto_parada', %s, %s, %s, %s, NOW())
                             """, (numero, json.dumps(dados_json), motivo, excluido_por_id))
                             
-                        # Deleta a OS
                         cur.execute("DELETE FROM ponto_parada.ordens_servico WHERE id = %s", (registro_id,))
                         
                     conn.commit()
                     return True, "Registro excluído e arquivado no histórico com sucesso."
         except Exception as e:
-            print(f"[LOG DB] Erro ao excluir no Ponto de Parada: {e}")
             return False, f"Erro ao excluir: {e}"
         
     def atualizar_registro(self, tipo_doc, registro_id, dados):
@@ -191,7 +186,6 @@ class RelatorioRepository:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if tipo_doc == "PARECER":
-                        # 1. Atualiza dados da Tabela Base (Responsável, Data, Decisão, Número)
                         if dados.get("numero_completo"):
                             try:
                                 num = int(str(dados["numero_completo"]).split('/')[0])
@@ -206,13 +200,11 @@ class RelatorioRepository:
                             FROM ponto_parada.pareceres p
                             WHERE pb.id = p.id AND p.id = %(id)s
                         """, {
-                            "id": registro_id,
-                            "decisao": dados.get("decisao"),
-                            "responsavel": dados.get("responsavel"),
-                            "data_criacao": dados.get("data_criacao")
+                            "id": registro_id, "decisao": dados.get("decisao"),
+                            "responsavel": dados.get("responsavel"), "data_criacao": dados.get("data_criacao")
                         })
 
-                        # 2. Atualiza dados específicos do Parecer de Ponto de Parada
+                        # CORREÇÃO: Atualiza direto o VARCHAR ao invés de buscar ID
                         cur.execute("""
                             UPDATE ponto_parada.pareceres
                             SET processo = COALESCE(%(processo)s, processo),
@@ -220,20 +212,18 @@ class RelatorioRepository:
                                 solicitante = COALESCE(%(solicitante)s, solicitante),
                                 endereco_vistoria = COALESCE(%(endereco)s, endereco_vistoria),
                                 motivo_indeferimento = COALESCE(%(motivo)s, motivo_indeferimento),
-                                origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id)
+                                origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id),
+                                tipo_execucao = COALESCE(%(acao)s, tipo_execucao),
+                                item = COALESCE(%(item)s, item)
                             WHERE id = %(id)s
                         """, {
-                            "id": registro_id,
-                            "processo": dados.get("processo"),
-                            "assunto": dados.get("assunto"),
-                            "solicitante": dados.get("solicitante"),
-                            "endereco": dados.get("endereco"),
-                            "motivo": dados.get("motivo_indeferimento"),
-                            "origem": dados.get("origem")
+                            "id": registro_id, "processo": dados.get("processo"),
+                            "assunto": dados.get("assunto"), "solicitante": dados.get("solicitante"),
+                            "endereco": dados.get("endereco"), "motivo": dados.get("motivo_indeferimento"),
+                            "origem": dados.get("origem"), "acao": dados.get("acao"), "item": dados.get("item")
                         })
                         
                     else: # ORDEM DE SERVIÇO
-                        # Filtra caso o usuário digite o ID do ponto no formato "12 (+ 45)" e pega só o principal
                         if "id_ponto" in dados and dados["id_ponto"]:
                             import re
                             ponto_str = str(dados["id_ponto"]).split('(')[0]
@@ -248,42 +238,29 @@ class RelatorioRepository:
                                 ponto_principal_id = COALESCE(%(ponto_id_clean)s, ponto_principal_id),
                                 origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id),
                                 tipo_acao_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'ACAO_OS' AND nome = %(acao)s LIMIT 1), tipo_acao_id),
-                                tipo_item_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'ITEM_GLOBAL' AND nome = %(item)s LIMIT 1), tipo_item_id),
+                                tipo_item_id = COALESCE((SELECT id FROM common.tipos WHERE contexto IN ('ITEM_URBMIDIA', 'ITEM_MCMENSAGEM') AND nome = %(item)s LIMIT 1), tipo_item_id),
                                 status_conclusao = COALESCE(%(status)s, status_conclusao),
                                 responsavel_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), responsavel_id),
                                 data_criacao = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), data_criacao)
                             WHERE id = %(id)s
                             RETURNING ponto_principal_id
                         """, {
-                            "id": registro_id,
-                            "numero_os": dados.get("numero_os"),
-                            "ponto_id_clean": dados.get("ponto_id_clean"),
-                            "origem": dados.get("origem"),
-                            "acao": dados.get("acao"),
-                            "item": dados.get("item"),
-                            "status": dados.get("status"),
-                            "responsavel": dados.get("responsavel"),
-                            "data_criacao": dados.get("data_criacao")
+                            "id": registro_id, "numero_os": dados.get("numero_os"), "ponto_id_clean": dados.get("ponto_id_clean"),
+                            "origem": dados.get("origem"), "acao": dados.get("acao"), "item": dados.get("item"),
+                            "status": dados.get("status"), "responsavel": dados.get("responsavel"), "data_criacao": dados.get("data_criacao")
                         })
                         
-                        # Bônus: Atualiza as strings do endereço (Tabela Pai de Endereços)
                         res = cur.fetchone()
                         if res and res[0] and (dados.get("bairro") or dados.get("endereco")):
                             cur.execute("""
                                 UPDATE ponto_parada.enderecos_cadastrados
-                                SET bairro = COALESCE(%(bairro)s, bairro),
-                                    logradouro = COALESCE(%(endereco)s, logradouro)
+                                SET bairro = COALESCE(%(bairro)s, bairro), logradouro = COALESCE(%(endereco)s, logradouro)
                                 WHERE id = %(p_id)s
-                            """, {
-                                "bairro": dados.get("bairro"),
-                                "endereco": dados.get("endereco"),
-                                "p_id": res[0]
-                            })
+                            """, {"bairro": dados.get("bairro"), "endereco": dados.get("endereco"), "p_id": res[0]})
                     conn.commit()
-            return True, "Registro atualizado com sucesso no banco de dados."
+            return True, "Registro atualizado com sucesso."
         except Exception as e:
-            print(f"[LOG DB] Erro atualizar_registro Ponto Parada: {e}")
-            return False, "Erro ao atualizar registro. Verifique se as informações digitadas são válidas."
+            return False, "Erro ao atualizar registro. Verifique os dados."
 
     def obter_bairros(self):
         try:

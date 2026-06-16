@@ -52,29 +52,28 @@ class RelatorioService:
             elementos.append(Spacer(1, 15))
 
             if tipo_doc == "OS":
-                cabecalho = ["Nº OS", "ID Ponto", "Origem", "Ação", "Item", "Bairro", "Status", "Data"]
-                dados_tabela = [cabecalho]
-                for d in dados:
-                    dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
-                    dados_tabela.append([str(d.get('numero_os','')), str(d.get('ponto_principal_id','')), str(d.get('origem','')), str(d.get('acao','')), str(d.get('item','')), str(d.get('bairro',''))[:20], str(d.get('status','')), dt])
-                col_widths = [60, 80, 80, 110, 150, 120, 80, 80]
-            else:
-                # MODIFICAÇÃO: Nova ordem no PDF para casar com a Tabela
-                cabecalho = ["Nº Parecer", "Processo", "Origem", "Decisão", "Assunto", "Solicitante", "Responsável", "Data"]
+                cabecalho = ["Nº OS", "Processo", "ID Ponto", "Origem", "Empresa", "Ação", "Item", "Endereço", "Status", "Data"]
                 dados_tabela = [cabecalho]
                 for d in dados:
                     dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
                     dados_tabela.append([
-                        str(d.get('numero_completo','')), 
-                        str(d.get('processo','')), 
-                        str(d.get('origem','')), 
-                        str(d.get('decisao','')), 
-                        str(d.get('assunto',''))[:30], 
-                        str(d.get('solicitante',''))[:20], 
-                        str(d.get('responsavel',''))[:15], 
-                        dt
+                        str(d.get('numero_os','')), str(d.get('processo','')), str(d.get('ponto_principal_id','')), 
+                        str(d.get('origem','')), str(d.get('empresa','')), str(d.get('acao','')), str(d.get('item','')), 
+                        str(d.get('endereco',''))[:25], str(d.get('status','')), dt
                     ])
-                col_widths = [65, 80, 75, 75, 170, 120, 95, 70]
+                col_widths = [40, 65, 55, 60, 70, 75, 115, 140, 65, 65]
+            else:
+                # ADICIONADO: Ação e Item no PDF do Parecer
+                cabecalho = ["Nº Parecer", "Processo", "Origem", "Decisão", "Ação", "Item", "Endereço", "Responsável", "Data"]
+                dados_tabela = [cabecalho]
+                for d in dados:
+                    dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
+                    dados_tabela.append([
+                        str(d.get('numero_completo','')), str(d.get('processo','')), str(d.get('origem','')), 
+                        str(d.get('decisao','')), str(d.get('acao','')), str(d.get('item','')), 
+                        str(d.get('endereco',''))[:30], str(d.get('responsavel',''))[:15], dt
+                    ])
+                col_widths = [65, 75, 65, 65, 75, 95, 160, 85, 65]
 
             tabela = Table(dados_tabela, colWidths=col_widths)
             tabela.setStyle(TableStyle([
@@ -83,7 +82,7 @@ class RelatorioService:
                 ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('FONTSIZE', (0, 0), (-1, -1), 8.5),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
                 ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#F9F9F9")),
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.silver),

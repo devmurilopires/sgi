@@ -7,7 +7,6 @@ from src.modulos.ponto_parada.relatorios.service import RelatorioService
 from src.core.shared.components.parameters_combo import CtkParametrosComboBox
 from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_HOVER
 
-
 class RelatorioView(ctk.CTkFrame):
     def __init__(self, master, usuario_logado, tipo_relatorio):
         super().__init__(master, fg_color="transparent")
@@ -29,23 +28,18 @@ class RelatorioView(ctk.CTkFrame):
 
         if self.tipo_doc == "OS":
             self.colunas_config = {
-                "id": "ID", "numero_os": "N° OS", "id_ponto": "ID Ponto", 
-                "origem": "Origem", "acao": "Ação", "item": "Item", 
-                "status": "Status", "bairro": "Bairro", "responsavel": "Responsável", 
-                "data_criacao": "Data Criação"
+                "id": "ID", "numero_os": "N° OS", "processo": "Nº Processo", "id_ponto": "ID Ponto", 
+                "origem": "Origem", "empresa": "Empresa", "acao": "Ação", "item": "Item", 
+                "status": "Status", "bairro": "Bairro", "endereco": "Endereço", 
+                "responsavel": "Responsável", "data_criacao": "Data Criação"
             }
         else:
-            # MODIFICAÇÃO: Nova ordem requisitada
+            # ADICIONADO: Ação e Item
             self.colunas_config = {
-                "id": "ID", 
-                "numero_completo": "N° Parecer", 
-                "processo": "N° Processo", 
-                "assunto": "Assunto",  
-                "decisao": "Decisão", 
-                "origem": "Origem",
-                "solicitante": "Solicitante", 
-                "responsavel": "Responsável", 
-                "data_criacao": "Data Criação"
+                "id": "ID", "numero_completo": "N° Parecer", "processo": "N° Processo", 
+                "origem": "Origem", "decisao": "Decisão", "acao": "Ação", "item": "Item",
+                "assunto": "Assunto", "solicitante": "Solicitante", "endereco": "Endereço",
+                "responsavel": "Responsável", "data_criacao": "Data Criação"
             }
 
         self._configurar_estilos()
@@ -93,8 +87,8 @@ class RelatorioView(ctk.CTkFrame):
             if key in campos_ignorar: continue
             
             colspan = 1
-            if self.tipo_doc == "PARECER" and key in ["assunto", "solicitante", "origem"]: colspan = 2
-            elif self.tipo_doc == "OS" and key in ["item", "bairro"]: colspan = 2
+            if self.tipo_doc == "PARECER" and key in ["assunto", "solicitante", "endereco"]: colspan = 2
+            elif self.tipo_doc == "OS" and key in ["item", "bairro", "endereco"]: colspan = 2
             
             f = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
             f.grid(row=row, column=col, columnspan=colspan, padx=10, pady=8, sticky="ew")
@@ -107,7 +101,11 @@ class RelatorioView(ctk.CTkFrame):
             elif key == "status": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="STATUS_OS", incluir_todos=True, height=35)
             elif key == "decisao": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="DECISAO_PARECER", incluir_todos=True, height=35)
             elif key == "assunto": widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="ASSUNTO_PARECER", incluir_todos=True, height=35)
-            else: widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color=COLOR_PRIMARY, fg_color=COLOR_BG, text_color=COLOR_TEXT, border_width=1)
+            elif key == "empresa": 
+                widget = CtkParametrosComboBox(f, setor="Ponto de Parada", campo="MODELO_OS", incluir_todos=True, height=35)
+                widget.set("Todos")
+            else: 
+                widget = ctk.CTkEntry(f, height=35, placeholder_text=f"Digite {label.lower()}...", border_color=COLOR_PRIMARY, fg_color=COLOR_BG, text_color=COLOR_TEXT, border_width=1)
             
             widget.pack(fill="x")
             self.entradas_filtros[key] = widget
@@ -169,8 +167,9 @@ class RelatorioView(ctk.CTkFrame):
         
         for k, v in self.colunas_config.items():
             self.tree.heading(k, text=v)
-            if k == "assunto": self.tree.column(k, width=280, anchor="w") 
-            elif k == "solicitante": self.tree.column(k, width=200, anchor="w")
+            if k == "assunto": self.tree.column(k, width=150, anchor="w") 
+            elif k == "solicitante": self.tree.column(k, width=120, anchor="w")
+            elif k == "endereco": self.tree.column(k, width=150, anchor="w")
             else: self.tree.column(k, width=100, anchor="center")
         self.tree.column("id", width=0, stretch=False) 
         
@@ -222,7 +221,6 @@ class RelatorioView(ctk.CTkFrame):
                 if p_adicionais: d["id_ponto"] = f"{p_principal} (+ {p_adicionais})"
                 else: d["id_ponto"] = p_principal
 
-            # BLINDAGEM: Converte valores vazios/None para "-"
             valores = []
             for k in self.colunas_config.keys():
                 val = d.get(k)
@@ -240,7 +238,6 @@ class RelatorioView(ctk.CTkFrame):
         self.btn_ant.configure(state="normal" if self.pagina_atual > 1 else "disabled")
         self.btn_prox.configure(state="normal" if self.pagina_atual < self.total_paginas else "disabled")
 
-    # 1. Função Dinâmica: Sem campos bloqueados! Tudo é editável.
     def _add_detail_field_dinamico(self, parent, key, value, row, col, pad_x, editando):
         label_text = str(key).replace("_", " ").title()
         ctk.CTkLabel(parent, text=f"{label_text}:", font=("Arial Bold", 12), text_color=COLOR_TEXT).grid(row=row, column=col, sticky="nw", pady=8, padx=(0, 5))
@@ -259,7 +256,6 @@ class RelatorioView(ctk.CTkFrame):
             box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
             if editando: self.modal_edit_widgets[key] = box
         else:
-            # Renderiza Comboboxes Inteligentes no Modo Edição
             if key == "origem":
                 w = CtkParametrosComboBox(parent, setor="Ponto de Parada", campo="ORIGEM", width=250, height=35)
                 w.set(val_str if val_str != "-" else "– Selecione –")
@@ -282,14 +278,12 @@ class RelatorioView(ctk.CTkFrame):
                 w = CtkParametrosComboBox(parent, setor="Ponto de Parada", campo="SOLICITANTE_PARECER", width=250, height=35)
                 w.set(val_str if val_str != "-" else "– Selecione –")
             else:
-                # Demais campos: Data, Processo, Número, Endereço, Responsável...
                 w = ctk.CTkEntry(parent, width=250, height=35, font=("Arial", 12))
                 w.insert(0, val_str if val_str != "-" else "")
             
             w.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
             self.modal_edit_widgets[key] = w
 
-    # 2. Tela de Detalhes Modificada
     def acao_detalhes(self):
         sel = self.tree.selection()
         if not sel: return messagebox.showwarning("Aviso", "Por favor, selecione um registro na tabela.")
@@ -337,7 +331,7 @@ class RelatorioView(ctk.CTkFrame):
                     self._add_detail_field_dinamico(grid, key2, val2, row_idx, 2, (0, 0), editando)
                 row_idx += 1
 
-        desenhar_grid(editando=False) # Inicia no modo visualização
+        desenhar_grid(editando=False) 
 
         if dado.get('caminho_arquivo'):
             ctk.CTkLabel(scroll, text="Localização na Rede:", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w", pady=(15, 0))
@@ -346,7 +340,6 @@ class RelatorioView(ctk.CTkFrame):
             path_box.insert(0, dado.get('caminho_arquivo'))
             path_box.configure(state="readonly")
 
-        # --- BOTÕES DO MODAL ---
         frame_botoes = ctk.CTkFrame(scroll, fg_color="transparent")
         frame_botoes.pack(pady=30)
         
@@ -389,21 +382,13 @@ class RelatorioView(ctk.CTkFrame):
     def acao_excluir(self):
         sel = self.tree.selection()
         if not sel: return messagebox.showwarning("Aviso", "Selecione um registro para excluir.")
-        
-        # 1. Abre a caixinha solicitando o motivo obrigatório da exclusão
         dialog = ctk.CTkInputDialog(text="Motivo para a exclusão do registro:", title="Auditoria de Exclusão")
         motivo = dialog.get_input()
-        
-        if motivo is None: 
-            return # Se clicar em cancelar, interrompe
-        if not motivo.strip():
-            return messagebox.showwarning("Aviso", "A exclusão foi abortada. O motivo é obrigatório.")
+        if motivo is None: return 
+        if not motivo.strip(): return messagebox.showwarning("Aviso", "A exclusão foi abortada. O motivo é obrigatório.")
             
         if messagebox.askyesno("Atenção Crítica", "Esta ação enviará o documento para o Histórico/Lixeira do sistema.\nDeseja prosseguir?"):
-            # 2. Captura o nome do usuário de forma segura
             usr_nome = self.usuario.get('nome') if isinstance(self.usuario, dict) else self.usuario
-            
-            # 3. Envia os novos parâmetros para o service
             sucesso, msg = self.service.excluir(self.tipo_doc, sel[0], motivo.strip(), usr_nome)
             if sucesso:
                 self.acao_buscar()
@@ -424,8 +409,10 @@ class RelatorioView(ctk.CTkFrame):
 
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
-            if isinstance(widget, CtkParametrosComboBox): widget.set("Todos")
-            else: widget.delete(0, 'end')
+            if isinstance(widget, CtkParametrosComboBox) or isinstance(widget, ctk.CTkComboBox): 
+                widget.set("Todos")
+            else: 
+                widget.delete(0, 'end')
                 
         self.data_inicio.set_date(date(date.today().year, 1, 1))
         self.data_fim.set_date(date.today())
