@@ -40,22 +40,25 @@ class OSView(ctk.CTkFrame):
         form_frame = ctk.CTkFrame(self.scroll_frame, fg_color=COLOR_WHITE, corner_radius=10)
         form_frame.pack(fill="x", pady=10, padx=10)
 
-        # Linha 1: Origem, Ação da OS e Tipo de Item
+        # Linha 1: Origem, Ação, Tipo de Item, Nº do Processo e ID
         row1 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row1.pack(fill="x", pady=(15, 5), padx=15)
 
-        self.origem_combo = self._criar_param_combo(row1, "Origem da Demanda", "Ponto de Parada", "ORIGEM", width=300, side="left")
-        self.tipo_os_combo = self._criar_param_combo(row1, "Ação da OS", "Ponto de Parada", "ACAO_OS", width=300, side="left")
-        self.tipo_item_combo = self._criar_param_combo(row1, "Tipo de Item", "Ponto de Parada", "ITEM_URBMIDIA", width=300, side="left")
-
-        # Linha 2: ID do Ponto e Botões de Pesquisa
-        self.id_entry = self._criar_campo(row1, "ID do Ponto", width=300, side="left")
+        w_campos = 235
+        self.origem_combo = self._criar_param_combo(row1, "Origem da Demanda", "Ponto de Parada", "ORIGEM", width=w_campos, side="left")
+        self.tipo_os_combo = self._criar_param_combo(row1, "Ação da OS", "Ponto de Parada", "ACAO_OS", width=w_campos, side="left")
+        self.tipo_item_combo = self._criar_param_combo(row1, "Tipo de Item", "Ponto de Parada", "ITEM_URBMIDIA", width=w_campos, side="left")
+        
+        self.processo_entry = self._criar_campo(row1, "Nº do Processo", width=w_campos, side="left")
+        
+        self.id_entry = self._criar_campo(row1, "ID do Ponto", width=w_campos, side="left")
         self.id_entry.bind("<FocusOut>", self.ao_sair_do_id)
 
-        # Linha 2 cont.
+        # Linha 2: Endereçamento
         row2 = ctk.CTkFrame(form_frame, fg_color="transparent")
         row2.pack(fill="x", pady=5, padx=15)
         
+        # Como agora _criar_campo tem maiúsculas automáticas, o usuário não consegue errar o preenchimento!
         self.endereco_entry = self._criar_campo(row2, "Endereço", width=300, side="left")
         self.numero_entry = self._criar_campo(row2, "Número", width=300, side="left")
         self.bairro_entry = self._criar_campo(row2, "Bairro", width=300, side="left")
@@ -91,24 +94,25 @@ class OSView(ctk.CTkFrame):
         
         ctk.CTkLabel(container, text=label_text, font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w")
         
-        # Cria o Entry já com uma borda fina (border_width=1) e a cor cinza padrão
-        cor_padrao = "#E0E0E0" # Cinza clarinho
-        entry = ctk.CTkEntry(container, width=width, height=35, border_width=1, border_color=cor_padrao)
+        cor_padrao = "#E0E0E0" 
+        var = ctk.StringVar()
+        entry = ctk.CTkEntry(container, width=width, height=35, border_width=1, border_color=cor_padrao, textvariable=var)
         entry.pack(anchor="w", pady=(2,0))
 
-        # O 'event=None' permite que a função seja acionada manualmente via código
-        def ao_digitar(event=None):
-            # .strip() remove espaços em branco; se sobrar texto, pinta de laranja (COLOR_PRIMARY)
-            if entry.get().strip():
+        # Lógica Mágica: Força o UpperCase e muda a cor da borda ao mesmo tempo
+        def ao_digitar(*args):
+            texto = var.get()
+            if texto != texto.upper():
+                var.set(texto.upper())
+                texto = texto.upper()
+                
+            if texto.strip():
                 entry.configure(border_color=COLOR_PRIMARY) 
             else:
                 entry.configure(border_color=cor_padrao)      
 
-        # "Prende" a função ao evento de soltar a tecla no teclado
-        entry.bind("<KeyRelease>", ao_digitar)
-        
-        # ANEXA A FUNÇÃO AO COMPONENTE: Isso permite chamar entry.atualizar_borda() de fora!
-        entry.atualizar_borda = ao_digitar
+        # O trace_add fica "escutando" a variável sem precisar de clique no teclado.
+        var.trace_add("write", ao_digitar)
 
         return entry
     
@@ -130,7 +134,6 @@ class OSView(ctk.CTkFrame):
 
     # --- AÇÕES ---
     def ao_mudar_modelo(self, modelo_selecionado):
-        # Dispara consulta no BD e atualiza opções do Tipo de Item (Cascading Dropdown)
         itens = self.service.obter_itens_por_modelo(modelo_selecionado)
         if itens:
             self.tipo_item_combo.configure(values=itens)
@@ -145,22 +148,29 @@ class OSView(ctk.CTkFrame):
         
         dados = self.service.consultar_endereco(id_digitado)
         
+        # Limpa os campos antes de mais nada
         self.endereco_entry.delete(0, ctk.END)
         self.numero_entry.delete(0, ctk.END)
         self.bairro_entry.delete(0, ctk.END)
         self.complemento_entry.delete(0, ctk.END)
 
         if dados:
+            # Preenche os dados automaticamente
             self.endereco_entry.insert(0, dados.get("endereco", ""))
             self.numero_entry.insert(0, dados.get("numero", ""))
             self.bairro_entry.insert(0, dados.get("bairro", ""))
             self.complemento_entry.insert(0, dados.get("complemento", ""))
-
-        # FORÇA A ATUALIZAÇÃO VISUAL DAS BORDAS APÓS O PREENCHIMENTO AUTOMÁTICO
-        self.endereco_entry.atualizar_borda()
-        self.numero_entry.atualizar_borda()
-        self.bairro_entry.atualizar_borda()
-        self.complemento_entry.atualizar_borda()
+        else:
+            # BLINDAGEM: Se não existe, avisa o usuário e limpa o ID
+            messagebox.showwarning(
+                "ID Não Encontrado", 
+                f"O ID '{id_digitado}' não está cadastrado no banco de dados.\n\n"
+                "As Ordens de Serviço só podem ser geradas para Pontos de Parada oficiais.\n"
+                "Por favor, acesse o módulo 'Gestão de Endereços' para cadastrar este Ponto primeiro."
+            )
+            self.id_entry.delete(0, ctk.END)
+            # Foco volta para o ID para ele tentar novamente
+            self.id_entry.focus_set()
 
     def adicionar_descricao(self):
         id_texto = self.id_entry.get().strip().upper()
@@ -168,12 +178,17 @@ class OSView(ctk.CTkFrame):
             messagebox.showerror("Atenção", "Digite o ID do Ponto primeiro.")
             return
             
+        # DUPLA VALIDAÇÃO: Garante que o usuário não consiga burlar clicando em Add muito rápido
+        if not self.service.consultar_endereco(id_texto):
+            messagebox.showerror("Acesso Negado", "Este ID não está cadastrado. Utilize o módulo 'Gestão de Endereços' para cadastrar novos IDs.")
+            return
+
         endereco = self.endereco_entry.get().upper()
         numero = self.numero_entry.get().upper()
         bairro = self.bairro_entry.get().upper()
         
         if not endereco or not numero or not bairro:
-            messagebox.showerror("Atenção", "Preencha Logradouro, Número e Bairro.")
+            messagebox.showerror("Atenção", "Os dados de endereço estão incompletos.")
             return
 
         tipo_os = self.tipo_os_combo.get().upper()
@@ -208,25 +223,23 @@ class OSView(ctk.CTkFrame):
             self._renderizar_tabela()
 
     def acao_criar_os(self):
-        id_digitado = self.id_entry.get().strip().upper()
-        if not id_digitado and not self.descricoes_acumuladas:
-            messagebox.showerror("Erro", "Formulário vazio.")
+        processo_digitado = self.processo_entry.get().strip().upper()
+        if not processo_digitado:
+            messagebox.showerror("Erro", "O preenchimento do Nº do Processo é obrigatório para gerar a OS.")
             return
 
-        if id_digitado:
-             resposta = messagebox.askyesno("Verificação de ID", f"Você já consultou o histórico do ID {id_digitado}?\nSe não, clique em NÃO para ver agora.")
-             if not resposta:
-                 historico = self.service.obter_historico_formatado(id_digitado)
-                 messagebox.showinfo(f"Histórico ID {id_digitado}", historico)
-                 return
+        if not self.descricoes_acumuladas:
+            messagebox.showerror("Erro", "Você precisa adicionar pelo menos um item à lista para gerar a OS.")
+            return
 
-        form_dados = {
-            'endereco': self.endereco_entry.get().upper(),
-            'numero': self.numero_entry.get().upper(),
-            'bairro': self.bairro_entry.get().upper(),
-            'complemento': self.complemento_entry.get().upper()
-        }
-        
+        id_principal = self.descricoes_acumuladas[0]["id"]
+        resposta = messagebox.askyesno("Verificação de Histórico", f"Você já consultou o histórico do ID {id_principal}?\n\nSe não, clique em NÃO para visualizar o histórico de Ordens de Serviço desse ponto.")
+        if not resposta:
+            historico = self.service.obter_historico_formatado(id_principal)
+            messagebox.showinfo(f"Histórico ID {id_principal}", historico)
+            return
+
+        # Já não passamos os dados de endereço do formulário porque eles não serão atualizados aqui
         modelo_operacao = self.modelo_combo.get()
         doc_template = "dados/modelo_etufor_mcmensagem_pp.docx" if modelo_operacao == "McMensagem" else "dados/modelo_etufor_urbmidia_pp.docx"
 
@@ -236,13 +249,14 @@ class OSView(ctk.CTkFrame):
             modelo_escolhido=doc_template,
             tipo_os=self.tipo_os_combo.get(),
             tipo_item=self.tipo_item_combo.get(),
-            form_dados=form_dados,
+            processo=processo_digitado,
             usuario_logado=self.usuario_logado,
             origem_demanda=self.origem_combo.get() 
         )
 
         if sucesso:
             messagebox.showinfo("OS Gerada com Sucesso!", mensagem)
+            self.processo_entry.delete(0, ctk.END)
             self.id_entry.delete(0, ctk.END)
             self.endereco_entry.delete(0, ctk.END)
             self.numero_entry.delete(0, ctk.END)

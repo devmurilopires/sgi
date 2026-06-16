@@ -49,7 +49,7 @@ class OSService:
     # =========================================================
     # ORQUESTRAÇÃO PRINCIPAL (GERAÇÃO SEGURA - DB PRIMEIRO)
     # =========================================================
-    def processar_criacao_os(self, descricoes_acumuladas, modelo_operacao, modelo_escolhido, tipo_os, tipo_item, form_dados, usuario_logado, origem_demanda):
+    def processar_criacao_os(self, descricoes_acumuladas, modelo_operacao, modelo_escolhido, tipo_os, tipo_item, processo, usuario_logado, origem_demanda):
         if not descricoes_acumuladas:
             return False, "Adicione pelo menos um item (descrição) na lista antes de gerar a OS."
 
@@ -58,35 +58,21 @@ class OSService:
         if not os.path.exists(RAIZ_REDE):
             return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
 
-        # Direciona para as pastas corretas baseadas no novo modelo
-        if modelo_operacao == "McMensagem":
+        # Direciona para as pastas corretas
+        if "MCMENSAGEM" in str(modelo_operacao).upper().replace(" ", ""):
             pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano_atual}\ORDENS DE SERVICO\MC MENSAGEM"
             item_contexto = "ITEM_MCMENSAGEM"
         else:
             pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano_atual}\ORDENS DE SERVICO\URBMIDIA"
             item_contexto = "ITEM_URBMIDIA"
 
+        # Extrai os IDs para relacionamento no Banco de Dados
         ids_unicos = list(set([d["id"] for d in descricoes_acumuladas]))
         id_principal = descricoes_acumuladas[0]["id"]
         pontos_adicionais = [pid for pid in ids_unicos if pid != id_principal]
 
-        # Cadastro/Atualização dos Endereços na tabela base
-        for id_atual in ids_unicos:
-            dados_id = self.repo.buscar_endereco_por_id(id_atual)
-            try:
-                if not dados_id:
-                    self.repo.cadastrar_endereco(
-                        id_atual, form_dados['endereco'], form_dados['numero'], 
-                        form_dados['bairro'], form_dados['complemento'], usuario_logado
-                    )
-                else:
-                    reativar = dados_id["status"].strip().upper() == "INATIVO"
-                    self.repo.atualizar_endereco(
-                        id_atual, form_dados['endereco'], form_dados['numero'], 
-                        form_dados['bairro'], form_dados['complemento'], usuario_logado, reativar=reativar
-                    )
-            except Exception as e:
-                return False, f"Erro ao gerenciar endereços no banco:\n{str(e)}"
+        # REMOVIDO: O loop que cadastrava endereços foi removido daqui!
+        # Agora o sistema assume que o ID já existe (foi validado pela Interface).
 
         numero_os = self.repo.obter_proximo_numero_os(ano_atual)
         data_str = datetime.now().strftime("%d/%m/%Y")
@@ -99,8 +85,10 @@ class OSService:
         nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
         destino_docx = os.path.join(caminho_pasta, nome_arquivo)
 
-        # Repassa o contexto para a trava do banco
+        # Monta os dados para registrar apenas a Ordem de Serviço
+        # Monta os dados para registrar apenas a Ordem de Serviço
         dados_db = {
+            "processo": processo,
             "numero_os": numero_os,
             "data_criacao": datetime.strptime(data_str, "%d/%m/%Y").date(),
             "id_principal": id_principal,
@@ -108,6 +96,7 @@ class OSService:
             "acao": tipo_os_up.upper(),
             "item": tipo_item_up,
             "item_contexto": item_contexto,
+            "modelo": modelo_operacao, # <--- AQUI! Passamos o modelo escolhido na interface para o banco
             "descricao": "\n".join([item["descricao"] for item in descricoes_acumuladas]),
             "usuario": f"%{usuario_logado}%",
             "caminho": destino_docx,
@@ -122,18 +111,20 @@ class OSService:
         try:
             os.makedirs(caminho_pasta, exist_ok=True)
             caminho_modelo = resource_path(modelo_escolhido)
-            self._gerar_documento_modelo(caminho_modelo, destino_docx, numero_os, data_str, id_principal, descricoes_acumuladas)
+            self._gerar_documento_modelo(caminho_modelo, destino_docx, numero_os, data_str, id_principal, descricoes_acumuladas, processo)
             return True, f"Ordem de Serviço Nº {numero_os:03d} criada e registrada com sucesso!\nSalva em:\n{destino_docx}"
             
         except Exception as e:
             return False, f"Atenção: A OS foi registrada no banco, mas houve falha ao gerar o documento Word na rede:\n{e}"
-        
-    def _gerar_documento_modelo(self, modelo_path, destino_path, numero_os, data_str, id_texto, descricoes):
+                
+    def _gerar_documento_modelo(self, modelo_path, destino_path, numero_os, data_str, id_texto, descricoes, processo_str):
         doc = Document(modelo_path)
+        # Adicionada a tag {{PROCESSO}} para que saia automaticamente no template do Word
         mapeamento = {
             "{{NUMERO_OS}}": f"{numero_os:03d}",
             "{{DATA}}": data_str,
-            "{{ID}}": id_texto if id_texto.strip() else "-"
+            "{{ID}}": id_texto if id_texto.strip() else "-",
+            "{{PROCESSO}}": processo_str
         }
         
         for paragrafo in doc.paragraphs:

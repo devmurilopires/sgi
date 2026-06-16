@@ -116,16 +116,18 @@ class OSRepository:
             return []
 
     def salvar_os(self, dados_db):
-        # MODIFICAÇÃO: A subquery do tipo_item_id agora cruza com o contexto para evitar duplicações
+        # Inserção agora contém a coluna 'modelo_id'
         query_os = """
             INSERT INTO ponto_parada.ordens_servico (
                 numero, data_criacao, ponto_principal_id, origem_id,
-                tipo_acao_id, tipo_item_id, descricao_tecnica, responsavel_id, caminho_arquivo
+                tipo_acao_id, tipo_item_id, modelo_id, processo, descricao_tecnica, responsavel_id, caminho_arquivo
             ) VALUES (
                 %(numero_os)s, %(data_criacao)s, %(id_principal)s,
                 (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
                 (SELECT id FROM common.tipos WHERE nome ILIKE %(acao)s AND contexto = 'ACAO_OS' LIMIT 1),
                 (SELECT id FROM common.tipos WHERE nome ILIKE %(item)s AND contexto = %(item_contexto)s LIMIT 1),
+                (SELECT id FROM common.tipos WHERE nome ILIKE %(modelo)s AND contexto = 'MODELO_OS' LIMIT 1),
+                %(processo)s,
                 %(descricao)s,
                 (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %(usuario)s LIMIT 1),
                 %(caminho)s
