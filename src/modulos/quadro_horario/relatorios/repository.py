@@ -5,13 +5,13 @@ from config.database import get_db_connection
 class RelatorioQuadroHorarioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
-            # MODIFICAÇÃO: Wrapper Query para destravar a busca por número!
+            # MODIFICAÇÃO: Inserido 'tm.nome AS manifestacao' e o JOIN correspondente
             query = """
                 SELECT * FROM (
                     SELECT p.id, 
                            b.numero_parecer_ano::text || '/' || b.ano::text AS numero_completo, 
                            p.processo, o.nome AS origem, p.assunto, 
-                           t.nome AS decisao, p.solicitante, p.evento, 
+                           t.nome AS decisao, tm.nome AS manifestacao, p.solicitante, p.evento, 
                            (SELECT string_agg(cl.codigo, ', ') 
                             FROM quadro_horario.pareceres_linhas pl 
                             JOIN common.linhas cl ON pl.linha_id = cl.id 
@@ -22,6 +22,7 @@ class RelatorioQuadroHorarioRepository:
                     FROM quadro_horario.pareceres p
                     JOIN common.pareceres_base b ON p.id = b.id
                     LEFT JOIN common.tipos t ON b.tipo_id = t.id
+                    LEFT JOIN common.tipos tm ON p.tipo_manifestacao_id = tm.id
                     LEFT JOIN common.origens o ON p.origem_id = o.id
                     LEFT JOIN common.usuarios u ON b.criado_por_id = u.id 
                 ) AS base
@@ -50,7 +51,8 @@ class RelatorioQuadroHorarioRepository:
         mapeamento = {
             "PARECER": {
                 "numero_completo": "numero_completo", "processo": "processo", "origem": "origem", 
-                "decisao": "decisao", "assunto": "assunto", "solicitante": "solicitante", "responsavel": "responsavel"
+                "decisao": "decisao", "manifestacao": "manifestacao", "assunto": "assunto", 
+                "solicitante": "solicitante", "responsavel": "responsavel"
             },
             "PESQUISA": {
                 "titulo": "titulo", "tipo": "tipo", "responsavel": "responsavel"
@@ -62,8 +64,7 @@ class RelatorioQuadroHorarioRepository:
             if valor and chave in doc_map:
                 coluna = doc_map[chave]
                 
-                # BLINDAGEM: Decisão usa match exato (=) para DEFERIDO não puxar INDEFERIDO
-                if chave == "decisao":
+                if chave == "decisao" or chave == "manifestacao":
                     query += f" AND translate(lower(COALESCE({coluna}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') = translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
                     params.append(valor)
                 else:

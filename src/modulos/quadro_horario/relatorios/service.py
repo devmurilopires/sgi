@@ -237,7 +237,8 @@ class RelatorioQuadroHorarioService:
                     dados_tabela.append([str(d.get('id','')), str(d.get('titulo',''))[:40], str(d.get('tipo','')), dt_i, dt_f, str(d.get('responsavel',''))[:20], dt_c])
                 col_widths = [40, 200, 150, 80, 80, 150, 80]
             else:
-                cabecalho = ["Nº Parecer", "Processo", "Origem", "Assunto", "Decisão", "Solicitante", "Data Criação"]
+                # MODIFICAÇÃO: Inserida a coluna de Manifestação no PDF e ajuste de larguras
+                cabecalho = ["Nº Parecer", "Processo", "Origem", "Assunto", "Natureza", "Decisão", "Solicitante", "Criação"]
                 dados_tabela = [cabecalho]
                 for d in dados:
                     dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
@@ -245,12 +246,13 @@ class RelatorioQuadroHorarioService:
                         str(d.get('numero_completo','')), 
                         str(d.get('processo','')), 
                         str(d.get('origem','')), 
-                        str(d.get('assunto',''))[:30], 
+                        str(d.get('assunto',''))[:25], 
+                        str(d.get('manifestacao','')), 
                         str(d.get('decisao','')), 
                         str(d.get('solicitante',''))[:20], 
                         dt
                     ])
-                col_widths = [75, 95, 90, 180, 80, 150, 90] # Adaptado para folha A4 Paisagem
+                col_widths = [65, 80, 80, 130, 85, 70, 130, 80] # Alinhamento para folha A4 Paisagem
 
             tabela = Table(dados_tabela, colWidths=col_widths)
             tabela.setStyle(TableStyle([
