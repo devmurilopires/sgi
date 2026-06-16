@@ -48,7 +48,8 @@ class ParametrosService:
             "ITEM_MCMENSAGEM": "ITEM_MCMENSAGEM",
             "ITENS": "ITENS",
             "TIPO_OS": "TIPO_OS",
-            "PESQUISA": "PESQUISA"
+            "PESQUISA": "PESQUISA",
+            "NATUREZA_MANIFESTACAO": "NATUREZA_MANIFESTACAO" # <--- ADICIONE ESTA LINHA AQUI
         }
         
         if c_key in map_tipos:

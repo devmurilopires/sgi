@@ -38,7 +38,8 @@ class AdminParametrosView:
                 "PESQUISA": "Tipos de Pesquisa",
                 "EVENTO": "Lista de Eventos",
                 "SOLICITANTE_PARECER": "Solicitante",
-                "ASSUNTO_QUADRO_HORARIO": "Assunto"
+                "ASSUNTO_QUADRO_HORARIO": "Assunto",
+                "NATUREZA_MANIFESTACAO": "Natureza da Manifestação"
             },
             "Projetos de Mobilidade": {
                 "SOLICITANTE_PARECER": "Solicitante",
