@@ -153,7 +153,6 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         f_origem = ctk.CTkFrame(self.form_frame, fg_color="transparent")
         f_origem.grid(row=0, column=1, padx=(15, 0), pady=(0, 20), sticky="ew")
         ctk.CTkLabel(f_origem, text="Origem do Processo:", font=("Arial Bold", 13), text_color=COLOR_TEXT).pack(anchor="w", pady=(0, 5))
-        # MODIFICAÇÃO: Padronizado para "ORIGEM"
         self.origem_combo = CtkParametrosComboBox(f_origem, setor="Quadro de Horário", campo="ORIGEM", height=40, font=("Arial", 13))
         self.origem_combo.pack(fill="x")
 
@@ -192,7 +191,7 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         self.evento_combo.pack(fill="x")
         self.evento_combo.set("")
 
-        # --- LINHA 3: Seção de Datas (Só aparece se houver Evento) ---
+        # --- LINHA 3: Seção de Datas ---
         self.f_data_full_section = ctk.CTkFrame(self.form_frame, fg_color="transparent")
         self.f_data_full_section.columnconfigure((0, 1), weight=1, uniform="col")
         
@@ -211,21 +210,38 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         self.frame_chips_datas = ctk.CTkFrame(self.f_data_full_section, fg_color="transparent")
         self.frame_chips_datas.grid(row=2, column=1, padx=(15, 0), pady=(0, 20), sticky="ew")
 
-        # --- LINHA 4: Decisão ---
-        f_decisao = ctk.CTkFrame(self.form_frame, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E5E7EB")
-        f_decisao.grid(row=4, column=0, columnspan=2, pady=(10, 20), sticky="ew", ipadx=10, ipady=10)
+        # --- LINHA 4: Decisão e Natureza da Manifestação ---
+        f_linha4 = ctk.CTkFrame(self.form_frame, fg_color="transparent")
+        f_linha4.grid(row=4, column=0, columnspan=2, pady=(10, 20), sticky="ew")
+        f_linha4.columnconfigure((0, 1), weight=1, uniform="col")
+
+        f_decisao = ctk.CTkFrame(f_linha4, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E5E7EB")
+        f_decisao.grid(row=0, column=0, padx=(0, 15), sticky="ew", ipadx=10, ipady=10)
         ctk.CTkLabel(f_decisao, text="Decisão do Parecer:", font=("Arial Bold", 14), text_color=COLOR_TEXT).pack(pady=(10, 5))
         
-        # MODIFICAÇÃO: "Zero Hardcode" - A decisão agora vem do banco e é gerenciável pelo Admin!
         self.tipo_parecer_combo = CtkParametrosComboBox(
             f_decisao, 
             setor="Quadro de Horário", 
             campo="DECISAO_PARECER", 
             height=40, 
-            width=300, 
+            width=280, 
             command=self._on_tipo_change
         )
         self.tipo_parecer_combo.pack(pady=(0, 10))
+
+        # NOVO CAMPO: Natureza da Manifestação
+        f_manifestacao = ctk.CTkFrame(f_linha4, fg_color=COLOR_WHITE, corner_radius=8, border_width=1, border_color="#E5E7EB")
+        f_manifestacao.grid(row=0, column=1, padx=(15, 0), sticky="ew", ipadx=10, ipady=10)
+        ctk.CTkLabel(f_manifestacao, text="Natureza (Reclamação/Solicitação):", font=("Arial Bold", 14), text_color=COLOR_TEXT).pack(pady=(10, 5))
+        
+        self.manifestacao_combo = CtkParametrosComboBox(
+            f_manifestacao, 
+            setor="Quadro de Horário", 
+            campo="NATUREZA_MANIFESTACAO", 
+            height=40, 
+            width=280
+        )
+        self.manifestacao_combo.pack(pady=(0, 10))
 
         # --- LINHA 5: Motivo Indeferimento ---
         self.frame_indeferido = ctk.CTkFrame(self.form_frame, fg_color="transparent")
@@ -255,12 +271,9 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         self._aplicar_regras_negocio()
 
     def _formatar_processo(self, event):
-        # Ignora teclas de navegação para não atrapalhar o usuário
         if getattr(event, 'keysym', '') in ['Up', 'Down', 'Left', 'Right', 'Home', 'End']: return
-        
         texto = self.processo_entry.get()
         if texto != texto.upper():
-            # Força maiúscula e mantém o cursor no lugar certo
             pos = self.processo_entry.index("insert")
             self.processo_entry.delete(0, "end")
             self.processo_entry.insert(0, texto.upper())
@@ -341,7 +354,6 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
             btn.pack(side="left", padx=(0, 5))
 
     def _on_tipo_change(self, *args):
-        # MODIFICAÇÃO: Captura do novo componente dinâmico
         tipo = self.tipo_parecer_combo.get().upper()
         if tipo == "INDEFERIDO":
             self.frame_indeferido.grid() 
@@ -378,19 +390,22 @@ class ParecerQuadroHorarioView(ctk.CTkFrame):
         evento_selecionado = self.evento_combo.get().strip()
         if evento_selecionado == "Todos": evento_selecionado = ""
 
+        # Dicionário atualizado com o novo campo!
         dados_form = {
             "processo": self.processo_entry.get().strip(),
             "origem": self.origem_combo.get().strip(),
             "solicitante": self.solicitante_combo.get().strip(),
             "assunto": self.assunto_combo.get().strip(),
+            "manifestacao": self.manifestacao_combo.get().strip(), # <-- ADICIONADO AQUI
             "evento": evento_selecionado,
             "datas": datas_selecionadas,
-            "modo_data": modo_data.upper(), # A MÁGICA ACONTECE AQUI! O serviço agora vai saber.
+            "modo_data": modo_data.upper(),
             "motivo": self.motivo_text.get("1.0", "end").strip() if tipo == "INDEFERIDO" else ""
         }
 
-        if not all([dados_form["processo"], dados_form["origem"], dados_form["solicitante"], dados_form["assunto"]]):
-            return messagebox.showerror("Erro", "Preencha Processo, Origem, Solicitante e Assunto.")
+        # Validação ampliada
+        if not all([dados_form["processo"], dados_form["origem"], dados_form["solicitante"], dados_form["assunto"], dados_form["manifestacao"]]):
+            return messagebox.showerror("Erro", "Preencha Processo, Origem, Solicitante, Assunto e a Natureza da Manifestação.")
 
         if not self.linhas_add and not dados_form["evento"]:
             return messagebox.showerror("Erro", "Informe um Evento ou adicione ao menos uma Linha afetada.")

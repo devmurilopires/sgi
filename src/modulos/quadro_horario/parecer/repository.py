@@ -42,12 +42,13 @@ class ParecerQuadroHorarioRepository:
         
         query_especifica = """
             INSERT INTO quadro_horario.pareceres (
-                id, origem_id, processo, assunto, evento, data_evento, solicitante, motivo_indeferimento
+                id, origem_id, processo, assunto, evento, data_evento, solicitante, motivo_indeferimento, tipo_manifestacao_id
             ) VALUES (
                 %(id_base)s,
                 (SELECT id FROM common.origens WHERE nome ILIKE %(origem)s LIMIT 1),
                 %(processo)s, %(assunto)s, %(evento)s, %(data_db)s,
-                %(solicitante)s, %(motivo)s
+                %(solicitante)s, %(motivo)s,
+                (SELECT id FROM common.tipos WHERE contexto = 'NATUREZA_MANIFESTACAO' AND nome ILIKE %(manifestacao)s LIMIT 1)
             );
         """
 

@@ -155,19 +155,20 @@ class ParecerQuadroHorarioService:
 
         self._substituir_tags_xml(caminho_destino, mapeamento)
 
-        # ATUALIZADO: Payload enviado ao repositório alinhado com a nova estrutura DB
+        # ATUALIZADO: Inclui a manifestação
         dados_db = {
             "numero_parecer": numero, 
             "tipo": tipo, 
             "processo": dados_form["processo"],
             "origem": dados_form.get("origem", ""),
             "assunto": dados_form["assunto"],
+            "manifestacao": dados_form.get("manifestacao", ""), # <-- ADICIONADO AQUI
             "evento": evento, 
-            "data_db": data_db,  # Enviado como datetime.date para postgres
+            "data_db": data_db, 
             "solicitante": dados_form["solicitante"], 
-            "codigos_linhas": codigos_linhas, # Array de Códigos
+            "codigos_linhas": codigos_linhas,
             "motivo": dados_form.get("motivo", ""), 
-            "caminho_arquivo": caminho_destino, # Encaminhado para a base
+            "caminho_arquivo": caminho_destino,
             "criado_por": f"%{usuario}%"
         }
 
