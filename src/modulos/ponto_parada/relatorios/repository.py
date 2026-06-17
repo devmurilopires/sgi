@@ -4,7 +4,6 @@ from config.database import get_db_connection
 class RelatorioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
-            # CORREÇÃO: Buscando 'tipo_execucao' e 'item' diretamente como colunas de texto, sem usar JOINs extras!
             query = """
                 SELECT * FROM (
                     SELECT p.id, pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
@@ -120,7 +119,6 @@ class RelatorioRepository:
 
                     import json
                     if tipo_doc == "PARECER":
-                        # CORREÇÃO: Usando p.tipo_execucao e p.item para compor a Lixeira
                         cur.execute("""
                             SELECT pb.numero_parecer_ano, json_build_object(
                                 'id', p.id, 'processo', p.processo, 'assunto', p.assunto,
@@ -204,7 +202,6 @@ class RelatorioRepository:
                             "responsavel": dados.get("responsavel"), "data_criacao": dados.get("data_criacao")
                         })
 
-                        # CORREÇÃO: Atualiza direto o VARCHAR ao invés de buscar ID
                         cur.execute("""
                             UPDATE ponto_parada.pareceres
                             SET processo = COALESCE(%(processo)s, processo),
@@ -224,30 +221,47 @@ class RelatorioRepository:
                         })
                         
                     else: # ORDEM DE SERVIÇO
-                        if "id_ponto" in dados and dados["id_ponto"]:
-                            import re
-                            ponto_str = str(dados["id_ponto"]).split('(')[0]
-                            ponto_id = re.sub(r'\D', '', ponto_str)
-                            dados["ponto_id_clean"] = int(ponto_id) if ponto_id else None
+                        # CORREÇÃO 1: Trata o ID do Ponto como STRING para evitar erro de tipo no PostgreSQL
+                        if "id_ponto" in dados and dados["id_ponto"] and str(dados["id_ponto"]).strip() != "-":
+                            ponto_str = str(dados["id_ponto"]).split('(')[0].strip()
+                            dados["ponto_id_clean"] = ponto_str if ponto_str else None
                         else:
                             dados["ponto_id_clean"] = None
 
+                        # CORREÇÃO 2: Trata datas vazias de forma segura para não travar o to_timestamp
+                        dt_criacao = dados.get("data_criacao")
+                        if not dt_criacao or str(dt_criacao).strip() in ["", "-"]:
+                            dados["data_criacao_clean"] = None
+                        else:
+                            dados["data_criacao_clean"] = str(dt_criacao).strip()
+
+                        # CORREÇÃO 3: Incluídos os campos de Processo e Empresa (modelo_id) no UPDATE
                         cur.execute("""
                             UPDATE ponto_parada.ordens_servico
                             SET numero = COALESCE(%(numero_os)s, numero),
+                                processo = COALESCE(%(processo)s, processo),
                                 ponto_principal_id = COALESCE(%(ponto_id_clean)s, ponto_principal_id),
                                 origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id),
                                 tipo_acao_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'ACAO_OS' AND nome = %(acao)s LIMIT 1), tipo_acao_id),
                                 tipo_item_id = COALESCE((SELECT id FROM common.tipos WHERE contexto IN ('ITEM_URBMIDIA', 'ITEM_MCMENSAGEM') AND nome = %(item)s LIMIT 1), tipo_item_id),
+                                modelo_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'MODELO_OS' AND nome = %(empresa)s LIMIT 1), modelo_id),
                                 status_conclusao = COALESCE(%(status)s, status_conclusao),
                                 responsavel_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), responsavel_id),
-                                data_criacao = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), data_criacao)
+                                data_criacao = COALESCE(to_timestamp(%(data_criacao_clean)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao_clean)s, 'DD/MM/YYYY'), data_criacao)
                             WHERE id = %(id)s
                             RETURNING ponto_principal_id
                         """, {
-                            "id": registro_id, "numero_os": dados.get("numero_os"), "ponto_id_clean": dados.get("ponto_id_clean"),
-                            "origem": dados.get("origem"), "acao": dados.get("acao"), "item": dados.get("item"),
-                            "status": dados.get("status"), "responsavel": dados.get("responsavel"), "data_criacao": dados.get("data_criacao")
+                            "id": registro_id, 
+                            "numero_os": dados.get("numero_os"), 
+                            "processo": dados.get("processo"),
+                            "ponto_id_clean": dados["ponto_id_clean"],
+                            "origem": dados.get("origem"), 
+                            "acao": dados.get("acao"), 
+                            "item": dados.get("item"),
+                            "empresa": dados.get("empresa"),
+                            "status": dados.get("status"), 
+                            "responsavel": dados.get("responsavel"), 
+                            "data_criacao_clean": dados["data_criacao_clean"]
                         })
                         
                         res = cur.fetchone()
@@ -260,7 +274,8 @@ class RelatorioRepository:
                     conn.commit()
             return True, "Registro atualizado com sucesso."
         except Exception as e:
-            return False, "Erro ao atualizar registro. Verifique os dados."
+            print(f"[LOG DB] Erro atualizar_registro: {e}")
+            return False, "Erro ao atualizar registro. Verifique os dados e tente novamente."
 
     def obter_bairros(self):
         try:
