@@ -369,7 +369,7 @@ class RelatorioView(ctk.CTkFrame):
             btn_editar = ctk.CTkButton(frame_botoes, text="✏️ Editar", width=140, height=40, fg_color=COLOR_PRIMARY, hover_color="#D97706", command=alternar_edicao)
             btn_editar.pack(side="left", padx=10)
 
-        ctk.CTkButton(frame_botoes, text="Fechar", width=140, height=40, fg_color=COLOR_BG, hover_color="#4B5563", command=modal.destroy).pack(side="left", padx=10)
+        ctk.CTkButton(frame_botoes, text="Fechar", width=140, height=40, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=modal.destroy).pack(side="left", padx=10)
 
     def acao_abrir(self):
         sel = self.tree.selection()
