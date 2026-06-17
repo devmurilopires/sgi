@@ -217,7 +217,7 @@ class OSItinerarioView(ctk.CTkFrame):
             linha_fixa.grid_columnconfigure(i, weight=1, uniform="col")
 
         self.tipo_os_combo = self._criar_param_combo_grid(linha_fixa, "Tipo de OS", "Itinerário", "TIPO_OS", 0, 0, 2, command=self._on_tipo_change)
-        self.processo_entry = self._criar_campo_grid(linha_fixa, "Nº Processo (Opcional)", 0, 2, 2)
+        self.processo_entry = self._criar_campo_grid(linha_fixa, "Nº Processo", 0, 2, 2)
         
         def upper_processo_os(event):
             if getattr(event, 'keysym', '') in ['Up', 'Down', 'Left', 'Right', 'Home', 'End']: return
@@ -594,6 +594,15 @@ class OSItinerarioView(ctk.CTkFrame):
         form_dados['processo'] = self.processo_entry.get().strip()
         form_dados['origem'] = self.origem_combo.get().strip()
         
+        # =====================================================================
+        # VALIDAÇÃO OBRIGATÓRIA: Bloqueia a geração se o Processo estiver vazio
+        # =====================================================================
+        if not form_dados['processo']:
+            messagebox.showwarning("Campo Obrigatório", "Por favor, preencha o número do Processo Administrativo para continuar.")
+            self.processo_entry.focus()
+            return
+        # =====================================================================
+
         modo_data = self.modo_combo.get()
         if "Período" in modo_data:
             d_ini = self.data_inicio.get()
@@ -631,6 +640,7 @@ class OSItinerarioView(ctk.CTkFrame):
             messagebox.showinfo("Sucesso", msg)
             self._on_tipo_change() 
             self.processo_entry.delete(0, "end")
+            self.processo_entry.atualizar_borda()
             self.datas_isoladas_add.clear()
             self.empresas_add.clear()
             self._render_empresas_chips()
