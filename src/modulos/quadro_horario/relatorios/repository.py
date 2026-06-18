@@ -38,7 +38,8 @@ class RelatorioQuadroHorarioRepository:
                            COALESCE(p.data_pesquisa_3, p.data_pesquisa_2, p.data_pesquisa_1) AS data_fim, 
                            u.nome_completo AS responsavel, p.created_at AS data_criacao, 
                            NULL AS caminho_arquivo,
-                           p.resultado_payload AS payload
+                           p.resultado_payload AS payload,
+                           p.data_pesquisa_1, p.data_pesquisa_2, p.data_pesquisa_3
                     FROM quadro_horario.pesquisas p
                     LEFT JOIN common.linhas l ON p.linha_id = l.id
                     LEFT JOIN common.tipos tp ON p.tipo_pesquisa_id = tp.id
@@ -167,24 +168,19 @@ class RelatorioQuadroHorarioRepository:
     def atualizar_registro(self, tipo_doc, registro_id, dados):
         # =====================================================================
         # BLINDAGEM SÊNIOR: Sanitização de Dados
-        # Removemos os marcadores de vazio da interface ("-" ou "") e convertemos
-        # para None (NULL no banco). Isso evita o crash ao salvar campos de data!
+        # Removemos os marcadores de vazio da interface e limpamos as datas!
         # =====================================================================
         for k, v in dados.items():
             if isinstance(v, str):
                 v_clean = v.strip()
-                # Se for o traço padrão da interface, converte para None
-                if v_clean == "-":
-                    dados[k] = None
-                # Se o usuário apagou uma data explicitamente, forçamos para None
-                elif k in ["data_evento", "data_criacao", "data_inicio", "data_fim"] and v_clean == "":
+                if v_clean in ["-", ""]:
                     dados[k] = None
 
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cur:
                     if tipo_doc == "PARECER":
-                        # 1. Atualiza Tabela Base (Responsável, Data, Decisão, Número)
+                        # (O bloco do PARECER mantém-se igual ao que você já tinha)
                         if dados.get("numero_completo"):
                             try:
                                 num = int(str(dados["numero_completo"]).split('/')[0])
@@ -198,47 +194,25 @@ class RelatorioQuadroHorarioRepository:
                                 created_at = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), pb.created_at)
                             FROM quadro_horario.pareceres p
                             WHERE pb.id = p.id AND p.id = %(id)s
-                        """, {
-                            "id": registro_id,
-                            "decisao": dados.get("decisao"),
-                            "responsavel": dados.get("responsavel"),
-                            "data_criacao": dados.get("data_criacao")
-                        })
+                        """, {"id": registro_id, "decisao": dados.get("decisao"), "responsavel": dados.get("responsavel"), "data_criacao": dados.get("data_criacao")})
 
-                        # 2. Atualiza Parecer Especifico (Assunto, Evento, Origem, etc)
                         cur.execute("""
                             UPDATE quadro_horario.pareceres
-                            SET processo = COALESCE(%(processo)s, processo),
-                                assunto = COALESCE(%(assunto)s, assunto),
-                                solicitante = COALESCE(%(solicitante)s, solicitante),
-                                evento = COALESCE(%(evento)s, evento),
-                                data_evento = COALESCE(%(data_evento)s, data_evento),
-                                motivo_indeferimento = COALESCE(%(motivo)s, motivo_indeferimento),
+                            SET processo = COALESCE(%(processo)s, processo), assunto = COALESCE(%(assunto)s, assunto),
+                                solicitante = COALESCE(%(solicitante)s, solicitante), evento = COALESCE(%(evento)s, evento),
+                                data_evento = COALESCE(%(data_evento)s, data_evento), motivo_indeferimento = COALESCE(%(motivo)s, motivo_indeferimento),
                                 origem_id = COALESCE((SELECT id FROM common.origens WHERE nome = %(origem)s LIMIT 1), origem_id)
                             WHERE id = %(id)s
-                        """, {
-                            "id": registro_id,
-                            "processo": dados.get("processo"),
-                            "assunto": dados.get("assunto"),
-                            "solicitante": dados.get("solicitante"),
-                            "evento": dados.get("evento"),
-                            "data_evento": dados.get("data_evento"),
-                            "motivo": dados.get("motivo_indeferimento"),
-                            "origem": dados.get("origem")
-                        })
+                        """, {"id": registro_id, "processo": dados.get("processo"), "assunto": dados.get("assunto"), "solicitante": dados.get("solicitante"), "evento": dados.get("evento"), "data_evento": dados.get("data_evento"), "motivo": dados.get("motivo_indeferimento"), "origem": dados.get("origem")})
                         
-                        # 3. Inteligência para atualização de Linhas Vinculadas
                         str_linhas = dados.get("linhas")
-                        if str_linhas: # <-- BLINDAGEM EXTRA: Protege o split se vier vazio/None
+                        if str_linhas:
                             cur.execute("DELETE FROM quadro_horario.pareceres_linhas WHERE parecer_id = %s", (registro_id,))
-                            codigos = [c.strip() for c in str_linhas.split(',') if c.strip()]
-                            for cod in codigos:
-                                cur.execute("""
-                                    INSERT INTO quadro_horario.pareceres_linhas (parecer_id, linha_id)
-                                    SELECT %s, id FROM common.linhas WHERE codigo = %s LIMIT 1
-                                """, (registro_id, cod))
+                            for cod in [c.strip() for c in str_linhas.split(',') if c.strip()]:
+                                cur.execute("INSERT INTO quadro_horario.pareceres_linhas (parecer_id, linha_id) SELECT %s, id FROM common.linhas WHERE codigo = %s LIMIT 1", (registro_id, cod))
                                 
-                    else: # PESQUISAS
+                    else: # EDIÇÃO DE PESQUISA
+                        # 1. Atualiza a Linha
                         if dados.get("titulo"):
                             linha_codigo = str(dados["titulo"]).split(" - ")[0].strip()
                             cur.execute("""
@@ -247,23 +221,43 @@ class RelatorioQuadroHorarioRepository:
                                 WHERE id = %(id)s
                             """, {"codigo": linha_codigo, "id": registro_id})
 
+                        # 2. Atualiza os metadados e as 3 DATAS NO BANCO DE DADOS
                         cur.execute("""
                             UPDATE quadro_horario.pesquisas
                             SET tipo_pesquisa_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'PESQUISA' AND nome = %(tipo)s LIMIT 1), tipo_pesquisa_id),
                                 criado_por_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), criado_por_id),
-                                created_at = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), created_at)
+                                data_pesquisa_1 = to_date(%(dp1)s, 'DD/MM/YYYY'),
+                                data_pesquisa_2 = to_date(%(dp2)s, 'DD/MM/YYYY'),
+                                data_pesquisa_3 = to_date(%(dp3)s, 'DD/MM/YYYY')
                             WHERE id = %(id)s
                         """, {
                             "id": registro_id,
                             "tipo": dados.get("tipo"),
                             "responsavel": dados.get("responsavel"),
-                            "data_criacao": dados.get("data_criacao")
+                            "dp1": dados.get("dp1"), "dp2": dados.get("dp2"), "dp3": dados.get("dp3")
                         })
+                        
+                        # 3. Atualiza o JSON Payload para a interface não quebrar as tabelas
+                        cur.execute("SELECT resultado_payload FROM quadro_horario.pesquisas WHERE id = %s", (registro_id,))
+                        res_payload = cur.fetchone()
+                        if res_payload and res_payload[0]:
+                            payload_obj = res_payload[0]
+                            if isinstance(payload_obj, str):
+                                import json
+                                try: payload_obj = json.loads(payload_obj)
+                                except: pass
+                            
+                            if isinstance(payload_obj, dict):
+                                novas_datas = [d for d in [dados.get("dp1"), dados.get("dp2"), dados.get("dp3")] if d]
+                                payload_obj["datas"] = novas_datas
+                                import json
+                                cur.execute("UPDATE quadro_horario.pesquisas SET resultado_payload = %s::jsonb WHERE id = %s", (json.dumps(payload_obj, ensure_ascii=False), registro_id))
+                                
                     conn.commit()
             return True, "Registro atualizado com sucesso no banco de dados."
         except Exception as e:
-            print(f"[LOG DB] Erro atualizar_registro Quadro Horario: {e}")
-            return False, "Erro ao atualizar registro. Verifique se as informações são válidas e tente novamente."
+            print(f"[LOG DB] Erro atualizar_registro: {e}")
+            return False, "Erro ao atualizar registro. Verifique se as informações são válidas."
 
     def obter_linhas(self):
         try:

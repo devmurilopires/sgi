@@ -2,7 +2,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 from tkcalendar import DateEntry
-from datetime import date
+from datetime import date, datetime
 import math
 import json
 
@@ -15,7 +15,7 @@ from src.core.shared.components.parameters_combo import CtkParametrosComboBox
 from src.core.shared.colors import COLOR_PRIMARY, COLOR_SECONDARY, COLOR_BG, COLOR_TEXT, COLOR_WHITE, COLOR_HOVER
 
 # =====================================================================
-# COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM NAVEGAÇÃO POR TECLADO
+# COMPONENTE HÍBRIDO: AUTOCOMPLETE MODERNO COM JACTO DE COR FIXO (PRETO)
 # =====================================================================
 class Autocomplete(ctk.CTkEntry):
     def __init__(self, master, values, **kwargs):
@@ -57,14 +57,26 @@ class Autocomplete(ctk.CTkEntry):
         self.listbox_frame.place(x=x, y=y)
         self.listbox_frame.pack_propagate(False)
         
-        self.listbox_widget = tk.Listbox(self.listbox_frame, bg=COLOR_WHITE, fg=COLOR_TEXT, selectbackground=COLOR_PRIMARY, selectforeground=COLOR_WHITE, bd=0, highlightthickness=0, font=("Arial", 11), border_color=COLOR_PRIMARY, relief="flat")
-        self.listbox_widget.pack(side="left", fill="both", expand=True, padx=3, pady=3)
+        # CORREÇÃO DEFINITIVA: Forçando explicitamente cor preta e desativando realces do Windows (fg="#000000")
+        self.listbox_widget = tk.Listbox(
+            self.listbox_frame, 
+            bg="#FFFFFF", 
+            fg="#000000", 
+            selectbackground=COLOR_PRIMARY, 
+            selectforeground="#FFFFFF", 
+            bd=0, 
+            highlightthickness=0, 
+            font=("Arial", 11),
+            activestyle="none"
+        )
+        self.listbox_widget.pack(side="left", fill="both", expand=True, padx=2, pady=2)
         
         scrollbar = ttk.Scrollbar(self.listbox_frame, orient="vertical", command=self.listbox_widget.yview)
         scrollbar.pack(side="right", fill="y")
         self.listbox_widget.config(yscrollcommand=scrollbar.set)
         
-        for item in filtradas: self.listbox_widget.insert(tk.END, item)
+        for item in filtradas: 
+            self.listbox_widget.insert(tk.END, item)
             
         self.selecao_idx = -1
         self.listbox_widget.bind("<<ListboxSelect>>", self.on_listbox_click)
@@ -130,8 +142,8 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
         self.service = service
         self.nome = dado.get("titulo", "Pesquisa")
         self.tipo = dado.get("tipo", "tempo")
+        self.dado = dado
         
-        # Guardamos o payload original para o PDF/Excel não falharem
         self.raw_payload = dado.get("payload") 
         self.payload = ensure_payload_list(self.raw_payload)
         
@@ -144,6 +156,7 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
         
         btn_frame = ctk.CTkFrame(header, fg_color="transparent")
         btn_frame.pack(side="right")
+        
         ctk.CTkButton(btn_frame, text="Exportar PDF", fg_color=COLOR_SECONDARY, hover_color=COLOR_HOVER, command=self.acao_exportar_pdf).pack(side="left", padx=5)
         ctk.CTkButton(btn_frame, text="Exportar Excel", fg_color="#d82424", hover_color=COLOR_HOVER, command=self.acao_exportar_excel).pack(side="left", padx=5)
 
@@ -167,7 +180,7 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
             self._criar_grafico(container, self.payload[5])
         
         ctk.CTkButton(container, text="Fechar Detalhes", width=200, height=40, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.destroy).pack(pady=30)
-        
+
     def _criar_grafico(self, parent, tabela, custom_title_prefix=None):
         if not tabela or not isinstance(tabela, dict) or not tabela.get("rows"): return
         cols = tabela.get("columns") or []
@@ -220,7 +233,6 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
         text_col = "#FFFFFF" if color not in ["#D1D5DB", "#F8D057", "#F0F0F0"] else "#333333"
         ctk.CTkLabel(header, text=str(nome_tab), font=("Arial Bold", 13), text_color=text_col).pack(anchor="center", pady=6)
 
-        # Aumentamos o height e mudamos expand para True
         tbl_frame = tk.Frame(card, bg="white", height=400)
         tbl_frame.pack(fill="both", expand=True, padx=6, pady=6)
         tbl_frame.pack_propagate(False)
@@ -229,7 +241,6 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
         headings = tabela.get("headings") or {}
         rows = tabela.get("rows") or []
 
-        # Aumentamos o height do Treeview de 10 para 18 linhas
         tv = ttk.Treeview(tbl_frame, columns=cols, show="headings", height=18)
         vsb = ttk.Scrollbar(tbl_frame, orient="vertical", command=tv.yview)
         tv.configure(yscrollcommand=vsb.set)
@@ -249,14 +260,12 @@ class RelatorioDetalhesPesquisa(ctk.CTkToplevel):
     def acao_exportar_excel(self):
         path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")], initialfile=f"Pesquisa_{self.nome}.xlsx")
         if path:
-            # Enviando raw_payload!
             s, m = self.service.exportar_pesquisa_excel(self.nome, self.tipo, self.raw_payload, path)
             messagebox.showinfo("Sucesso" if s else "Erro", m)
 
     def acao_exportar_pdf(self):
         path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF", "*.pdf")], initialfile=f"Pesquisa_{self.nome}.pdf")
         if path:
-            # Enviando raw_payload!
             s, m = self.service.exportar_pesquisa_pdf(self.nome, self.tipo, self.raw_payload, path)
             messagebox.showinfo("Sucesso" if s else "Erro", m)
 
@@ -288,7 +297,6 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 "data_criacao": "Data Criação"
             }
         else:
-            # MODIFICAÇÃO: Ordem lógica estrita para renderizar 5 em cima e 2 embaixo (antes das datas)
             self.colunas_config = {
                 "id": "ID", "numero_completo": "N° Parecer", "processo": "Processo", 
                 "origem": "Origem", "manifestacao": "Natureza", "decisao": "Decisão", 
@@ -331,7 +339,6 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         campos_ignorar = ["id", "data_criacao", "responsavel"]
         row, col = 0, 0
         
-        # MÁGICA DO ALINHAMENTO: 5 colunas por linha (0, 1, 2, 3, 4)
         for key, label in self.colunas_config.items():
             if key in campos_ignorar: continue
             
@@ -363,11 +370,9 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             if key != "relatorios": widget.pack(fill="x")
             self.entradas_filtros[key] = widget
             
-            # Quando a coluna passa de 4 (ex: 0,1,2,3,4 = 5 itens), salta para a linha de baixo
             col += 1
             if col > 4: col = 0; row += 1
 
-        # As datas ocupam os espaços 3 e 4 da linha inferior!
         date_inicio = ctk.CTkFrame(self.grid_filtros, fg_color="transparent")
         date_inicio.grid(row=row, column=col, padx=10, pady=8, sticky="w")
         ctk.CTkLabel(date_inicio, text="Data Inicial:", font=("Arial Bold", 11), text_color=COLOR_TEXT).pack(anchor="w")
@@ -384,13 +389,11 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         wrapper_fim, self.date_fim = self._criar_date_wrapper(date_fim, 450)
         wrapper_fim.pack(anchor="w", pady=(2,0))
 
-        # Resto dos botões de pesquisa (mantém-se inalterado)
         btn_busca = ctk.CTkFrame(self.frame_top, fg_color="transparent")
         btn_busca.pack(fill="x", padx=20, pady=(5, 15))
         ctk.CTkButton(btn_busca, text="🔍 Buscar", font=("Arial Bold", 13), width=120, height=35, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.acao_buscar).pack(side="left", padx=5)
         ctk.CTkButton(btn_busca, text="🧹 Limpar Filtros", font=("Arial", 13), width=120, height=35, fg_color="transparent", text_color=COLOR_PRIMARY, border_width=1, border_color=COLOR_PRIMARY, hover_color="#E9ECEF", command=self._limpar_filtros).pack(side="left")
 
-        # ... (Mantém a Bottom Bar e Paginador) ...
         self.frame_bottom = ctk.CTkFrame(self, fg_color="transparent")
         self.frame_bottom.pack(side="bottom", fill="x", padx=20, pady=(5, 20))
         
@@ -406,15 +409,20 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
 
         self.frame_acoes = ctk.CTkFrame(self.frame_bottom, fg_color="transparent")
         self.frame_acoes.pack(side="right")
+        
+        # MODIFICAÇÃO: Botões de Ação reposicionados na grade principal
         ctk.CTkButton(self.frame_acoes, text="👁️ Ver Detalhes", font=("Arial Bold", 13), width=140, height=35, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.acao_detalhes).pack(side="left", padx=5)
         
+        # MODIFICAÇÃO: Botão de Editar colocado diretamente ao lado do Ver Detalhes se for Admin
+        if self.is_admin:
+            ctk.CTkButton(self.frame_acoes, text="✏️ Editar", font=("Arial Bold", 13), width=120, height=35, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.acao_abrir_modal_edicao_direta).pack(side="left", padx=5)
+
         if self.tipo_doc == "PARECER":
             ctk.CTkButton(self.frame_acoes, text="📂 Abrir Documento", font=("Arial Bold", 13), width=160, height=35, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=self.acao_abrir).pack(side="left", padx=5)
             
         if self.is_admin:
             ctk.CTkButton(self.frame_acoes, text="🗑️ Excluir", font=("Arial Bold", 13), width=120, height=35, fg_color="transparent", border_width=1, border_color="#D32F2F", text_color="#D32F2F", hover_color="#FEE2E2", command=self.acao_excluir).pack(side="left", padx=(5, 0))
 
-        # ... (Mantém a Treeview) ...
         self.frame_tabela = ctk.CTkFrame(self, fg_color=COLOR_WHITE, corner_radius=12, border_width=1, border_color="#E0E0E0")
         self.frame_tabela.pack(side="top", fill="both", expand=True, padx=20, pady=5)
 
@@ -437,8 +445,6 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         scrollbar.pack(side="right", fill="y", padx=(0, 15), pady=15)
         self.tree.bind("<Double-1>", lambda e: self.acao_detalhes())
 
-    # (Métodos de paginação, busca e formatação mantidos inalterados)
-    # ...
     def _pagina_anterior(self):
         if self.pagina_atual > 1:
             self.pagina_atual -= 1
@@ -474,15 +480,16 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
         for i, d in enumerate(self.dados_atuais):
             if d.get("data_criacao"): d["data_criacao"] = d["data_criacao"].strftime("%d/%m/%Y")
             
-            payload = d.get("payload")
-            if isinstance(payload, str):
-                try: payload = json.loads(payload)
-                except: payload = {}
-            if isinstance(payload, dict):
-                datas_list = payload.get("datas", [])
-                d["relatorios"] = ", ".join([dt.strip() for dt in datas_list]) if datas_list else "-"
-            else:
-                d["relatorios"] = "-"
+            # ===========================================================
+            # BLINDAGEM SÊNIOR: Lendo diretamente das colunas do Banco!
+            # ===========================================================
+            datas_bd = []
+            if d.get("data_pesquisa_1"): datas_bd.append(d["data_pesquisa_1"].strftime("%d/%m/%Y"))
+            if d.get("data_pesquisa_2"): datas_bd.append(d["data_pesquisa_2"].strftime("%d/%m/%Y"))
+            if d.get("data_pesquisa_3"): datas_bd.append(d["data_pesquisa_3"].strftime("%d/%m/%Y"))
+            
+            d["relatorios"] = ", ".join(datas_bd) if datas_bd else "-"
+            # ===========================================================
 
             valores = []
             for k in self.colunas_config.keys():
@@ -517,13 +524,11 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             box.insert("1.0", val_str)
             box.configure(state="disabled") 
             box.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
-            if editando: self.modal_edit_widgets[key] = box
         else:
             if key == "origem": w = CtkParametrosComboBox(parent, setor="Quadro de Horário", campo="ORIGEM", width=250, height=35)
             elif key == "decisao": w = CtkParametrosComboBox(parent, setor="Quadro de Horário", campo="DECISAO_PARECER", width=250, height=35)
             elif key == "assunto": w = CtkParametrosComboBox(parent, setor="Quadro de Horário", campo="ASSUNTO_QUADRO_HORARIO", width=250, height=35)
             elif key == "solicitante": w = CtkParametrosComboBox(parent, setor="Quadro de Horário", campo="SOLICITANTE_PARECER", width=250, height=35)
-            # ADICIONADO NO MODO DE EDIÇÃO:
             elif key == "manifestacao": w = CtkParametrosComboBox(parent, setor="Quadro de Horário", campo="NATUREZA_MANIFESTACAO", width=250, height=35)
             else:
                 w = ctk.CTkEntry(parent, width=250, height=35, font=("Arial", 12), border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
@@ -533,7 +538,139 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             w.grid(row=row, column=col+1, sticky="nw", pady=8, padx=pad_x)
             self.modal_edit_widgets[key] = w
 
-    # 2. Tela de Detalhes Modificada com Botão de Edição
+    # MODIFICAÇÃO: Adicionado o fluxo unificado de Edição Direta a partir da Grade Principal para ADMIN
+    def acao_abrir_modal_edicao_direta(self):
+        sel = self.tree.selection()
+        if not sel: return messagebox.showwarning("Aviso", "Selecione um registro para editar.")
+        dado = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
+        if not dado: return
+
+        if self.tipo_doc == "PESQUISA":
+            self.abrir_modal_edicao_pesquisa(dado)
+        else:
+            self.abrir_modal_edicao_parecer(dado)
+
+    def abrir_modal_edicao_pesquisa(self, dado):
+        modal = ctk.CTkToplevel(self)
+        modal.title("Editar Informações da Pesquisa")
+        modal.geometry("550x550")
+        modal.grab_set()
+
+        ctk.CTkLabel(modal, text="Editar Dados da Pesquisa", font=("Arial Bold", 20), text_color=COLOR_PRIMARY).pack(pady=15)
+        form = ctk.CTkFrame(modal, fg_color="transparent")
+        form.pack(fill="both", expand=True, padx=30, pady=10)
+
+        ctk.CTkLabel(form, text="Linha:", font=("Arial Bold", 12)).grid(row=0, column=0, sticky="w", pady=8)
+        entry_linha = Autocomplete(form, values=self.lista_linhas, width=320, height=35, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
+        entry_linha.grid(row=0, column=1, pady=8, padx=10)
+        entry_linha.insert(0, dado.get("titulo", ""))
+
+        ctk.CTkLabel(form, text="Tipo:", font=("Arial Bold", 12)).grid(row=1, column=0, sticky="w", pady=8)
+        combo_tipo = CtkParametrosComboBox(form, setor="Quadro de Horário", campo="PESQUISA", width=320, height=35)
+        combo_tipo.grid(row=1, column=1, pady=8, padx=10)
+        combo_tipo.set(dado.get("tipo", "– Selecione –"))
+
+        ctk.CTkLabel(form, text="Criador/Responsável:", font=("Arial Bold", 12)).grid(row=2, column=0, sticky="w", pady=8)
+        entry_criador = ctk.CTkEntry(form, width=320, height=35, border_width=1, border_color=COLOR_PRIMARY, corner_radius=6)
+        entry_criador.grid(row=2, column=1, pady=8, padx=10)
+        entry_criador.insert(0, dado.get("responsavel", ""))
+
+        raw_payload = dado.get("payload")
+        payload_list = ensure_payload_list(raw_payload)
+        datas_atuais = []
+        if isinstance(raw_payload, dict):
+            datas_atuais = raw_payload.get("datas", [])
+        elif isinstance(raw_payload, str):
+            try: datas_atuais = json.loads(raw_payload).get("datas", [])
+            except: pass
+
+        date_entries = []
+        for i in range(3):
+            ctk.CTkLabel(form, text=f"Data do Relatório {i+1}:", font=("Arial Bold", 12)).grid(row=3+i, column=0, sticky="w", pady=8)
+            wrap = ctk.CTkFrame(form, width=320, height=35, fg_color="#FFFFFF", border_width=1, border_color=COLOR_PRIMARY)
+            wrap.grid(row=3+i, column=1, pady=8, padx=10)
+            wrap.pack_propagate(False)
+            
+            de = DateEntry(wrap, date_pattern="dd/mm/yyyy", font=("Arial", 12), background=COLOR_PRIMARY, foreground="white", borderwidth=0)
+            de.pack(fill="both", expand=True, padx=2, pady=2)
+            
+            if i < len(datas_atuais) and datas_atuais[i] and datas_atuais[i] != "-":
+                try: de.set_date(datetime.strptime(datas_atuais[i], "%d/%m/%Y").date())
+                except: de.delete(0, "end")
+            else:
+                de.delete(0, "end")
+            date_entries.append(de)
+
+        def salvar():
+            novos_dados = {
+                "titulo": entry_linha.get().strip(),
+                "tipo": combo_tipo.get().strip(),
+                "responsavel": entry_criador.get().strip(),
+                "dp1": date_entries[0].get().strip(),
+                "dp2": date_entries[1].get().strip(),
+                "dp3": date_entries[2].get().strip()
+            }
+            sucesso, msg = self.service.atualizar_registro("PESQUISA", dado['id'], novos_dados)
+            if sucesso:
+                messagebox.showinfo("Sucesso", "Pesquisa operacional atualizada com sucesso!")
+                modal.destroy()
+                self.acao_buscar()
+            else:
+                messagebox.showerror("Erro", msg)
+
+        ctk.CTkButton(modal, text="💾 Salvar Alterações", width=250, height=40, font=("Arial Bold", 14), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=salvar).pack(pady=(25, 10))
+
+    def abrir_modal_edicao_parecer(self, dado):
+        # Reaproveita a estrutura interna do Parecer injetando True no editando direto
+        modal = ctk.CTkToplevel(self)
+        modal.title(f"Editar Parecer Nº {dado.get('numero_completo', '')}")
+        modal.geometry("800x600")
+        modal.grab_set()
+
+        scroll = ctk.CTkScrollableFrame(modal, fg_color="#F9FAFB")
+        scroll.pack(fill="both", expand=True, padx=20, pady=20)
+
+        ctk.CTkLabel(scroll, text="Formulário de Modificação do Parecer", font=("Arial Black", 18), text_color=COLOR_PRIMARY).pack(anchor="w", pady=(0,15))
+        info_frame = ctk.CTkFrame(scroll, fg_color=COLOR_WHITE, corner_radius=10, border_width=1, border_color="#E5E7EB")
+        info_frame.pack(fill="x", pady=10)
+
+        grid = ctk.CTkFrame(info_frame, fg_color="transparent")
+        grid.pack(fill="x", padx=15, pady=15)
+        
+        campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo', 'payload', 'relatorios']]
+        self.modal_edit_widgets = {}
+
+        row_idx = 0
+        for i in range(0, len(campos_exibir), 2):
+            key1, val1 = campos_exibir[i]
+            self._add_detail_field_dinamico(grid, key1, val1, row_idx, 0, (0, 20), editando=True)
+            if i + 1 < len(campos_exibir):
+                key2, val2 = campos_exibir[i+1]
+                self._add_detail_field_dinamico(grid, key2, val2, row_idx, 2, (0, 0), editando=True)
+            row_idx += 1
+
+        def executar_salvamento_parecer():
+            novos_dados = {}
+            for k, widget in self.modal_edit_widgets.items():
+                if isinstance(widget, CtkParametrosComboBox):
+                    v = widget.get()
+                    novos_dados[k] = "" if v == "– Selecione –" else v
+                else:
+                    novos_dados[k] = widget.get().strip()
+            
+            sucesso, msg = self.service.atualizar_registro(self.tipo_doc, dado['id'], novos_dados)
+            if sucesso:
+                messagebox.showinfo("Sucesso", msg)
+                modal.destroy()
+                self.acao_buscar()
+            else:
+                messagebox.showerror("Erro", msg)
+
+        btn_frame = ctk.CTkFrame(scroll, fg_color="transparent")
+        btn_frame.pack(pady=25)
+        ctk.CTkButton(btn_frame, text="💾 Salvar Modificações", width=180, height=40, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=executar_salvamento_parecer).pack(side="left", padx=10)
+        ctk.CTkButton(btn_frame, text="Cancelar", width=120, height=40, fg_color="#6B7280", hover_color="#4B5563", command=modal.destroy).pack(side="left", padx=10)
+
     def acao_detalhes(self):
         sel = self.tree.selection()
         if not sel: return messagebox.showwarning("Aviso", "Selecione um registro.")
@@ -562,23 +699,16 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
             grid = ctk.CTkFrame(info_frame, fg_color="transparent")
             grid.pack(fill="x", padx=15, pady=15)
             
-            campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo', 'payload']]
-            self.modal_edit_widgets = {}
-
-            def desenhar_grid(editando=False):
-                for w in grid.winfo_children(): w.destroy()
-                self.modal_edit_widgets.clear()
-                row_idx = 0
-                for i in range(0, len(campos_exibir), 2):
-                    key1, val1 = campos_exibir[i]
-                    self._add_detail_field_dinamico(grid, key1, val1, row_idx, 0, (0, 20), editando)
-
-                    if i + 1 < len(campos_exibir):
-                        key2, val2 = campos_exibir[i+1]
-                        self._add_detail_field_dinamico(grid, key2, val2, row_idx, 2, (0, 0), editando)
-                    row_idx += 1
-
-            desenhar_grid(editando=False)
+            campos_exibir = [(k, v) for k, v in dado.items() if k not in ['id', 'caminho_arquivo', 'payload', 'relatorios']]
+            
+            row_idx = 0
+            for i in range(0, len(campos_exibir), 2):
+                key1, val1 = campos_exibir[i]
+                self._add_detail_field_dinamico(grid, key1, val1, row_idx, 0, (0, 20), editando=False)
+                if i + 1 < len(campos_exibir):
+                    key2, val2 = campos_exibir[i+1]
+                    self._add_detail_field_dinamico(grid, key2, val2, row_idx, 2, (0, 0), editando=False)
+                row_idx += 1
 
             if dado.get('caminho_arquivo'):
                 ctk.CTkLabel(scroll, text="Localização na Rede:", font=("Arial Bold", 12)).pack(anchor="w", pady=(15, 0))
@@ -587,44 +717,16 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
                 path_box.insert(0, dado.get('caminho_arquivo'))
                 path_box.configure(state="readonly")
 
-            # --- BOTÕES DO MODAL ---
             frame_botoes = ctk.CTkFrame(scroll, fg_color="transparent")
             frame_botoes.pack(pady=30)
-            
-            if self.is_admin:
-                def alternar_edicao():
-                    if btn_editar.cget("text") == "✏️ Editar":
-                        btn_editar.configure(text="💾 Salvar", fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER)
-                        desenhar_grid(editando=True)
-                    else:
-                        novos_dados = {}
-                        for k, widget in self.modal_edit_widgets.items():
-                            if isinstance(widget, CtkParametrosComboBox):
-                                v = widget.get()
-                                novos_dados[k] = "" if v == "– Selecione –" else v
-                            elif isinstance(widget, ctk.CTkTextbox): pass
-                            else:
-                                novos_dados[k] = widget.get().strip()
-                        
-                        sucesso, msg = self.service.atualizar_registro(self.tipo_doc, dado['id'], novos_dados)
-                        if sucesso:
-                            messagebox.showinfo("Sucesso", msg)
-                            modal.destroy()
-                            self.acao_buscar()
-                        else:
-                            messagebox.showerror("Erro", msg)
-
-                btn_editar = ctk.CTkButton(frame_botoes, text="✏️ Editar", width=140, height=40, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=alternar_edicao)
-                btn_editar.pack(side="left", padx=10)
-
-            ctk.CTkButton(frame_botoes, text="Fechar", width=140, height=40, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=modal.destroy).pack(side="left", padx=10)
+            ctk.CTkButton(frame_botoes, text="Fechar", width=140, height=40, fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=modal.destroy).pack()
 
     def acao_abrir(self):
         sel = self.tree.selection()
         if not sel: return messagebox.showwarning("Aviso", "Selecione um registro para abrir o arquivo.")
         item = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
         if item:
-            sucesso, msg = self.service.abrir_documento(item.get('caminho_arquivo'))
+            sucesso, msg = self.service.open_documento(item.get('caminho_arquivo'))
             if not sucesso: messagebox.showerror("Erro", msg)
 
     def acao_excluir(self):
@@ -657,7 +759,7 @@ class RelatorioQuadroHorarioView(ctk.CTkFrame):
     def _limpar_filtros(self):
         for key, widget in self.entradas_filtros.items():
             if isinstance(widget, Autocomplete):  
-                widget.delete(0, 'end') # <-- Correção aqui!
+                widget.delete(0, 'end')
             elif isinstance(widget, CtkParametrosComboBox): 
                 widget.set("Todos")
             elif isinstance(widget, DateEntry):
