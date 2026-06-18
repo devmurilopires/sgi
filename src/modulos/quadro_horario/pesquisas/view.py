@@ -330,6 +330,7 @@ class PesquisasView(ctk.CTkFrame):
             else:
                 trees = self.d_cinzas + [self.d_amarela, self.d_viagens, self.d_pass]
                 nomes_tabelas = ["Relatório Demanda 1", "Relatório Demanda 2", "Relatório Demanda 3", "Média Demanda", "Nº de Viagens", "Passageiro/Viagem"]
+                date_widgets = self.date_widgets_demanda
             
             datas_selecionadas = [d.get() for d in date_widgets]
             colunas_visiveis = ["horario"] + [f"s{i}" for i in range(1, self.num_sentidos + 1)] + ["total"]
