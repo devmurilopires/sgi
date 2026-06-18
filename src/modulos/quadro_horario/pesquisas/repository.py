@@ -14,13 +14,11 @@ class PesquisaQuadroHorarioRepository:
             return []
 
     def salvar_pesquisa(self, codigo_linha, nome_tipo, datas, payload_json, criado_por):
-        # Desempacota a lista de datas nas 3 colunas (se houver menos de 3, envia None/NULL)
         d1 = datas[0] if len(datas) > 0 else None
         d2 = datas[1] if len(datas) > 1 else None
         d3 = datas[2] if len(datas) > 2 else None
 
-        # 1. MODIFICAÇÃO: Uso de subqueries para resolver IDs (Linha, Tipo e Usuário)
-        # 2. MODIFICAÇÃO: Inserção das 3 datas de forma atômica
+        # MODIFICAÇÃO: COALESCE garante que o tipo seja encontrado mesmo se o 'contexto' no banco estiver diferente
         query = """
             INSERT INTO quadro_horario.pesquisas (
                 linha_id, 
@@ -32,7 +30,10 @@ class PesquisaQuadroHorarioRepository:
                 criado_por_id
             ) VALUES (
                 (SELECT id FROM common.linhas WHERE codigo = %s LIMIT 1),
-                (SELECT id FROM common.tipos WHERE contexto = 'TIPO_PESQUISA' AND nome ILIKE %s LIMIT 1),
+                COALESCE(
+                    (SELECT id FROM common.tipos WHERE contexto = 'TIPO_PESQUISA' AND nome ILIKE %s LIMIT 1),
+                    (SELECT id FROM common.tipos WHERE nome ILIKE %s LIMIT 1)
+                ),
                 %s, %s, %s,
                 %s::jsonb,
                 (SELECT id FROM common.usuarios WHERE nome_completo ILIKE %s LIMIT 1)
@@ -45,10 +46,10 @@ class PesquisaQuadroHorarioRepository:
                     
                     cur.execute(query, (
                         codigo_linha,
-                        nome_tipo,
+                        nome_tipo, nome_tipo, # Passado duas vezes por causa do COALESCE
                         d1, d2, d3,
                         json_str,
-                        f"%{criado_por}%" # ILIKE para evitar erros por falta de sobrenome
+                        f"%{criado_por}%"
                     ))
                     conn.commit()
                     row = cur.fetchone()

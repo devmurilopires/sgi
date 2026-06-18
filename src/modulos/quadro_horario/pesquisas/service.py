@@ -3,6 +3,7 @@ import math
 import unicodedata
 from datetime import datetime, time
 from numbers import Number
+import re
 from src.modulos.quadro_horario.pesquisas.repository import PesquisaQuadroHorarioRepository
 
 class PesquisaQuadroHorarioService:
@@ -30,10 +31,12 @@ class PesquisaQuadroHorarioService:
     
     # --- Utilitários Internos ---
     def _normalizar_nome(self, s):
-        if not isinstance(s, str): return ""
+        if pd.isna(s) or not isinstance(s, str): return ""
         s = s.lower().strip()
         s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
-        return s.replace(" ", "")
+        # BLINDAGEM MÁXIMA: Arranca qualquer espaço escondido, \n, \t ou símbolo especial
+        s = re.sub(r'[^a-z0-9]', '', s) 
+        return s
 
     def _extrair_nome_sentido(self, trajeto):
         if not isinstance(trajeto, str): return ""
@@ -68,16 +71,10 @@ class PesquisaQuadroHorarioService:
         if not df.iloc[start:].empty: blocks.append(df.iloc[start:].copy())
         return blocks
 
-    # --- NOVO: Caçador de Colunas Flexível ---
     def _encontrar_coluna(self, colunas, chaves):
-        """Procura o nome real da coluna no Excel a partir de palavras-chave, ignorando maiúsculas e acentos."""
         col_map = {self._normalizar_nome(str(c)): c for c in colunas}
-        
-        # 1. Tenta encontrar a palavra exata
         for chave in chaves:
             if chave in col_map: return col_map[chave]
-            
-        # 2. Se não encontrou exato, tenta encontrar parte da palavra (ex: "Partida Real" encontra "partida")
         for chave in chaves:
             for norm_col, orig_col in col_map.items():
                 if chave in norm_col:
@@ -88,16 +85,15 @@ class PesquisaQuadroHorarioService:
     def processar_excel_tempo(self, caminho, nomes_sentidos):
         df = pd.read_excel(caminho)
         
-        # Busca inteligente das colunas
-        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido"])
-        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora"])
-        tv_col = self._encontrar_coluna(df.columns, ["tempoviagem", "tempo", "tv"])
+        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido", "linha"])
+        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora", "real", "inicio"])
+        tv_col = self._encontrar_coluna(df.columns, ["tempoviagem", "tempo", "tv", "duracao", "viagem"])
         
         if not (t_col and p_col and tv_col): 
-            return False, f"Colunas necessárias não encontradas.\nColunas identificadas no Excel: {', '.join(str(c) for c in df.columns)}"
+            return False, f"Este quadro (Tempo de Viagem) precisa de: Trajeto, Partida Real e Tempo.\nColunas lidas no seu Excel: {', '.join(str(c) for c in df.columns)}"
         
         blocos = self._separar_blocos(df[[t_col, p_col, tv_col]].copy(), t_col)
-        if not blocos: return False, "Nenhum dado válido encontrado para separação."
+        if not blocos: return False, "Nenhum dado válido encontrado. Certifique-se de separar os sentidos com uma linha em branco."
 
         sentidos = {}
         for i, bloco in enumerate(blocos, start=1):
@@ -111,19 +107,18 @@ class PesquisaQuadroHorarioService:
             medias = bloco.groupby("Hora")["TempoMin"].mean()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
             col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
-
             sentidos[col_alvo] = {int(h): math.ceil(float(m)) for h, m in medias.items()}
         return True, sentidos
 
     def processar_excel_verde(self, caminho, nomes_sentidos):
         df = pd.read_excel(caminho)
         
-        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido"])
-        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida"])
-        tv_col = self._encontrar_coluna(df.columns, ["tv", "tempoviagem", "tempo"])
+        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido", "linha"])
+        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida", "hora"])
+        tv_col = self._encontrar_coluna(df.columns, ["tv", "tempoviagem", "tempo", "duracao", "viagem"])
         
         if not (t_col and p_col and tv_col): 
-            return False, f"Colunas necessárias não encontradas.\nColunas identificadas no Excel: {', '.join(str(c) for c in df.columns)}"
+            return False, f"Este quadro (Quadro Atual) precisa de: Trajeto, Partida Planejada e TV.\nColunas lidas no seu Excel: {', '.join(str(c) for c in df.columns)}"
         
         blocos = self._separar_blocos(df[[t_col, p_col, tv_col]].copy(), t_col)
         sentidos = {}
@@ -135,7 +130,6 @@ class PesquisaQuadroHorarioService:
             medias = bloco.groupby("Hora")[tv_col].mean()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
             col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
-
             sentidos[col_alvo] = {int(h): math.ceil(float(m)) for h, m in medias.items()}
         return True, sentidos
 
@@ -143,12 +137,12 @@ class PesquisaQuadroHorarioService:
     def processar_excel_demanda(self, caminho, nomes_sentidos):
         df = pd.read_excel(caminho)
         
-        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido"])
-        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora"])
-        pass_col = self._encontrar_coluna(df.columns, ["passageiro", "passag", "pax", "total"])
+        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido", "linha"])
+        p_col = self._encontrar_coluna(df.columns, ["partidareal", "partida", "hora", "real"])
+        pass_col = self._encontrar_coluna(df.columns, ["passageiro", "passag", "pax", "total", "demanda", "qtd"])
         
         if not (t_col and p_col and pass_col): 
-            return False, f"Colunas necessárias não encontradas.\nColunas identificadas no Excel: {', '.join(str(c) for c in df.columns)}"
+            return False, f"Este quadro (Relatório Demanda) precisa de: Trajeto, Partida Real e Passageiro.\nColunas lidas no seu Excel: {', '.join(str(c) for c in df.columns)}"
         
         blocos = self._separar_blocos(df[[t_col, p_col, pass_col]].copy(), t_col)
         sentidos = {}
@@ -161,18 +155,17 @@ class PesquisaQuadroHorarioService:
             somas = bloco.groupby("Hora")[pass_col].sum()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
             col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
-            
             sentidos[col_alvo] = {int(h): int(round(float(s))) for h, s in somas.items()}
         return True, sentidos
 
     def processar_excel_viagens(self, caminho, nomes_sentidos):
         df = pd.read_excel(caminho)
         
-        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido"])
-        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida"])
+        t_col = self._encontrar_coluna(df.columns, ["trajeto", "rota", "sentido", "linha"])
+        p_col = self._encontrar_coluna(df.columns, ["partidaplanejada", "planejada", "partida", "hora"])
         
         if not (t_col and p_col): 
-            return False, f"Colunas necessárias não encontradas.\nColunas identificadas no Excel: {', '.join(str(c) for c in df.columns)}"
+            return False, f"Este quadro (Nº de Viagens) precisa de: Trajeto e Partida Planejada.\nColunas lidas no seu Excel: {', '.join(str(c) for c in df.columns)}"
 
         blocos = self._separar_blocos(df[[t_col, p_col]].copy(), t_col)
         viagens = {}
@@ -184,6 +177,5 @@ class PesquisaQuadroHorarioService:
             contagens = bloco.groupby("Hora").size()
             nome_norm = self._normalizar_nome(self._extrair_nome_sentido(bloco[t_col].iloc[0]))
             col_alvo = nomes_sentidos.get(nome_norm, f"s{i}")
-            
             viagens[col_alvo] = {int(h): int(c) for h, c in contagens.items()}
         return True, viagens
