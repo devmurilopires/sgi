@@ -1,5 +1,6 @@
 import psycopg2
 from config.database import get_db_connection
+import traceback
 
 class AuthRepository:
     def buscar_usuario(self, login):
@@ -14,8 +15,7 @@ class AuthRepository:
                     cur.execute(query, (login, login))
                     return True, cur.fetchone()
         except Exception as e:
-            print(f"[LOG DB] Erro no Auth: {e}")
-            return False, None
+            return False, str(e)
 
     def verificar_existencia(self, username, email):
         query = "SELECT id FROM common.usuarios WHERE username = %s OR email = %s"
@@ -25,7 +25,7 @@ class AuthRepository:
                     cur.execute(query, (username, email))
                     return True, cur.fetchone()
         except Exception as e:
-            return False, None
+            return False, str(e)
 
     def buscar_email(self, email):
         query = "SELECT id FROM common.usuarios WHERE email = %s"
@@ -35,7 +35,7 @@ class AuthRepository:
                     cur.execute(query, (email,))
                     return True, cur.fetchone()
         except Exception as e:
-            return False, None
+            return False, str(e)
 
     def criar_usuario(self, nome, username, email, senha_hash, perfil):
         query = """

@@ -18,7 +18,7 @@ class AuthService:
         if not username or not senha: return False, "Preencha a Matrícula e a senha.", None
         
         sucesso, resultado = self.repo.buscar_usuario(username)
-        if not sucesso: return False, "Erro técnico de conexão com o banco de dados.", None
+        if not sucesso: return False, f"Erro técnico:\n{resultado}", None
         if not resultado: return False, "Matrícula não encontrada.", None
 
         senha_hash_banco, tipo_perfil, nome_completo, user_real, is_admin, is_ativo = resultado

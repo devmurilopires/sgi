@@ -1,31 +1,17 @@
-import os
+# config/database.py
 import psycopg2
-from contextlib import contextmanager
-from dotenv import load_dotenv
+from config import config_db  # Importa diretamente as configurações mapeadas
 
-# Carrega o .env obrigatoriamente
-load_dotenv()
-
-# Configuração Centralizada (Puxando APENAS do .env)
-DB_CONFIG = {
-    "host": os.getenv("DB_HOST"),
-    "database": os.getenv("DB_NAME"),
-    "user": os.getenv("DB_USER"),
-    "password": os.getenv("DB_PASS"),
-    "port": os.getenv("DB_PORT"),
-}
-
-@contextmanager
 def get_db_connection():
-    conn = None
     try:
-        conn = psycopg2.connect(**DB_CONFIG)
-        yield conn
-        conn.commit()  # Confirma transação se não houver erro
+        conn = psycopg2.connect(
+            host=config_db.DB_HOST,
+            database=config_db.DB_NAME,
+            user=config_db.DB_USER,
+            password=config_db.DB_PASS,
+            port=config_db.DB_PORT
+        )
+        return conn
     except Exception as e:
-        if conn:
-            conn.rollback()  # Desfaz se der erro
-        raise e  # Relança o erro para a tela tratar
-    finally:
-        if conn:
-            conn.close() # Garante fechamento
+        print(f"[ERRO CRÍTICO] Falha ao conectar ao banco de dados: {e}")
+        raise e
