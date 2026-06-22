@@ -253,7 +253,7 @@ class AdminParametrosView:
             else:
                 messagebox.showerror("Erro", msg)
 
-        btn_save = ctk.CTkButton(modal, text="Salvar", fg_color=self.color_accent, hover_color=self.color_hover, command=salvar)
+        btn_save = ctk.CTkButton(modal, text="Salvar Alteração", width=160, height=40, font=("Arial Bold", 13), fg_color=COLOR_PRIMARY, hover_color=COLOR_HOVER, command=salvar)
         btn_save.pack(pady=20)
 
     def acao_adicionar(self):
