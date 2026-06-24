@@ -77,7 +77,17 @@ class OSItinerarioService:
         if not os.path.exists(tmpl_path):
             return False, f"O modelo {tmpl_nome} não foi encontrado na pasta 'dados'."
 
-        # TRATAMENTO INTELIGENTE DA DATA NO WORD
+        # Encontrar o número definitivo verificando os arquivos existentes
+        filename = f"OS Nº{num_os_str} de {datetime.now().strftime('%d-%m-%Y')} {tipo_os.upper()}.docx"
+        filepath = os.path.join(self.output_root, filename)
+        
+        while os.path.exists(filepath):
+            num_os += 1
+            num_os_str = f"{num_os:03d}"
+            filename = f"OS Nº{num_os_str} de {datetime.now().strftime('%d-%m-%Y')} {tipo_os.upper()}.docx"
+            filepath = os.path.join(self.output_root, filename)
+
+        # Tratamento inteligente das datas
         data_text = ""
         datas_raw = form_dados.get("datas", [])
         modo_data = form_dados.get("modo_data", "PERIODO")
@@ -112,26 +122,17 @@ class OSItinerarioService:
             self._replace_tags_in_doc(doc, mapping)
             self._inserir_anexos(doc, "{{ANEXO}}", anexos_raw, legenda_path if tipo_os != 'CORRIDA' else None)
             
-            filename = f"OS Nº{num_os_str} de {datetime.now().strftime('%d-%m-%Y')} {tipo_os.upper()}.docx"
-            filepath = os.path.join(self.output_root, filename)
-            while os.path.exists(filepath):
-                num_os += 1
-                num_os_str = f"{num_os:03d}"
-                filename = f"OS Nº{num_os_str} de {datetime.now().strftime('%d-%m-%Y')} {tipo_os.upper()}.docx"
-                filepath = os.path.join(self.output_root, filename)
-            
+            # Salva o arquivo temporariamente na rede
             doc.save(filepath)
 
-            # Tratamento dos Códigos de Linha e Mapeamento do Tipo
             codigos_linhas = []
             for linha in linhas:
                 codigos_linhas.append(linha.split(" - ")[0].strip() if " - " in linha else linha.strip())
 
-            # MODIFICAÇÃO: A nova modelagem usa os eventos específicos diretamente como TIPO_EVENTO_OS
             if tipo_os == "EVENTOS":
                 tipo_evento_db = form_dados.get("evento", "")
             else:
-                tipo_evento_db = tipo_os  # Mantém "CORRIDA" ou "OBRAS"
+                tipo_evento_db = tipo_os
 
             dados_db = {
                 "num_os": num_os, 
@@ -146,7 +147,7 @@ class OSItinerarioService:
                 "nome_corrida": form_dados.get("nome_corrida", ""), 
                 "km": form_dados.get("km", ""), 
                 "tipo_obra": form_dados.get("tipo_obra", ""), 
-                "solicitante": form_dados.get("solicitante", ""), # <--- LINHA ADICIONADA!
+                "solicitante": form_dados.get("solicitante", ""),
                 "docx_path": filepath, 
                 "criado_por": f"%{usuario}%",
                 "empresas_lista": empresas,
@@ -154,8 +155,25 @@ class OSItinerarioService:
             }
             
             sucesso, msg_db = self.repo.salvar_os_itinerario(dados_db)
-            if not sucesso: return False, msg_db
+            
+            # =====================================================================
+            #  (ROLLBACK) em caso de erro
+            # =====================================================================
+            if not sucesso: 
+                if os.path.exists(filepath):
+                    try:
+                        os.remove(filepath)
+                    except Exception:
+                        pass
+                return False, msg_db
 
             return True, f"OS {num_os_str} gerada com sucesso em {self.output_root}!"
+            
         except Exception as e:
+            # Se der erro no meio da geração do Word, também apaga qualquer rastro
+            if 'filepath' in locals() and os.path.exists(filepath):
+                try:
+                    os.remove(filepath)
+                except Exception:
+                    pass
             return False, f"Erro interno ao gerar o arquivo Word: {str(e)}"
