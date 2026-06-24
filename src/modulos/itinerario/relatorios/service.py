@@ -22,8 +22,18 @@ class RelatoriosItinerarioService:
         except Exception as e:
             return False, f"Erro ao abrir o arquivo: {e}"
 
-    def excluir(self, tipo_doc, registro_id, motivo, excluido_por_nome):
-        return self.repo.excluir_registro(tipo_doc, registro_id, motivo, excluido_por_nome)
+    def excluir(self, tipo_doc, registro_id, motivo, excluido_por_nome, caminho_arquivo=None):
+        # 1. Apaga do banco de dados e joga na lixeira lógica
+        sucesso, msg = self.repo.excluir_registro(tipo_doc, registro_id, motivo, excluido_por_nome)
+        
+        # 2. BLINDAGEM SÊNIOR: Se apagou do banco, apaga o arquivo físico da rede!
+        if sucesso and caminho_arquivo and os.path.exists(caminho_arquivo):
+            try:
+                os.remove(caminho_arquivo)
+            except Exception as e:
+                print(f"[Aviso] Banco atualizado, mas falha ao excluir arquivo físico: {e}")
+                
+        return sucesso, msg
     
     def atualizar_registro(self, tipo_doc, registro_id, dados):
         return self.repo.atualizar_registro(tipo_doc, registro_id, dados)
