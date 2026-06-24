@@ -2,6 +2,7 @@ import os
 import unicodedata
 from datetime import datetime
 from docx import Document
+import shutil
 from docx.shared import Inches
 from src.modulos.ponto_parada.ordem_servico.repository import OSRepository
 from config.settings import RAIZ_REDE
@@ -56,7 +57,7 @@ class OSService:
         ano_atual = datetime.now().strftime('%Y')
         
         if not os.path.exists(RAIZ_REDE):
-            return False, f"A raiz da rede não está acessível no momento. Verifique a conexão:\n{RAIZ_REDE}"
+            return False, f"A raiz da rede não está acessível no momento. Verifique a ligação:\n{RAIZ_REDE}"
 
         # Direciona para as pastas corretas
         if "MCMENSAGEM" in str(modelo_operacao).upper().replace(" ", ""):
@@ -66,13 +67,10 @@ class OSService:
             pasta_base = rf"{RAIZ_REDE}\PONTO DE PARADA\{ano_atual}\ORDENS DE SERVICO\URBMIDIA"
             item_contexto = "ITEM_URBMIDIA"
 
-        # Extrai os IDs para relacionamento no Banco de Dados
+        # Extrai os IDs para relacionamento na Base de Dados
         ids_unicos = list(set([d["id"] for d in descricoes_acumuladas]))
         id_principal = descricoes_acumuladas[0]["id"]
         pontos_adicionais = [pid for pid in ids_unicos if pid != id_principal]
-
-        # REMOVIDO: O loop que cadastrava endereços foi removido daqui!
-        # Agora o sistema assume que o ID já existe (foi validado pela Interface).
 
         numero_os = self.repo.obter_proximo_numero_os(ano_atual)
         data_str = datetime.now().strftime("%d/%m/%Y")
@@ -80,13 +78,24 @@ class OSService:
         tipo_os_up = str(tipo_os).strip().upper() if tipo_os else ""
         tipo_item_up = str(tipo_item).strip().upper() if tipo_item else ""
 
+        # =====================================================================
+        # BLINDAGEM SÊNIOR: Encontrar o número definitivo validando as pastas físicas
+        # =====================================================================
         nome_pasta = f"{numero_os:03d}-{datetime.now().strftime('%m')}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}"
         caminho_pasta = os.path.join(pasta_base, nome_pasta)
         nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
         destino_docx = os.path.join(caminho_pasta, nome_arquivo)
 
-        # Monta os dados para registrar apenas a Ordem de Serviço
-        # Monta os dados para registrar apenas a Ordem de Serviço
+        # Verifica se a pasta ou o ficheiro já existem. Se sim, salta para o próximo número!
+        while os.path.exists(caminho_pasta) or os.path.exists(destino_docx):
+            numero_os += 1
+            nome_pasta = f"{numero_os:03d}-{datetime.now().strftime('%m')}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}"
+            caminho_pasta = os.path.join(pasta_base, nome_pasta)
+            nome_arquivo = f"O.S {numero_os:03d}-{ano_atual}-ID{'-'.join(ids_unicos) if ids_unicos else 'EMERGENCIA'}.docx"
+            destino_docx = os.path.join(caminho_pasta, nome_arquivo)
+        # =====================================================================
+
+        # Monta os dados para a Base de Dados
         dados_db = {
             "processo": processo,
             "numero_os": numero_os,
@@ -96,26 +105,34 @@ class OSService:
             "acao": tipo_os_up.upper(),
             "item": tipo_item_up,
             "item_contexto": item_contexto,
-            "modelo": modelo_operacao, # <--- AQUI! Passamos o modelo escolhido na interface para o banco
+            "modelo": modelo_operacao,
             "descricao": "\n".join([item["descricao"] for item in descricoes_acumuladas]),
             "usuario": f"%{usuario_logado}%",
             "caminho": destino_docx,
             "pontos_adicionais": pontos_adicionais
         }
 
+        # 1º PASSO: Tenta guardar na Base de Dados (Se falhar aqui, não mexe na rede física e para o processo!)
         try:
             self.repo.salvar_os(dados_db)
         except Exception as e:
-            return False, f"Erro Crítico! A OS NÃO foi gerada pois houve falha no Banco de Dados:\n{str(e)}"
+            return False, f"Erro Crítico! A OS NÃO foi gerada pois houve falha na Base de Dados:\n{str(e)}"
 
+        # 2º PASSO: Tenta criar a pasta e o Ficheiro Word
         try:
             os.makedirs(caminho_pasta, exist_ok=True)
             caminho_modelo = resource_path(modelo_escolhido)
             self._gerar_documento_modelo(caminho_modelo, destino_docx, numero_os, data_str, id_principal, descricoes_acumuladas, processo)
-            return True, f"Ordem de Serviço Nº {numero_os:03d} criada e registrada com sucesso!\nSalva em:\n{destino_docx}"
+            return True, f"Ordem de Serviço Nº {numero_os:03d} criada e registada com sucesso!\nSalva em:\n{destino_docx}"
             
         except Exception as e:
-            return False, f"Atenção: A OS foi registrada no banco, mas houve falha ao gerar o documento Word na rede:\n{e}"
+            # 3º PASSO (ROLLBACK FÍSICO): Se a geração do Word falhar (ex: rede foi abaixo a meio), apaga a pasta que acabou de criar!
+            if os.path.exists(caminho_pasta):
+                try:
+                    shutil.rmtree(caminho_pasta)
+                except Exception:
+                    pass
+            return False, f"Atenção: A OS foi registada na base de dados, mas houve falha ao gerar o documento Word na rede:\n{e}"
                 
     def _gerar_documento_modelo(self, modelo_path, destino_path, numero_os, data_str, id_texto, descricoes, processo_str):
         doc = Document(modelo_path)
