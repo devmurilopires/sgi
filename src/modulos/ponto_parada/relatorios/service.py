@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 from reportlab.lib import colors
+import shutil
 from reportlab.lib.pagesizes import landscape, A4
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -22,8 +23,23 @@ class RelatorioService:
         except Exception as e:
             return False, f"Erro ao abrir o arquivo: {e}"
 
-    def excluir(self, tipo_doc, registro_id, motivo, excluido_por_nome):
-        return self.repo.excluir_registro(tipo_doc, registro_id, motivo, excluido_por_nome)
+    def excluir(self, tipo_doc, registro_id, motivo, excluido_por_nome, caminho_arquivo=None):
+        # 1. Apaga do banco de dados e joga na lixeira lógica
+        sucesso, msg = self.repo.excluir_registro(tipo_doc, registro_id, motivo, excluido_por_nome)
+        
+        # 2. BLINDAGEM SÊNIOR: Se apagou do banco, apaga a PASTA física inteira da rede!
+        if sucesso and caminho_arquivo and os.path.exists(caminho_arquivo):
+            try:
+                # Como no Ponto de Parada a OS tem uma pasta própria, pegamos o caminho dessa pasta
+                pasta_os = os.path.dirname(caminho_arquivo)
+                
+                # Apagamos a pasta inteira e tudo o que estiver lá dentro (Word, Imagens anexas, etc)
+                if os.path.exists(pasta_os):
+                    shutil.rmtree(pasta_os)
+            except Exception as e:
+                print(f"[Aviso] Banco atualizado, mas falha ao excluir pasta física: {e}")
+                
+        return sucesso, msg
     
     def atualizar_registro(self, tipo_doc, registro_id, dados):
         return self.repo.atualizar_registro(tipo_doc, registro_id, dados)
