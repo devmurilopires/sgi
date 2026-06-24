@@ -208,6 +208,10 @@ class RelatorioView(ctk.CTkFrame):
         filtros = self._get_filtros_formatados()
         offset = (self.pagina_atual - 1) * self.itens_por_pagina
         
+        # BLINDAGEM VISUAL: Reaplicamos o estilo moderno aqui para evitar que 
+        # o calendário (tkcalendar) destrua o tema da tabela no módulo de Ponto de Parada!
+        self._configurar_estilos()
+        
         self.dados_atuais = self.service.repo.buscar_dados_paginados(self.tipo_doc, filtros, self.itens_por_pagina, offset)
         total = self.service.repo.contar_total(self.tipo_doc, filtros)
         
@@ -382,18 +386,28 @@ class RelatorioView(ctk.CTkFrame):
     def acao_excluir(self):
         sel = self.tree.selection()
         if not sel: return messagebox.showwarning("Aviso", "Selecione um registro para excluir.")
+        
+        # 1. Pega o item atual para descobrirmos o caminho físico do arquivo
+        item = next((x for x in self.dados_atuais if str(x['id']) == sel[0]), None)
+        caminho_fisico = item.get('caminho_arquivo') if item else None
+        
         dialog = ctk.CTkInputDialog(text="Motivo para a exclusão do registro:", title="Auditoria de Exclusão")
         motivo = dialog.get_input()
+        
         if motivo is None: return 
-        if not motivo.strip(): return messagebox.showwarning("Aviso", "A exclusão foi abortada. O motivo é obrigatório.")
+        if not motivo.strip():
+            return messagebox.showwarning("Aviso", "A exclusão foi abortada. O motivo é obrigatório.")
             
-        if messagebox.askyesno("Atenção Crítica", "Esta ação enviará o documento para o Histórico/Lixeira do sistema.\nDeseja prosseguir?"):
+        if messagebox.askyesno("Atenção Crítica", "Esta ação enviará o documento para o Histórico e apagará o arquivo da rede.\nDeseja prosseguir?"):
             usr_nome = self.usuario.get('nome') if isinstance(self.usuario, dict) else self.usuario
-            sucesso, msg = self.service.excluir(self.tipo_doc, sel[0], motivo.strip(), usr_nome)
+            
+            # 2. Passa o caminho físico para o service apagar!
+            sucesso, msg = self.service.excluir(self.tipo_doc, sel[0], motivo.strip(), usr_nome, caminho_fisico)
             if sucesso:
                 self.acao_buscar()
                 messagebox.showinfo("Sucesso", msg)
-            else: messagebox.showerror("Erro", msg)
+            else: 
+                messagebox.showerror("Erro", msg)
 
     def acao_excel(self):
         path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
