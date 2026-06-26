@@ -88,19 +88,24 @@ class OSRepository:
             print(f"[LOG DB] Erro ao buscar histórico: {e}")
             return []
 
-    def obter_proximo_numero_os(self, ano_atual):
+    def obter_proximo_numero_os(self, ano_atual, modelo_operacao):
+    
         query = """
-            SELECT COALESCE(MAX(numero), 0) + 1
-            FROM ponto_parada.ordens_servico
-            WHERE EXTRACT(YEAR FROM data_criacao) = %s
+            SELECT COALESCE(MAX(os.numero), 0) + 1
+            FROM ponto_parada.ordens_servico os
+            JOIN common.tipos t ON os.modelo_id = t.id
+            WHERE EXTRACT(YEAR FROM os.data_criacao) = %s
+              AND t.nome ILIKE %s
+              AND t.contexto = 'MODELO_OS'
         """
         try:
             with get_db_connection() as conn:
                 with conn.cursor() as cursor:
-                    cursor.execute(query, (int(ano_atual),))
+                    # Passamos o nome do modelo com %% para o ILIKE garantir que encontra exatamente o modelo correto
+                    cursor.execute(query, (int(ano_atual), f"%{modelo_operacao}%"))
                     return cursor.fetchone()[0]
         except Exception as e:
-            print(f"[LOG DB] Erro ao gerar numeração da OS: {e}")
+            print(f"[LOG DB] Erro ao gerar numeração da OS separada por modelo: {e}")
             return 1
 
     # NOVA FUNÇÃO: Busca dinâmica para o Cascading Dropdown

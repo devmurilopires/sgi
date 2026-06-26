@@ -72,7 +72,9 @@ class OSService:
         id_principal = descricoes_acumuladas[0]["id"]
         pontos_adicionais = [pid for pid in ids_unicos if pid != id_principal]
 
-        numero_os = self.repo.obter_proximo_numero_os(ano_atual)
+        #  Passamos o modelo_operacao para o repositório separar a numeração!
+        numero_os = self.repo.obter_proximo_numero_os(ano_atual, modelo_operacao)
+        
         data_str = datetime.now().strftime("%d/%m/%Y")
 
         tipo_os_up = str(tipo_os).strip().upper() if tipo_os else ""
