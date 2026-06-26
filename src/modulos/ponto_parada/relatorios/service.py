@@ -79,17 +79,16 @@ class RelatorioService:
                     ])
                 col_widths = [40, 65, 55, 60, 70, 75, 115, 140, 65, 65]
             else:
-                # ADICIONADO: Ação e Item no PDF do Parecer
-                cabecalho = ["Nº Parecer", "Processo", "Origem", "Decisão", "Ação", "Item", "Endereço", "Responsável", "Data"]
+                cabecalho = ["Nº Parecer", "Processo", "ID Ponto", "Origem", "Decisão", "Ação", "Item", "Endereço", "Responsável", "Data"]
                 dados_tabela = [cabecalho]
                 for d in dados:
                     dt = d.get('data_criacao').strftime("%d/%m/%Y") if d.get('data_criacao') else "-"
                     dados_tabela.append([
-                        str(d.get('numero_completo','')), str(d.get('processo','')), str(d.get('origem','')), 
+                        str(d.get('numero_completo','')), str(d.get('processo','')), str(d.get('id_ponto','')), str(d.get('origem','')), 
                         str(d.get('decisao','')), str(d.get('acao','')), str(d.get('item','')), 
-                        str(d.get('endereco',''))[:30], str(d.get('responsavel',''))[:15], dt
+                        str(d.get('endereco',''))[:25], str(d.get('responsavel',''))[:15], dt
                     ])
-                col_widths = [65, 75, 65, 65, 75, 95, 160, 85, 65]
+                col_widths = [60, 65, 55, 60, 65, 65, 80, 140, 85, 60]
 
             tabela = Table(dados_tabela, colWidths=col_widths)
             tabela.setStyle(TableStyle([

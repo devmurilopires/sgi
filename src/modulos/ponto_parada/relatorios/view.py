@@ -34,9 +34,8 @@ class RelatorioView(ctk.CTkFrame):
                 "responsavel": "Responsável", "data_criacao": "Data Criação"
             }
         else:
-            # ADICIONADO: Ação e Item
             self.colunas_config = {
-                "id": "ID", "numero_completo": "N° Parecer", "processo": "N° Processo", 
+                "id": "ID", "numero_completo": "N° Parecer", "processo": "N° Processo", "id_ponto": "ID Ponto",
                 "origem": "Origem", "decisao": "Decisão", "acao": "Ação", "item": "Item",
                 "assunto": "Assunto", "solicitante": "Solicitante", "endereco": "Endereço",
                 "responsavel": "Responsável", "data_criacao": "Data Criação"
@@ -337,12 +336,12 @@ class RelatorioView(ctk.CTkFrame):
 
         desenhar_grid(editando=False) 
 
-        if dado.get('caminho_arquivo'):
-            ctk.CTkLabel(scroll, text="Localização na Rede:", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w", pady=(15, 0))
-            path_box = ctk.CTkEntry(scroll, fg_color=COLOR_BG, text_color=COLOR_TEXT, border_width=0)
-            path_box.pack(fill="x", pady=5)
-            path_box.insert(0, dado.get('caminho_arquivo'))
-            path_box.configure(state="readonly")
+        # MODIFICAÇÃO: Criado o widget de caminho para que ele possa ficar editável depois!
+        ctk.CTkLabel(scroll, text="Localização na Rede (Caminho do Arquivo):", font=("Arial Bold", 12), text_color=COLOR_TEXT).pack(anchor="w", pady=(15, 0))
+        path_box = ctk.CTkEntry(scroll, fg_color=COLOR_BG, text_color=COLOR_TEXT, border_width=0)
+        path_box.pack(fill="x", pady=5)
+        path_box.insert(0, dado.get('caminho_arquivo') or '')
+        path_box.configure(state="readonly")
 
         frame_botoes = ctk.CTkFrame(scroll, fg_color="transparent")
         frame_botoes.pack(pady=30)
@@ -352,6 +351,8 @@ class RelatorioView(ctk.CTkFrame):
                 if btn_editar.cget("text") == "✏️ Editar":
                     btn_editar.configure(text="💾 Salvar", fg_color="#10B981", hover_color="#059669")
                     desenhar_grid(editando=True)
+                    # LIBERA O CAMINHO PARA EDIÇÃO
+                    path_box.configure(state="normal", border_width=1, border_color=COLOR_PRIMARY, fg_color=COLOR_WHITE)
                 else:
                     novos_dados = {}
                     for k, widget in self.modal_edit_widgets.items():
@@ -361,6 +362,9 @@ class RelatorioView(ctk.CTkFrame):
                         elif isinstance(widget, ctk.CTkTextbox): pass
                         else:
                             novos_dados[k] = widget.get().strip()
+                    
+                    # CAPTURA O CAMINHO DIGITADO PARA MANDAR PARA O BANCO
+                    novos_dados["caminho"] = path_box.get().strip()
                     
                     sucesso, msg = self.service.atualizar_registro(self.tipo_doc, dado['id'], novos_dados)
                     if sucesso:

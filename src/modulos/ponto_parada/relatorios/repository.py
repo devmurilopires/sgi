@@ -4,10 +4,13 @@ from config.database import get_db_connection
 class RelatorioRepository:
     def _construir_query_filtros(self, tipo_doc, filtros):
         if tipo_doc == "PARECER":
+            # MODIFICAÇÃO: Inserida a subquery para puxar o ID do Ponto (ponto_id)
             query = """
                 SELECT * FROM (
                     SELECT p.id, pb.numero_parecer_ano::text || '/' || pb.ano::text AS numero_completo, 
-                           p.processo, o.nome AS origem, p.assunto, t.nome AS decisao, 
+                           p.processo, 
+                           (SELECT string_agg(pp.ponto_id, ', ') FROM ponto_parada.pareceres_pontos pp WHERE pp.parecer_id = p.id) AS id_ponto,
+                           o.nome AS origem, p.assunto, t.nome AS decisao, 
                            p.tipo_execucao AS acao, p.item AS item,
                            p.solicitante, p.endereco_vistoria AS endereco, 
                            pb.created_at AS data_criacao, u.nome_completo AS responsavel,
@@ -47,7 +50,7 @@ class RelatorioRepository:
         params = []
         mapeamento = {
             "PARECER": {
-                "numero_completo": "numero_completo", "processo": "processo", "origem": "origem", 
+                "numero_completo": "numero_completo", "processo": "processo", "origem": "origem", "id_ponto": "id_ponto",
                 "assunto": "assunto", "decisao": "decisao", "solicitante": "solicitante", 
                 "acao": "acao", "item": "item", "responsavel": "responsavel", "endereco": "endereco"
             },
@@ -71,6 +74,9 @@ class RelatorioRepository:
                         translate(lower(COALESCE(pontos_adicionais::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')
                     )"""
                     params.extend([f"%{valor}%", f"%{valor}%"])
+                elif chave == "id_ponto" and tipo_doc == "PARECER":
+                    query += f" AND translate(lower(COALESCE(id_ponto::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
+                    params.append(f"%{valor}%")
                 else:
                     query += f" AND translate(lower(COALESCE({coluna}::text, '')), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc') LIKE translate(lower(%s), 'áàãâäéèêëíìîïóòõôöúùûüç', 'aaaaaeeeeiiiiooooouuuuc')"
                     params.append(f"%{valor}%")
@@ -190,16 +196,18 @@ class RelatorioRepository:
                                 cur.execute("UPDATE common.pareceres_base SET numero_parecer_ano = %s WHERE id = %s", (num, registro_id))
                             except: pass
 
+                        # MODIFICAÇÃO: COALESCE agora suporta a atualização do 'caminho_arquivo'
                         cur.execute("""
                             UPDATE common.pareceres_base pb
                             SET tipo_id = COALESCE((SELECT id FROM common.tipos WHERE contexto IN ('PARECER', 'DECISAO_PARECER') AND nome = %(decisao)s LIMIT 1), pb.tipo_id),
                                 criado_por_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), pb.criado_por_id),
-                                created_at = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), pb.created_at)
+                                created_at = COALESCE(to_timestamp(%(data_criacao)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao)s, 'DD/MM/YYYY'), pb.created_at),
+                                caminho_arquivo = COALESCE(%(caminho)s, caminho_arquivo)
                             FROM ponto_parada.pareceres p
                             WHERE pb.id = p.id AND p.id = %(id)s
                         """, {
                             "id": registro_id, "decisao": dados.get("decisao"),
-                            "responsavel": dados.get("responsavel"), "data_criacao": dados.get("data_criacao")
+                            "responsavel": dados.get("responsavel"), "data_criacao": dados.get("data_criacao"), "caminho": dados.get("caminho")
                         })
 
                         cur.execute("""
@@ -221,21 +229,19 @@ class RelatorioRepository:
                         })
                         
                     else: # ORDEM DE SERVIÇO
-                        # CORREÇÃO 1: Trata o ID do Ponto como STRING para evitar erro de tipo no PostgreSQL
                         if "id_ponto" in dados and dados["id_ponto"] and str(dados["id_ponto"]).strip() != "-":
                             ponto_str = str(dados["id_ponto"]).split('(')[0].strip()
                             dados["ponto_id_clean"] = ponto_str if ponto_str else None
                         else:
                             dados["ponto_id_clean"] = None
 
-                        # CORREÇÃO 2: Trata datas vazias de forma segura para não travar o to_timestamp
                         dt_criacao = dados.get("data_criacao")
                         if not dt_criacao or str(dt_criacao).strip() in ["", "-"]:
                             dados["data_criacao_clean"] = None
                         else:
                             dados["data_criacao_clean"] = str(dt_criacao).strip()
 
-                        # CORREÇÃO 3: Incluídos os campos de Processo e Empresa (modelo_id) no UPDATE
+                        # MODIFICAÇÃO: Atualiza também o 'caminho_arquivo'
                         cur.execute("""
                             UPDATE ponto_parada.ordens_servico
                             SET numero = COALESCE(%(numero_os)s, numero),
@@ -247,7 +253,8 @@ class RelatorioRepository:
                                 modelo_id = COALESCE((SELECT id FROM common.tipos WHERE contexto = 'MODELO_OS' AND nome = %(empresa)s LIMIT 1), modelo_id),
                                 status_conclusao = COALESCE(%(status)s, status_conclusao),
                                 responsavel_id = COALESCE((SELECT id FROM common.usuarios WHERE nome_completo = %(responsavel)s LIMIT 1), responsavel_id),
-                                data_criacao = COALESCE(to_timestamp(%(data_criacao_clean)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao_clean)s, 'DD/MM/YYYY'), data_criacao)
+                                data_criacao = COALESCE(to_timestamp(%(data_criacao_clean)s, 'DD/MM/YYYY HH24:MI:SS'), to_timestamp(%(data_criacao_clean)s, 'DD/MM/YYYY'), data_criacao),
+                                caminho_arquivo = COALESCE(%(caminho)s, caminho_arquivo)
                             WHERE id = %(id)s
                             RETURNING ponto_principal_id
                         """, {
@@ -261,7 +268,8 @@ class RelatorioRepository:
                             "empresa": dados.get("empresa"),
                             "status": dados.get("status"), 
                             "responsavel": dados.get("responsavel"), 
-                            "data_criacao_clean": dados["data_criacao_clean"]
+                            "data_criacao_clean": dados["data_criacao_clean"],
+                            "caminho": dados.get("caminho")
                         })
                         
                         res = cur.fetchone()
