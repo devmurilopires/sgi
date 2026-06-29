@@ -241,7 +241,10 @@ class OSView(ctk.CTkFrame):
 
         # Já não passamos os dados de endereço do formulário porque eles não serão atualizados aqui
         modelo_operacao = self.modelo_combo.get()
-        doc_template = "dados/modelo_etufor_mcmensagem_pp.docx" if modelo_operacao == "McMensagem" else "dados/modelo_etufor_urbmidia_pp.docx"
+        if "MCMENSAGEM" in str(modelo_operacao).upper().replace(" ", ""):
+            doc_template = "dados/modelo_etufor_mcmensagem_pp.docx" 
+        else:
+            doc_template = "dados/modelo_etufor_urbmidia_pp.docx"
 
         sucesso, mensagem = self.service.processar_criacao_os(
             descricoes_acumuladas=self.descricoes_acumuladas,
